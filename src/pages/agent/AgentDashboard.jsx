@@ -1,459 +1,382 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
-import { FiFileText, FiAlertTriangle, FiX, FiMenu, FiHome, FiMessageSquare, FiBell, FiDollarSign, FiUsers, FiBarChart2, FiCreditCard, FiLoader } from 'react-icons/fi';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect } from 'react';
+import { useLocation, Link, useNavigate, Routes, Route, Outlet } from 'react-router-dom';
+import { 
+  FiHome, FiFileText, FiDollarSign, FiMessageSquare, FiBarChart2, 
+  FiBook, FiTool, FiUsers, FiBell, FiCreditCard, FiShield, 
+  FiMenu, FiX, FiSearch, FiUser, FiLogOut, FiSettings,
+  FiChevronDown, FiChevronRight, FiAlertTriangle
+} from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAgentAuth } from '../../context/AgentAuthContext';
+import { useAgentProfile } from '../../hooks/useAgentProfile';
+import { toast } from 'react-hot-toast';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
+import AgentProfile from '../../components/agent/AgentProfile';
+import AgentDashboardOverview from '../../components/agent/AgentDashboardOverview';
 
 const AgentDashboard = () => {
-  const [pendingTickets, setPendingTickets] = useState(0);
-  const [resolvedTickets, setResolvedTickets] = useState(0);
-  const [recentTickets, setRecentTickets] = useState([]);
-  const [suspiciousActivities, setSuspiciousActivities] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [navigationSidebarOpen, setNavigationSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser, logout } = useAgentAuth();
+  const { profile, loading: profileLoading } = useAgentProfile();
+  
+  // Define user for backward compatibility and null safety
+  const user = currentUser || null;
 
-  // Check if we're on a nested route
-  const isNestedRoute = location.pathname !== '/agent-dashboard';
+  // Check if we're on the main dashboard route
+  const isMainDashboard = location.pathname === '/agent-dashboard' || location.pathname === '/agent-dashboard/';
 
+  // Define closeSidebar function
+  const closeSidebar = () => setSidebarOpen(false);
+
+  // Close sidebar on route change (mobile)
   useEffect(() => {
-    // Fetch pending tickets count
-    const pendingQuery = query(
-      collection(db, 'tickets'),
-      where('status', '==', 'pending')
-    );
+    closeSidebar();
+  }, [location.pathname]);
 
-    const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
-      setPendingTickets(snapshot.size);
-    });
-
-    // Fetch resolved tickets count
-    const resolvedQuery = query(
-      collection(db, 'tickets'),
-      where('status', '==', 'resolved')
-    );
-
-    const unsubscribeResolved = onSnapshot(resolvedQuery, (snapshot) => {
-      setResolvedTickets(snapshot.size);
-    });
-
-    // Fetch recent tickets
-    const recentQuery = query(
-      collection(db, 'tickets'),
-      orderBy('createdAt', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribeRecent = onSnapshot(recentQuery, (snapshot) => {
-      const tickets = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setRecentTickets(tickets);
-    });
-
-    return () => {
-      unsubscribePending();
-      unsubscribeResolved();
-      unsubscribeRecent();
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setProfileDropdownOpen(false);
     };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    // Simulate suspicious activity detection
-    const detectSuspiciousActivity = () => {
-      const activities = [
-        {
-          id: 1,
-          type: 'Multiple Failed Login Attempts',
-          user: 'user@example.com',
-          timestamp: new Date().toLocaleString(),
-          severity: 'high',
-          details: 'User attempted to login 5 times with incorrect password'
-        },
-        {
-          id: 2,
-          type: 'Unusual Data Access Pattern',
-          user: 'admin@company.com',
-          timestamp: new Date(Date.now() - 300000).toLocaleString(),
-          severity: 'medium',
-          details: 'Accessed sensitive files outside normal working hours'
-        },
-        {
-          id: 3,
-          type: 'Suspicious File Download',
-          user: 'employee@company.com',
-          timestamp: new Date(Date.now() - 600000).toLocaleString(),
-          severity: 'low',
-          details: 'Downloaded large amount of data in short time period'
-        }
-      ];
-      setSuspiciousActivities(activities);
-    };
+  // Show loading state if profile is still loading
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-    // Run initial detection
-    detectSuspiciousActivity();
-
-    // Set up periodic detection (every 30 seconds)
-    const interval = setInterval(detectSuspiciousActivity, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'high':
-        return 'text-red-600 bg-red-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'low':
-        return 'text-blue-600 bg-blue-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
+  // Navigation items
+  const navigationItems = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: FiHome,
+      path: '/agent-dashboard',
+      badge: null
+    },
+    {
+      id: 'support-tickets',
+      label: 'Support Tickets',
+      icon: FiFileText,
+      path: '/agent-dashboard/support-tickets',
+      badge: null
+    },
+    {
+      id: 'payment-verification',
+      label: 'Payment Verification',
+      icon: FiDollarSign,
+      path: '/agent-dashboard/payment-verification',
+      badge: null
+    },
+    {
+      id: 'communication',
+      label: 'Communication',
+      icon: FiMessageSquare,
+      path: '/agent-dashboard/communication',
+      badge: null
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: FiBarChart2,
+      path: '/agent-dashboard/analytics',
+      badge: null
+    },
+    {
+      id: 'knowledge-base',
+      label: 'Knowledge Base',
+      icon: FiBook,
+      path: '/agent-dashboard/knowledge-base',
+      badge: null
+    },
+    {
+      id: 'debug-tools',
+      label: 'Debug Tools',
+      icon: FiTool,
+      path: '/agent-dashboard/debug-tools',
+      badge: null
+    },
+    {
+      id: 'agent-chat',
+      label: 'Agent Chat',
+      icon: FiMessageSquare,
+      path: '/agent-dashboard/agent-chat',
+      badge: null
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: FiBell,
+      path: '/agent-dashboard/notifications',
+      badge: null
+    },
+    {
+      id: 'payment-errors',
+      label: 'Payment Errors',
+      icon: FiCreditCard,
+      path: '/agent-dashboard/payment-errors',
+      badge: null
+    },
+    {
+      id: 'user-management',
+      label: 'User Management',
+      icon: FiUsers,
+      path: '/agent-dashboard/user-management',
+      badge: null
+    },
+    {
+      id: 'epin-checker',
+      label: 'EPIN Checker',
+      icon: FiCreditCard,
+      path: '/agent-dashboard/epin-checker',
+      badge: null
+    },
+    {
+      id: 'user-bug-checker',
+      label: 'User Bug Checker',
+      icon: FiShield,
+      path: '/agent-dashboard/user-bug-checker',
+      badge: null
+    },
+    {
+      id: 'suspicious-activity',
+      label: 'Suspicious Activity',
+      icon: FiAlertTriangle,
+      path: '/agent-dashboard/suspicious-activity',
+      badge: null
     }
-  };
+  ];
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    
+  const handleLogout = async () => {
     try {
-      if (timestamp.toDate) {
-        return timestamp.toDate().toLocaleDateString();
-      }
-      return new Date(timestamp).toLocaleDateString();
+      await logout();
+      navigate('/agent/login');
     } catch (error) {
-      return 'Invalid Date';
+      console.error('Logout error:', error);
     }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'text-orange-600 bg-orange-100';
-      case 'in-progress':
-        return 'text-blue-600 bg-blue-100';
-      case 'resolved':
-        return 'text-green-600 bg-green-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const handleActivityClick = (activity) => {
-    setSidebarOpen(true);
-    // Removed toast notification for instant navigation
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex w-full overflow-x-hidden">
-      {/* Navigation Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
-        navigationSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-800">Agent Panel</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={closeSidebar}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{
+          x: sidebarOpen ? 0 : '-100%'
+        }}
+        className="fixed top-0 left-0 z-50 w-64 h-full bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:transform-none lg:translate-x-0 lg:static lg:z-auto"
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <FiShield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-gray-900">Agent Panel</span>
+          </div>
           <button
-            onClick={() => setNavigationSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
+            onClick={closeSidebar}
+            className="p-2 rounded-md text-gray-400 hover:text-gray-600 lg:hidden"
           >
-            <FiX size={20} />
+            <FiX className="w-5 h-5" />
           </button>
         </div>
-        
-        <nav className="mt-6">
-          <div className="px-6 space-y-2">
-            <Link 
-              to="/agent-dashboard" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiHome className="mr-3" size={20} />
-              Dashboard
-            </Link>
-            <Link 
-              to="/agent-dashboard/support-tickets" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/support-tickets' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiFileText className="mr-3" size={20} />
-              Support Tickets
-            </Link>
-            <Link 
-              to="/agent-dashboard/agent-chat" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/agent-chat' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiMessageSquare className="mr-3" size={20} />
-              Agent Chat
-            </Link>
-            <Link 
-              to="/agent-dashboard/notifications" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/notifications' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiBell className="mr-3" size={20} />
-              Notifications
-            </Link>
-            <Link 
-              to="/agent-dashboard/payment-errors" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/payment-errors' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiDollarSign className="mr-3" size={20} />
-              Payment Errors
-            </Link>
-            <Link 
-              to="/agent-dashboard/user-management" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/user-management' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiUsers className="mr-3" size={20} />
-              User Management
-            </Link>
-            <Link 
-              to="/agent-dashboard/analytics" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/analytics' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiBarChart2 className="mr-3" size={20} />
-              Analytics
-            </Link>
-            <Link 
-              to="/agent-dashboard/epin-checker" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/epin-checker' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiCreditCard className="mr-3" size={20} />
-              EPIN Checker
-            </Link>
-            <Link 
-              to="/agent-dashboard/user-bug-checker" 
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/agent-dashboard/user-bug-checker' 
-                  ? 'text-gray-700 bg-gray-100' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <FiAlertTriangle className="mr-3" size={20} />
-              User Bug Checker
-            </Link>
-          </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <Link
+                key={item.id}
+                to={item.path}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  isActive
+                    ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="w-5 h-5 mr-3" />
+                <span className="flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
-      </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+              {profile?.profileImage ? (
+                <img
+                  src={profile.profileImage}
+                  alt={profile.fullName || 'Agent'}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <FiUser className="w-4 h-4 text-gray-600" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {profile?.fullName || user?.email || currentUser?.email || 'Agent'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {profile?.role || 'Agent'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-0 w-full overflow-x-hidden">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center">
+      <div className="lg:ml-64">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="flex items-center justify-between h-16 px-4 sm:px-6">
+            {/* Left side */}
+            <div className="flex items-center space-x-4">
               <button
-                onClick={() => setNavigationSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 mr-4"
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-600 lg:hidden"
               >
-                <FiMenu size={20} />
+                <FiMenu className="w-5 h-5" />
               </button>
-              <h2 className="text-2xl font-bold text-gray-900">Agent Dashboard</h2>
+              
+              {/* Search */}
+              <div className="hidden sm:block">
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <FiAlertTriangle size={20} />
-            </button>
-          </div>
-        </div>
 
-        {/* Dashboard Content */}
-        <div className="p-6 w-full overflow-x-hidden">
-          {isNestedRoute ? (
-            <ErrorBoundary fallbackMessage="Failed to load this section. Please try refreshing or contact support if the issue persists.">
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <FiLoader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600">Loading...</p>
+            {/* Right side */}
+            <div className="flex items-center space-x-4">
+              {/* Notifications */}
+              <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+                <FiBell className="w-5 h-5" />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProfileDropdownOpen(!profileDropdownOpen);
+                  }}
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100"
+                >
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                    {profile?.profileImage ? (
+                      <img
+                        src={profile.profileImage}
+                        alt={profile.fullName || 'Agent'}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <FiUser className="w-4 h-4 text-gray-600" />
+                    )}
                   </div>
-                </div>
-              }>
-                <Outlet />
-              </Suspense>
-            </ErrorBoundary>
-          ) : (
-            <>
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Pending Tickets</p>
-                      <p className="text-2xl font-bold text-orange-600">{pendingTickets}</p>
-                    </div>
-                    <div className="p-3 bg-orange-100 rounded-full">
-                      <FiFileText className="h-6 w-6 text-orange-600" />
-                    </div>
-                  </div>
-                </div>
+                  <FiChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
 
-                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Resolved Tickets</p>
-                      <p className="text-2xl font-bold text-green-600">{resolvedTickets}</p>
-                    </div>
-                    <div className="p-3 bg-green-100 rounded-full">
-                      <FiFileText className="h-6 w-6 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Active Users</p>
-                      <p className="text-2xl font-bold text-blue-600">1,234</p>
-                    </div>
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <FiUsers className="h-6 w-6 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                      <p className="text-2xl font-bold text-purple-600">₹45,678</p>
-                    </div>
-                    <div className="p-3 bg-purple-100 rounded-full">
-                      <FiDollarSign className="h-6 w-6 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Tickets */}
-              <div className="bg-white rounded-lg shadow-md mb-8">
-                <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Recent Tickets</h3>
-                </div>
-                <div className="p-4 md:p-6">
-                  {recentTickets.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentTickets.map((ticket) => (
-                        <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                            <h4 className="font-medium text-gray-900 truncate">{ticket.subject || 'No Subject'}</h4>
-                            <p className="text-sm text-gray-600 truncate">{ticket.description || 'No Description'}</p>
-                            <p className="text-xs text-gray-500">Created: {formatDate(ticket.createdAt)}</p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium self-start sm:self-center ${
-                            getStatusColor(ticket.status)
-                          }`}>
-                            {ticket.status || 'Unknown'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <FiFileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">No recent tickets found</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Suspicious Activities */}
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Suspicious Activities</h3>
-                </div>
-                <div className="p-4 md:p-6">
-                  <div className="space-y-4">
-                    {suspiciousActivities.map((activity) => (
-                      <div 
-                        key={activity.id} 
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleActivityClick(activity)}
-                      >
-                        <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                          <h4 className="font-medium text-gray-900 truncate">{activity.type}</h4>
-                          <p className="text-sm text-gray-600 truncate">{activity.user}</p>
-                          <p className="text-xs text-gray-500">{activity.timestamp}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium self-start sm:self-center ${
-                          getSeverityColor(activity.severity)
-                        }`}>
-                          {activity.severity.toUpperCase()}
-                        </span>
+                <AnimatePresence>
+                  {profileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50"
+                    >
+                      <div className="py-1">
+                        <Link
+                          to="/agent-dashboard/profile"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <FiUser className="w-4 h-4 mr-2" />
+                          Profile
+                        </Link>
+                        <Link
+                          to="/agent-dashboard/settings"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <FiSettings className="w-4 h-4 mr-2" />
+                          Settings
+                        </Link>
+                        <hr className="my-1" />
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                        >
+                          <FiLogOut className="w-4 h-4 mr-2" />
+                          Logout
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Overlay for mobile navigation */}
-        {navigationSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setNavigationSidebarOpen(false)}
-          ></div>
-        )}
-
-        {/* Sidebar for Activity Details */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-            <div className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-lg transform transition-transform">
-              <div className="p-4 md:p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Activity Details</h3>
-                  <button
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2 rounded-md text-gray-400 hover:text-gray-600"
-                  >
-                    <FiX size={20} />
-                  </button>
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <p className="text-gray-600">Detailed information about suspicious activities will be displayed here.</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
-        )}
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1">
+          <ErrorBoundary>
+            {isMainDashboard ? (
+              <AgentDashboardOverview />
+            ) : (
+              <Outlet />
+            )}
+          </ErrorBoundary>
+        </main>
       </div>
     </div>
   );
 };
+
+
 
 export default AgentDashboard;

@@ -13,7 +13,7 @@ import PublicRoute from './components/auth/PublicRoute';
 import Login from './components/auth/Login';
 import Signup from './components/auth/Signup';
 import AdminLogin from './admin/AdminLogin';
-import AgentLogin from './components/auth/AgentLogin';
+import AgentLogin from './pages/agent/AgentLogin';
 import DashboardHome from './components/dashboard/DashboardHome';
 import AdminDashboard from './admin/AdminDashboard';
 import SendHelp from './components/help/SendHelp';
@@ -67,9 +67,16 @@ import UserBugChecker from './pages/agent/UserBugChecker';
 import PaymentErrors from './pages/agent/PaymentErrors';
 import UserManagement from './pages/agent/UserManagement';
 import Analytics from './pages/agent/Analytics';
-import AgentProtectedRoute from './components/agent/AgentProtectedRoute';
+import PaymentVerification from './pages/agent/PaymentVerification';
+import Communication from './pages/agent/Communication';
+import KnowledgeBase from './pages/agent/KnowledgeBase';
+import DebugTools from './pages/agent/DebugTools';
+import AgentProtectedRoute from './components/AgentProtectedRoute';
+import AgentProfilePage from './pages/agent/AgentProfile';
+import AgentSettings from './pages/agent/AgentSettings';
 import UserSupportTickets from './components/support/UserSupportTickets';
 import SupportHub from './pages/SupportHub';
+import SuspiciousActivityDetection from './components/agent/SuspiciousActivityDetection';
 
 // Legal and Company Pages
 import TermsConditions from './pages/TermsConditions';
@@ -128,16 +135,26 @@ export const router = createBrowserRouter([
   { path: '/payment-methods', element: <PaymentMethods /> },
   { path: '/security', element: <Security /> },
   { path: '/mobile-app', element: <MobileApp /> },
-  // Public routes
+  // Top-level auth routes
   {
-    element: <PublicRoute />,
-    children: [
-      { path: '/login', element: <Login /> },
-      { path: '/signup', element: <Signup /> },
-      { path: '/register', element: <Signup /> },
-      { path: '/admin/login', element: <AdminLogin /> },
-      { path: '/agent/login', element: <AgentLogin /> },
-    ],
+    path: "/login",
+    element: <PublicRoute><Login /></PublicRoute>,
+  },
+  {
+    path: "/signup",
+    element: <PublicRoute><Signup /></PublicRoute>,
+  },
+  {
+    path: "/register",
+    element: <PublicRoute><Signup /></PublicRoute>,
+  },
+  {
+    path: "/admin/login",
+    element: <PublicRoute><AdminLogin /></PublicRoute>,
+  },
+  {
+    path: "/agent/login",
+    element: <PublicRoute><AgentLogin /></PublicRoute>,
   },
   // Register success route (accessible to authenticated users)
   {
@@ -167,16 +184,13 @@ export const router = createBrowserRouter([
       { path: 'profile-settings', element: <ProfileSettings /> },
       { path: 'leaderboard', element: <Leaderboard /> },
       { path: 'upcoming-payment', element: <UpcomingPayments /> },
-      {
-        path: 'support',
-        element: <SupportHub />
-      },
+      { path: 'support', element: <SupportHub /> },
       {
         path: 'support/chatbot',
         element: <ChatbotSupport />
       },
       {
-        path: 'support/agent',
+        path: 'support/live-agent',
         element: <AgentChat />
       },
       {
@@ -185,6 +199,11 @@ export const router = createBrowserRouter([
       },
       { path: 'support/form', element: <Support /> },
       { path: 'support/live-chat', element: <UserSupportTickets /> },
+      // E-PIN routes under dashboard
+      { path: 'epins/used', element: <EpinDashboard /> },
+      { path: 'epins/request', element: <RequestEPIN /> },
+      { path: 'epins/transfer', element: <TransferEpin /> },
+      { path: 'epins/history', element: <EpinHistory /> },
       { path: 'tasks', element: <Tasks /> },
       { path: 'earn-epin', element: <EarnFreeEPIN /> },
       { path: 'testimonials', element: <EarnFreeEPIN /> },
@@ -192,20 +211,14 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPassword /> },
     ],
   },
-  // Protected E-PIN routes
+  // Legacy E-PIN routes (redirect to dashboard)
   {
     path: '/epin',
-    element: (
-      <ProtectedRoute>
-        <Layout />
-      </ProtectedRoute>
-    ),
-    children: [
-      { path: 'request', element: <RequestEPIN /> },
-      { path: 'payment', element: <PaymentPage /> },
-      { path: 'transfer', element: <TransferEpin /> },
-      { path: 'history', element: <EpinHistory /> },
-    ],
+    element: <Navigate to="/dashboard/epins/request" replace />
+  },
+  {
+    path: '/epin/*',
+    element: <Navigate to="/dashboard/epins/request" replace />
   },
   // Protected admin routes
   {
@@ -248,14 +261,21 @@ export const router = createBrowserRouter([
       </AgentProtectedRoute>
     ),
     children: [
+      { path: 'profile', element: <AgentProfilePage /> },
+      { path: 'settings', element: <AgentSettings /> },
       { path: 'support-tickets', element: <SupportTickets /> },
+      { path: 'payment-verification', element: <PaymentVerification /> },
+      { path: 'communication', element: <Communication /> },
+      { path: 'analytics', element: <Analytics /> },
+      { path: 'knowledge-base', element: <KnowledgeBase /> },
+      { path: 'debug-tools', element: <DebugTools /> },
       { path: 'agent-chat', element: <AgentChatPage /> },
       { path: 'epin-checker', element: <EpinChecker /> },
       { path: 'notifications', element: <AgentNotifications /> },
       { path: 'user-bug-checker', element: <UserBugChecker /> },
       { path: 'payment-errors', element: <PaymentErrors /> },
       { path: 'user-management', element: <UserManagement /> },
-      { path: 'analytics', element: <Analytics /> }
+      { path: 'suspicious-activity', element: <SuspiciousActivityDetection /> }
     ]
   },
   { path: '/access-denied', element: <AccessDenied /> },

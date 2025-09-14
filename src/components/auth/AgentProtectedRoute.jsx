@@ -88,9 +88,9 @@ const AgentProtectedRoute = () => {
     );
   }
 
-  // Redirect to login if not authenticated (only after auth loading is complete)
+  // Redirect to agent login if not authenticated (only after auth loading is complete)
   if (!authLoading && !user) {
-    navigate('/login');
+    navigate('/agent/login');
     return null;
   }
 

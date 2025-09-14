@@ -305,34 +305,34 @@ const FloatingChatbot = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 20 }}
-            className="fixed bottom-6 right-6 w-80 h-96 bg-white rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="fixed inset-0 bg-white shadow-2xl z-50 flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                  <FiMessageCircle className="w-4 h-4" />
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <FiMessageCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">AI Assistant</h3>
-                  <p className="text-xs opacity-90">Online</p>
+                  <h3 className="font-semibold text-lg">AI Assistant</h3>
+                  <p className="text-sm opacity-90">Online - Ready to help</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                  className="p-2 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
                 >
-                  <FiMinus className="w-4 h-4" />
+                  <FiMinus className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                  className="p-2 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
                 >
-                  <FiX className="w-4 h-4" />
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -341,13 +341,14 @@ const FloatingChatbot = () => {
             {!isMinimized && (
               <>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
                   {messages.length === 0 && (
-                    <div className="text-center py-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <FiMessageCircle className="w-6 h-6 text-white" />
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FiMessageCircle className="w-8 h-8 text-white" />
                       </div>
-                      <p className="text-sm text-gray-600">Hi! How can I help you today?</p>
+                      <p className="text-lg text-gray-600">Hi! How can I help you today?</p>
+                      <p className="text-sm text-gray-500 mt-2">Ask me anything and I'll do my best to assist you.</p>
                     </div>
                   )}
 
@@ -368,7 +369,7 @@ const FloatingChatbot = () => {
                             </div>
                           )}
                           
-                          <div className={`max-w-[200px] px-3 py-2 rounded-lg text-sm ${
+                          <div className={`max-w-[60%] px-4 py-3 rounded-lg text-base ${
                             isUser 
                               ? 'bg-blue-500 text-white rounded-br-sm' 
                               : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
@@ -400,23 +401,23 @@ const FloatingChatbot = () => {
                 </div>
 
                 {/* Input */}
-                <div className="p-3 border-t bg-white">
-                  <div className="flex items-center space-x-2">
+                <div className="p-6 border-t bg-white">
+                  <div className="flex items-center space-x-4 max-w-4xl mx-auto">
                     <input
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Type a message..."
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-full text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={isLoading}
                     />
                     <button
                       onClick={handleSendMessage}
                       disabled={!newMessage.trim() || isLoading}
-                      className="w-8 h-8 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+                      className="w-12 h-12 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
                     >
-                      <FiSend className="w-4 h-4 text-white" />
+                      <FiSend className="w-5 h-5 text-white" />
                     </button>
                   </div>
                 </div>

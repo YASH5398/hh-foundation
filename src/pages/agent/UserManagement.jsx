@@ -1,841 +1,764 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, where, updateDoc, doc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
+import { 
+  FiUsers, FiSearch, FiFilter, FiEye, FiMail, FiPhone,
+  FiCalendar, FiMapPin, FiActivity, FiRefreshCw, FiDownload,
+  FiUser, FiCreditCard, FiHelpCircle, FiAlertTriangle,
+  FiCheckCircle, FiXCircle, FiClock, FiStar, FiTrendingUp,
+  FiAlertCircle, FiSettings, FiKey, FiHeart
+} from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  collection, query, where, orderBy, limit, startAfter,
+  getDocs, doc, getDoc, onSnapshot
+} from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { FiUsers, FiUserPlus, FiEdit, FiTrash2, FiSearch, FiFilter, FiMail, FiPhone, FiCalendar, FiUser, FiEye, FiX, FiSave, FiUserCheck, FiUserX, FiDollarSign, FiStar, FiShield, FiLock, FiUnlock } from 'react-icons/fi';
+import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
+import UserProfileView from '../../components/agent/UserProfileView';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { currentUser } = useAgentAuth();
+  const [loading, setLoading] = useState(false);
+  const [searchedUser, setSearchedUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [roleFilter, setRoleFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('view'); // view, edit, create
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'user',
-    status: 'active',
-    address: '',
-    dateOfBirth: '',
-    emergencyContact: ''
-  });
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    inactive: 0,
-    suspended: 0,
-    admins: 0,
-    agents: 0,
-    users: 0
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [usersPerPage] = useState(10);
-  const [showLevelModal, setShowLevelModal] = useState(false);
-  const [selectedUserForLevel, setSelectedUserForLevel] = useState(null);
-  const [newLevel, setNewLevel] = useState(1);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [userStats, setUserStats] = useState({});
+  const [searchError, setSearchError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+  
+  // Pagination
+  const USERS_PER_PAGE = 20;
 
-  useEffect(() => {
-    // Real-time listener for users
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('createdAt', 'desc'),
-      limit(500)
-    );
+  // Remove old filter options - no longer needed for search-based interface
 
-    const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
-      const usersData = [];
-      let active = 0, inactive = 0, suspended = 0;
-      let admins = 0, agents = 0, regularUsers = 0;
+  // Remove automatic loading - users will only be loaded when searched
 
-      snapshot.forEach((doc) => {
-        const userData = { id: doc.id, ...doc.data() };
-        usersData.push(userData);
-        
-        // Count by status
-        switch (userData.status?.toLowerCase()) {
-          case 'active': active++; break;
-          case 'inactive': inactive++; break;
-          case 'suspended': suspended++; break;
-        }
-        
-        // Count by role
-        switch (userData.role?.toLowerCase()) {
-          case 'admin': admins++; break;
-          case 'agent': agents++; break;
-          default: regularUsers++; break;
-        }
-      });
-
-      setUsers(usersData);
-      setStats({
-        total: usersData.length,
-        active,
-        inactive,
-        suspended,
-        admins,
-        agents,
-        users: regularUsers
-      });
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to load users');
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.phone?.includes(searchTerm) ||
-                         user.userId?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && user.isActivated) ||
-                         (statusFilter === 'inactive' && !user.isActivated);
-    const matchesRole = roleFilter === 'all' || user.role?.toLowerCase() === roleFilter;
-    
-    return matchesSearch && matchesStatus && matchesRole;
-  });
-
-  // Pagination logic
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
-
-  const openModal = (mode, user = null) => {
-    setModalMode(mode);
-    setSelectedUser(user);
-    
-    if (mode === 'create') {
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        role: 'user',
-        status: 'active',
-        address: '',
-        dateOfBirth: '',
-        emergencyContact: ''
-      });
-    } else if (user) {
-      setFormData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        role: user.role || 'user',
-        status: user.status || 'active',
-        address: user.address || '',
-        dateOfBirth: user.dateOfBirth || '',
-        emergencyContact: user.emergencyContact || ''
-      });
+  // Search user by ID
+  const searchUser = async (userId) => {
+    if (!userId.trim()) {
+      setSearchError('Please enter a User ID');
+      return;
     }
-    
-    setShowModal(true);
-  };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedUser(null);
-    setModalMode('view');
-  };
+    setLoading(true);
+    setSearchError('');
+    setSearchedUser(null);
+    setHasSearched(true);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
     try {
-      if (modalMode === 'create') {
-        await addDoc(collection(db, 'users'), {
-          ...formData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        toast.success('User created successfully');
-      } else if (modalMode === 'edit' && selectedUser) {
-        await updateDoc(doc(db, 'users', selectedUser.id), {
-          ...formData,
-          updatedAt: new Date()
-        });
-        toast.success('User updated successfully');
+      const userDoc = await getDoc(doc(db, 'users', userId.trim()));
+      
+      if (userDoc.exists()) {
+        const userData = {
+          uid: userDoc.id,
+          ...userDoc.data()
+        };
+        setSearchedUser(userData);
+        await loadUserStats(userData.uid);
+      } else {
+        setSearchError('User not found with this ID');
+      }
+    } catch (error) {
+      console.error('Error searching user:', error);
+      setSearchError('Failed to search user. Please try again.');
+      toast.error('Failed to search user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search form submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+    searchUser(searchTerm);
+  };
+
+
+
+  const loadUserStats = async (userId) => {
+    try {
+      const stats = {
+        totalTickets: 0,
+        resolvedTickets: 0,
+        pendingTickets: 0,
+        totalSendHelp: 0,
+        totalReceiveHelp: 0,
+        successfulTransactions: 0
+      };
+      
+      // Load support tickets
+      const ticketsQuery = query(
+        collection(db, 'supportTickets'),
+        where('userId', '==', userId),
+        limit(100)
+      );
+      
+      const ticketsSnapshot = await getDocs(ticketsQuery);
+      stats.totalTickets = ticketsSnapshot.size;
+      
+      ticketsSnapshot.docs.forEach(doc => {
+        const ticket = doc.data();
+        if (ticket.status === 'resolved' || ticket.status === 'closed') {
+          stats.resolvedTickets++;
+        } else {
+          stats.pendingTickets++;
+        }
+      });
+      
+      // Load sendHelp transactions
+      const sendHelpQuery = query(
+        collection(db, 'sendHelp'),
+        where('userId', '==', userId),
+        limit(100)
+      );
+      
+      const sendHelpSnapshot = await getDocs(sendHelpQuery);
+      stats.totalSendHelp = sendHelpSnapshot.size;
+      
+      sendHelpSnapshot.docs.forEach(doc => {
+        const transaction = doc.data();
+        if (transaction.status === 'completed' || transaction.status === 'confirmed') {
+          stats.successfulTransactions++;
+        }
+      });
+      
+      // Load receiveHelp transactions
+      const receiveHelpQuery = query(
+        collection(db, 'receiveHelp'),
+        where('userId', '==', userId),
+        limit(100)
+      );
+      
+      const receiveHelpSnapshot = await getDocs(receiveHelpQuery);
+      stats.totalReceiveHelp = receiveHelpSnapshot.size;
+      
+      receiveHelpSnapshot.docs.forEach(doc => {
+        const transaction = doc.data();
+        if (transaction.status === 'completed' || transaction.status === 'confirmed') {
+          stats.successfulTransactions++;
+        }
+      });
+      
+      setUserStats(prev => ({
+        ...prev,
+        [userId]: stats
+      }));
+      
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+    }
+  };
+
+  const handleUserClick = async (userData) => {
+    setSelectedUser(userData);
+    setShowUserDetails(true);
+    
+    // Load user stats if not already loaded
+    if (!userStats[userData.uid]) {
+      await loadUserStats(userData.uid);
+    }
+  };
+
+  const getStatusColor = (userData) => {
+    if (userData.isSuspended) return 'red';
+    if (userData.isActivated && userData.isVerified) return 'green';
+    if (userData.isActivated) return 'blue';
+    if (userData.isVerified) return 'yellow';
+    return 'gray';
+  };
+
+  const getStatusLabel = (userData) => {
+    if (userData.isSuspended) return 'Suspended';
+    if (userData.isActivated && userData.isVerified) return 'Active';
+    if (userData.isActivated) return 'Activated';
+    if (userData.isVerified) return 'Verified';
+    return 'Pending';
+  };
+
+  const getStatusIcon = (userData) => {
+    if (userData.isSuspended) return <FiXCircle className="w-4 h-4" />;
+    if (userData.isActivated && userData.isVerified) return <FiCheckCircle className="w-4 h-4" />;
+    if (userData.isActivated) return <FiActivity className="w-4 h-4" />;
+    if (userData.isVerified) return <FiCheckCircle className="w-4 h-4" />;
+    return <FiClock className="w-4 h-4" />;
+  };
+
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case 'admin': return <FiStar className="w-4 h-4 text-purple-500" />;
+      case 'agent': return <FiHelpCircle className="w-4 h-4 text-blue-500" />;
+      case 'user': return <FiUser className="w-4 h-4 text-gray-500" />;
+      default: return <FiUser className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    const d = date.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const exportUsers = () => {
+    try {
+      if (!searchedUser) {
+        toast.error('No user data to export');
+        return;
       }
       
-      closeModal();
+      const csvData = [searchedUser].map(userData => ({
+        'User ID': userData.uid,
+        'Full Name': userData.fullName || '',
+        'Email': userData.email || '',
+        'Phone': userData.phone || '',
+        'Role': userData.role || 'user',
+        'Status': getStatusLabel(userData),
+        'Referral Count': userData.referralCount || 0,
+        'Created At': formatDate(userData.createdAt),
+        'Last Login': formatDate(userData.lastLoginAt)
+      }));
+      
+      const csvContent = [
+        Object.keys(csvData[0]).join(','),
+        ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Users exported successfully');
     } catch (error) {
-      console.error('Error saving user:', error);
-      toast.error('Failed to save user');
+      console.error('Error exporting users:', error);
+      toast.error('Failed to export users');
     }
   };
-
-  const handleLevelChange = (user) => {
-    setSelectedUserForLevel(user);
-    setNewLevel(user.level || 1);
-    setShowLevelModal(true);
-  };
-
-  const handleBlockUser = async (userId) => {
-    if (window.confirm('Are you sure you want to block this user?')) {
-      try {
-        await updateDoc(doc(db, 'users', userId), {
-          isActivated: false,
-          blockedAt: new Date()
-        });
-        toast.success('User blocked successfully');
-      } catch (error) {
-        console.error('Error blocking user:', error);
-        toast.error('Failed to block user');
-      }
-    }
-  };
-
-  const handleUnblockUser = async (userId) => {
-    if (window.confirm('Are you sure you want to unblock this user?')) {
-      try {
-        await updateDoc(doc(db, 'users', userId), {
-          isActivated: true,
-          unblockedAt: new Date()
-        });
-        toast.success('User unblocked successfully');
-      } catch (error) {
-        console.error('Error unblocking user:', error);
-        toast.error('Failed to unblock user');
-      }
-    }
-  };
-
-  const handleLevelUpdate = async () => {
-    if (!selectedUserForLevel) return;
-    
-    try {
-      await updateDoc(doc(db, 'users', selectedUserForLevel.id), {
-        level: parseInt(newLevel),
-        levelUpdatedAt: new Date()
-      });
-      toast.success('User level updated successfully');
-      setShowLevelModal(false);
-      setSelectedUserForLevel(null);
-    } catch (error) {
-      console.error('Error updating user level:', error);
-      toast.error('Failed to update user level');
-    }
-  };
-
-  const updateUserStatus = async (userId, newStatus) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), {
-        status: newStatus,
-        updatedAt: new Date()
-      });
-      toast.success(`User ${newStatus} successfully`);
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      toast.error('Failed to update user status');
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'suspended': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getRoleColor = (role) => {
-    switch (role?.toLowerCase()) {
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'agent': return 'bg-blue-100 text-blue-800';
-      case 'user': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString();
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading users...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
-              <p className="text-gray-600">Manage user accounts and permissions</p>
-            </div>
-            <button
-              onClick={() => openModal('create')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <FiUserPlus className="w-4 h-4 mr-2" />
-              Add User
-            </button>
-          </div>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+            <FiUsers className="w-6 h-6 text-blue-500" />
+            <span>User Management</span>
+          </h1>
+          <p className="text-gray-600">Search for users by their User ID to view complete profiles</p>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <FiUsers className="h-8 w-8 text-blue-600" />
+      {/* Search Section */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
+        <form onSubmit={handleSearch} className="space-y-4">
+          <div>
+            <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+              User ID
+            </label>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                id="userId"
+                type="text"
+                placeholder="Enter User ID to search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                disabled={loading}
+              />
             </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <FiUserCheck className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Inactive</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.inactive}</p>
-              </div>
-              <FiUser className="h-8 w-8 text-gray-600" />
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Suspended</p>
-                <p className="text-2xl font-bold text-red-600">{stats.suspended}</p>
-              </div>
-              <FiUserX className="h-8 w-8 text-red-600" />
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Admins</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.admins}</p>
-              </div>
-              <FiUser className="h-8 w-8 text-purple-600" />
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Agents</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.agents}</p>
-              </div>
-              <FiUser className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Regular Users</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.users}</p>
-              </div>
-              <FiUsers className="h-8 w-8 text-gray-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                <div className="relative">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search users..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
-                  />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="agent">Agent</option>
-                  <option value="user">User</option>
-                </select>
-              </div>
-              <div className="flex items-center text-sm text-gray-500">
-                <FiFilter className="w-4 h-4 mr-1" />
-                Showing {filteredUsers.length} of {stats.total} users
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Users Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WhatsApp</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sponsor ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referrals</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earnings</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    {/* Profile Image */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        {user.profileImage ? (
-                          <img className="h-10 w-10 rounded-full object-cover" src={user.profileImage} alt={user.name} />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    {/* Full Name */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name || 'N/A'}</div>
-                    </td>
-                    {/* User ID */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 font-mono">{user.userId || user.id.substring(0, 8)}</div>
-                    </td>
-                    {/* Email */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email || 'N/A'}</div>
-                    </td>
-                    {/* Phone */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.phone || 'N/A'}</div>
-                    </td>
-                    {/* WhatsApp */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.whatsapp || user.phone || 'N/A'}</div>
-                    </td>
-                    {/* Sponsor ID */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 font-mono">{user.sponsorId || 'N/A'}</div>
-                    </td>
-                    {/* Level */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        <FiStar className="w-3 h-3 mr-1" />
-                        {user.level || 1}
-                      </span>
-                    </td>
-                    {/* Referral Count */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.referralCount || 0}</div>
-                    </td>
-                    {/* Status (isActivated) */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.isActivated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {user.isActivated ? <FiUnlock className="w-3 h-3 mr-1" /> : <FiLock className="w-3 h-3 mr-1" />}
-                        {user.isActivated ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    {/* Registration Time */}
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(user.createdAt || user.registrationTime)}
-                    </td>
-                    {/* Total Earnings */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-green-600">
-                        ₹{user.totalEarnings || 0}
-                      </div>
-                    </td>
-                    {/* Total Sent */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-red-600">
-                        ₹{user.totalSent || 0}
-                      </div>
-                    </td>
-                    {/* Total Received */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-blue-600">
-                        ₹{user.totalReceived || 0}
-                      </div>
-                    </td>
-                    {/* Actions */}
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={() => openModal('view', user)}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-600 hover:text-blue-900 hover:bg-blue-50"
-                          title="View Full Details"
-                        >
-                          <FiEye className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => openModal('edit', user)}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50"
-                          title="Edit Profile"
-                        >
-                          <FiEdit className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => handleLevelChange(user)}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50"
-                          title="Change Level"
-                        >
-                          <FiStar className="w-3 h-3" />
-                        </button>
-                        {user.isActivated ? (
-                          <button
-                            onClick={() => handleBlockUser(user.id)}
-                            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-red-600 hover:text-red-900 hover:bg-red-50"
-                            title="Block User"
-                          >
-                            <FiLock className="w-3 h-3" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleUnblockUser(user.id)}
-                            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-green-600 hover:text-green-900 hover:bg-green-50"
-                            title="Unblock User"
-                          >
-                            <FiUnlock className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
           
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <FiUsers className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || statusFilter !== 'all' || roleFilter !== 'all'
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'Get started by adding a new user.'}
-              </p>
+          <div className="flex items-center space-x-3">
+            <button
+              type="submit"
+              disabled={loading || !searchTerm.trim()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+            >
+              {loading ? (
+                <FiRefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <FiSearch className="w-5 h-5" />
+              )}
+              <span>{loading ? 'Searching...' : 'Search User'}</span>
+            </button>
+            
+            {hasSearched && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSearchedUser(null);
+                  setSearchError('');
+                  setHasSearched(false);
+                }}
+                className="px-4 py-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          
+          {searchError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-700 text-sm">{searchError}</p>
             </div>
           )}
+        </form>
+      </div>
 
-          {/* Pagination */}
-          {filteredUsers.length > 0 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{indexOfFirstUser + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(indexOfLastUser, filteredUsers.length)}</span> of{' '}
-                    <span className="font-medium">{filteredUsers.length}</span> results
-                  </p>
+      {/* Search Results */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        {loading ? (
+          <div className="p-8 text-center">
+            <FiRefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-500">Searching user...</p>
+          </div>
+        ) : searchError ? (
+          <div className="p-8 text-center">
+            <FiAlertCircle className="h-12 w-12 text-red-300 mx-auto mb-4" />
+            <p className="text-red-500 font-medium">Error</p>
+            <p className="text-sm text-gray-500">{searchError}</p>
+          </div>
+        ) : !hasSearched ? (
+          <div className="p-8 text-center">
+            <FiSearch className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Enter a User ID to search</p>
+            <p className="text-sm text-gray-400">Use the search bar above to find a specific user</p>
+          </div>
+        ) : !searchedUser ? (
+          <div className="p-8 text-center">
+            <FiUsers className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">User not found</p>
+            <p className="text-sm text-gray-400">No user found with the provided ID</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {/* User Header */}
+              <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
+                <div className="flex-shrink-0">
+                  {searchedUser.profileImage ? (
+                    <img
+                      src={searchedUser.profileImage}
+                      alt={searchedUser.fullName}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                      <FiUser className="w-8 h-8 text-gray-600" />
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    {[...Array(totalPages)].map((_, index) => {
-                      const page = index + 1;
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === page
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {searchedUser.fullName || 'No Name'}
+                  </h2>
+                  <p className="text-gray-600">User ID: {searchedUser.uid}</p>
+                  <div className="flex items-center space-x-3 mt-2">
+                    {/* Role Badge */}
+                    <div className="flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      {getRoleIcon(searchedUser.role)}
+                      <span>{searchedUser.role || 'user'}</span>
+                    </div>
+                    {/* Status Badge */}
+                    <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
+                      getStatusColor(searchedUser) === 'green' ? 'bg-green-100 text-green-800' :
+                      getStatusColor(searchedUser) === 'blue' ? 'bg-blue-100 text-blue-800' :
+                      getStatusColor(searchedUser) === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                      getStatusColor(searchedUser) === 'red' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {getStatusIcon(searchedUser)}
+                      <span>{getStatusLabel(searchedUser)}</span>
+                    </div>
+                   </div>
+                 </div>
+               </div>
 
-        {/* Level Change Modal */}
-        {showLevelModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Change User Level</h3>
-                <button
-                  onClick={() => setShowLevelModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Changing level for: <span className="font-medium">{selectedUserForLevel?.name}</span>
-                </p>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Level</label>
-                <select
-                  value={newLevel}
-                  onChange={(e) => setNewLevel(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                    <option key={level} value={level}>Level {level}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowLevelModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleLevelUpdate}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <FiStar className="w-4 h-4 mr-2" />
-                  Update Level
-                </button>
-              </div>
-            </div>
+               {/* User Details Grid */}
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {/* Personal Information */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiUser className="w-5 h-5 mr-2" />
+                     Personal Information
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Full Name</label>
+                       <p className="text-gray-900">{searchedUser.fullName || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Email</label>
+                       <p className="text-gray-900 break-all">{searchedUser.email || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Phone</label>
+                       <p className="text-gray-900">{searchedUser.phone || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">WhatsApp</label>
+                       <p className="text-gray-900">{searchedUser.whatsapp || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Sponsor ID</label>
+                       <p className="text-gray-900">{searchedUser.sponsorId || 'Not provided'}</p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Account Information */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiSettings className="w-5 h-5 mr-2" />
+                     Account Information
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">User ID</label>
+                       <p className="text-gray-900 font-mono text-sm">{searchedUser.uid}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Role</label>
+                       <p className="text-gray-900">{searchedUser.role || 'user'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Status</label>
+                       <p className="text-gray-900">{getStatusLabel(searchedUser)}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Verified</label>
+                       <p className="text-gray-900">{searchedUser.isVerified ? 'Yes' : 'No'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Activated</label>
+                       <p className="text-gray-900">{searchedUser.isActivated ? 'Yes' : 'No'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Joined</label>
+                       <p className="text-gray-900">{formatDate(searchedUser.createdAt)}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Last Login</label>
+                       <p className="text-gray-900">{searchedUser.lastLoginAt ? formatDate(searchedUser.lastLoginAt) : 'Never'}</p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Financial Information */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiCreditCard className="w-5 h-5 mr-2" />
+                     Financial Information
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Bank Name</label>
+                       <p className="text-gray-900">{searchedUser.bankName || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Account Number</label>
+                       <p className="text-gray-900">{searchedUser.accountNumber || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">IFSC Code</label>
+                       <p className="text-gray-900">{searchedUser.ifscCode || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">UPI ID</label>
+                       <p className="text-gray-900">{searchedUser.upiId || 'Not provided'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Payment Method</label>
+                       <p className="text-gray-900">{searchedUser.paymentMethod || 'Not provided'}</p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* E-PIN Information */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiKey className="w-5 h-5 mr-2" />
+                     E-PIN Information
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Total E-PINs</label>
+                       <p className="text-gray-900">{searchedUser.totalEpins || 0}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Used E-PINs</label>
+                       <p className="text-gray-900">{searchedUser.usedEpins || 0}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Available E-PINs</label>
+                       <p className="text-gray-900">{(searchedUser.totalEpins || 0) - (searchedUser.usedEpins || 0)}</p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Help Status */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiHeart className="w-5 h-5 mr-2" />
+                     Help Status
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Can Send Help</label>
+                       <p className="text-gray-900">{searchedUser.canSendHelp ? 'Yes' : 'No'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Can Receive Help</label>
+                       <p className="text-gray-900">{searchedUser.canReceiveHelp ? 'Yes' : 'No'}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Help Level</label>
+                       <p className="text-gray-900">{searchedUser.helpLevel || 'Not set'}</p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Statistics */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                     <FiTrendingUp className="w-5 h-5 mr-2" />
+                     Statistics
+                   </h3>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Referral Count</label>
+                       <p className="text-gray-900">{searchedUser.referralCount || 0}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Total Earnings</label>
+                       <p className="text-gray-900">₹{searchedUser.totalEarnings || 0}</p>
+                     </div>
+                     <div>
+                       <label className="text-sm font-medium text-gray-500">Total Withdrawals</label>
+                       <p className="text-gray-900">₹{searchedUser.totalWithdrawals || 0}</p>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </motion.div>
           </div>
         )}
+      </div>
 
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {modalMode === 'create' ? 'Add New User' : 
-                   modalMode === 'edit' ? 'Edit User' : 'User Details'}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {/* User Details Modal */}
+      <AnimatePresence>
+        {showUserDetails && selectedUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowUserDetails(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">User Details</h2>
+                  <button
+                    onClick={() => setShowUserDetails(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 rounded-md"
+                  >
+                    <FiXCircle className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* User Profile */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Basic Info */}
+                  <div className="lg:col-span-2">
+                    <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                      <div className="flex items-center space-x-4 mb-4">
+                        {selectedUser.profileImage ? (
+                          <img
+                            src={selectedUser.profileImage}
+                            alt={selectedUser.fullName}
+                            className="w-16 h-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                            <FiUser className="w-8 h-8 text-gray-600" />
+                          </div>
+                        )}
+                        
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900">
+                            {selectedUser.fullName || 'No Name'}
+                          </h3>
+                          <p className="text-gray-600">{selectedUser.email}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              getStatusColor(selectedUser) === 'green' ? 'bg-green-100 text-green-800' :
+                              getStatusColor(selectedUser) === 'blue' ? 'bg-blue-100 text-blue-800' :
+                              getStatusColor(selectedUser) === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                              getStatusColor(selectedUser) === 'red' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {getStatusIcon(selectedUser)}
+                              <span>{getStatusLabel(selectedUser)}</span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {getRoleIcon(selectedUser.role)}
+                              <span>{selectedUser.role || 'user'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">User ID</label>
+                          <p className="text-gray-900 font-mono">{selectedUser.uid}</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">Phone</label>
+                          <p className="text-gray-900">{selectedUser.phone || 'Not provided'}</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">WhatsApp</label>
+                          <p className="text-gray-900">{selectedUser.whatsapp || 'Not provided'}</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">Referral Count</label>
+                          <p className="text-gray-900">{selectedUser.referralCount || 0}</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">Created At</label>
+                          <p className="text-gray-900">{formatDate(selectedUser.createdAt)}</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-600 font-medium mb-1">Last Login</label>
+                          <p className="text-gray-900">{formatDate(selectedUser.lastLoginAt)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Stats */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                    <select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    >
-                      <option value="user">User</option>
-                      <option value="agent">Agent</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <input
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                    <input
-                      type="text"
-                      name="emergencyContact"
-                      value={formData.emergencyContact}
-                      onChange={handleInputChange}
-                      disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                    />
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Activity Stats</h4>
+                      
+                      {userStats[selectedUser.uid] ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Support Tickets</span>
+                            <span className="font-semibold">{userStats[selectedUser.uid].totalTickets}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Resolved Tickets</span>
+                            <span className="font-semibold text-green-600">{userStats[selectedUser.uid].resolvedTickets}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Pending Tickets</span>
+                            <span className="font-semibold text-yellow-600">{userStats[selectedUser.uid].pendingTickets}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Send Help Requests</span>
+                            <span className="font-semibold">{userStats[selectedUser.uid].totalSendHelp}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Receive Help Requests</span>
+                            <span className="font-semibold">{userStats[selectedUser.uid].totalReceiveHelp}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Successful Transactions</span>
+                            <span className="font-semibold text-blue-600">{userStats[selectedUser.uid].successfulTransactions}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <FiRefreshCw className="w-6 h-6 text-gray-300 mx-auto mb-2 animate-spin" />
+                          <p className="text-sm text-gray-500">Loading stats...</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                {modalMode !== 'view' && (
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiSave className="w-4 h-4 mr-2" />
-                      {modalMode === 'create' ? 'Create User' : 'Save Changes'}
-                    </button>
+                {/* Additional Info */}
+                {(selectedUser.address || selectedUser.city || selectedUser.state || selectedUser.pincode) && (
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Address Information</h4>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {selectedUser.address && (
+                          <div>
+                            <label className="block text-gray-600 font-medium mb-1">Address</label>
+                            <p className="text-gray-900">{selectedUser.address}</p>
+                          </div>
+                        )}
+                        
+                        {selectedUser.city && (
+                          <div>
+                            <label className="block text-gray-600 font-medium mb-1">City</label>
+                            <p className="text-gray-900">{selectedUser.city}</p>
+                          </div>
+                        )}
+                        
+                        {selectedUser.state && (
+                          <div>
+                            <label className="block text-gray-600 font-medium mb-1">State</label>
+                            <p className="text-gray-900">{selectedUser.state}</p>
+                          </div>
+                        )}
+                        
+                        {selectedUser.pincode && (
+                          <div>
+                            <label className="block text-gray-600 font-medium mb-1">Pincode</label>
+                            <p className="text-gray-900">{selectedUser.pincode}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
-              </form>
-            </div>
-          </div>
+                
+                {/* Modal Actions */}
+                <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowUserDetails(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };

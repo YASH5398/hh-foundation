@@ -1,120 +1,236 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, where, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  FiSearch, FiFilter, FiUser, FiClock, FiMessageSquare, 
+  FiPaperclip, FiChevronRight, FiX, FiSend, FiAlertCircle,
+  FiCheckCircle, FiRefreshCw, FiEdit3, FiFlag, FiFileText
+} from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  collection, query, where, onSnapshot, orderBy, 
+  doc, updateDoc, addDoc, serverTimestamp, getDoc
+} from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { FiFileText, FiClock, FiCheckCircle, FiAlertTriangle, FiUser, FiCalendar, FiMessageSquare, FiEdit3, FiX } from 'react-icons/fi';
+import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
 
 const SupportTickets = () => {
+  const { currentUser } = useAgentAuth();
+  const user = currentUser || null;
   const [tickets, setTickets] = useState([]);
+  const [filteredTickets, setFilteredTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, pending, resolved, in-progress
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [response, setResponse] = useState('');
-  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [assignmentFilter, setAssignmentFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Fetch tickets with real-time updates
   useEffect(() => {
-    // Real-time listener for support tickets
+    if (!user?.uid) return;
+
     const ticketsQuery = query(
       collection(db, 'supportTickets'),
-      orderBy('createdAt', 'desc'),
-      limit(100)
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(ticketsQuery, (snapshot) => {
-      const ticketsData = [];
-      snapshot.forEach((doc) => {
-        ticketsData.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
+      const ticketsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+      }));
+      
       setTickets(ticketsData);
       setLoading(false);
     }, (error) => {
       console.error('Error fetching tickets:', error);
-      toast.error('Failed to load support tickets');
+      toast.error('Failed to load tickets');
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid]);
 
-  const filteredTickets = tickets.filter(ticket => {
-    if (filter === 'all') return true;
-    return ticket.status?.toLowerCase() === filter;
-  });
+  // Filter tickets based on search and filters
+  useEffect(() => {
+    let filtered = tickets;
 
-  const updateTicketStatus = async (ticketId, newStatus) => {
-    try {
-      await updateDoc(doc(db, 'supportTickets', ticketId), {
-        status: newStatus,
-        updatedAt: serverTimestamp(),
-        ...(newStatus === 'Resolved' && { resolvedAt: serverTimestamp() })
-      });
-      toast.success(`Ticket ${newStatus.toLowerCase()} successfully`);
-    } catch (error) {
-      console.error('Error updating ticket:', error);
-      toast.error('Failed to update ticket status');
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(ticket => 
+        ticket.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  };
 
-  const addResponse = async (ticketId) => {
-    if (!response.trim()) {
-      toast.error('Please enter a response');
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.status === statusFilter);
+    }
+
+    // Priority filter
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.priority === priorityFilter);
+    }
+
+    // Assignment filter
+    if (assignmentFilter === 'assigned-to-me') {
+      filtered = filtered.filter(ticket => ticket.agentId === user?.uid);
+    } else if (assignmentFilter === 'unassigned') {
+      filtered = filtered.filter(ticket => !ticket.agentId);
+    }
+
+    setFilteredTickets(filtered);
+  }, [tickets, searchTerm, statusFilter, priorityFilter, assignmentFilter, user?.uid]);
+
+  // Fetch messages for selected ticket
+  useEffect(() => {
+    if (!selectedTicket?.id) {
+      setMessages([]);
       return;
     }
 
+    const messagesQuery = query(
+      collection(db, 'supportTickets', selectedTicket.id, 'messages'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date()
+      }));
+      setMessages(messagesData);
+    });
+
+    return () => unsubscribe();
+  }, [selectedTicket?.id]);
+
+  const handleAssignToMe = async (ticketId) => {
     try {
-      // Add response to ticket responses subcollection
-      await addDoc(collection(db, 'supportTickets', ticketId, 'responses'), {
-        message: response,
-        respondedBy: 'agent', // In real app, get from auth context
-        respondedAt: serverTimestamp(),
-        agentId: 'current-agent-id' // In real app, get from auth context
+      setUpdatingStatus(true);
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        agentId: user.uid,
+        status: 'in-progress',
+        updatedAt: serverTimestamp()
       });
-
-      // Update ticket status to in-progress if it was pending
-      if (selectedTicket?.status === 'Pending') {
-        await updateDoc(doc(db, 'supportTickets', ticketId), {
-          status: 'In Progress',
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      setResponse('');
-      setShowResponseModal(false);
-      toast.success('Response added successfully');
+      toast.success('Ticket assigned to you');
     } catch (error) {
-      console.error('Error adding response:', error);
-      toast.error('Failed to add response');
+      console.error('Error assigning ticket:', error);
+      toast.error('Failed to assign ticket');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleStatusChange = async (ticketId, newStatus) => {
+    try {
+      setUpdatingStatus(true);
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+        ...(newStatus === 'resolved' && { resolvedAt: serverTimestamp() })
+      });
+      toast.success(`Ticket ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedTicket?.id) return;
+
+    try {
+      setSendingMessage(true);
+      await addDoc(collection(db, 'supportTickets', selectedTicket.id, 'messages'), {
+        content: newMessage.trim(),
+        senderId: user.uid,
+        senderType: 'agent',
+        senderName: user.fullName || 'Agent',
+        createdAt: serverTimestamp()
+      });
+      
+      // Update ticket's last activity
+      await updateDoc(doc(db, 'supportTickets', selectedTicket.id), {
+        updatedAt: serverTimestamp()
+      });
+      
+      setNewMessage('');
+      toast.success('Message sent');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return 'bg-orange-100 text-orange-800';
-      case 'in progress': return 'bg-blue-100 text-blue-800';
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'in-progress': return 'bg-blue-100 text-blue-800';
       case 'resolved': return 'bg-green-100 text-green-800';
+      case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return <FiClock className="w-4 h-4" />;
-      case 'in progress': return <FiEdit3 className="w-4 h-4" />;
-      case 'resolved': return <FiCheckCircle className="w-4 h-4" />;
-      default: return <FiAlertTriangle className="w-4 h-4" />;
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-orange-100 text-orange-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    
+    try {
+      const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      return 'Unknown';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading support tickets...</p>
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white p-4 rounded-lg border">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -122,225 +238,311 @@ const SupportTickets = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Support Tickets</h1>
-          <p className="text-gray-600">Manage and respond to user support requests</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
+          <p className="text-gray-600">Manage and respond to customer support requests</p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+          <span className="text-sm text-gray-500">
+            {filteredTickets.length} of {tickets.length} tickets
+          </span>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            <FiFilter className="w-4 h-4 mr-2" />
+            Filters
+          </button>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Search tickets by subject, description, or user ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
+        {/* Filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg"
+            >
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Tickets</p>
-                <p className="text-2xl font-bold text-gray-900">{tickets.length}</p>
-              </div>
-              <FiFileText className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {tickets.filter(t => t.status === 'Pending').length}
-                </p>
-              </div>
-              <FiClock className="h-8 w-8 text-orange-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {tickets.filter(t => t.status === 'In Progress').length}
-                </p>
-              </div>
-              <FiEdit3 className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Resolved</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {tickets.filter(t => t.status === 'Resolved').length}
-                </p>
-              </div>
-              <FiCheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {[
-                { key: 'all', label: 'All Tickets' },
-                { key: 'pending', label: 'Pending' },
-                { key: 'in-progress', label: 'In Progress' },
-                { key: 'resolved', label: 'Resolved' }
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    filter === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assignment</label>
+                <select
+                  value={assignmentFilter}
+                  onChange={(e) => setAssignmentFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Tickets</option>
+                  <option value="assigned-to-me">Assigned to Me</option>
+                  <option value="unassigned">Unassigned</option>
+                </select>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Tickets List */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tickets List */}
+        <div className="space-y-4">
+          {filteredTickets.length > 0 ? (
+            filteredTickets.map((ticket) => (
+              <motion.div
+                key={ticket.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`bg-white p-4 rounded-lg border cursor-pointer hover:shadow-md transition-all ${
+                  selectedTicket?.id === ticket.id ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'
+                }`}
+                onClick={() => setSelectedTicket(ticket)}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      {ticket.subject || 'No Subject'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">ID: {ticket.id}</p>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(ticket.status)}`}>
+                      {ticket.status}
+                    </span>
+                    {ticket.priority && (
+                      <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(ticket.priority)}`}>
+                        {ticket.priority}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                  {ticket.description || 'No description provided'}
+                </p>
+                
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center space-x-4">
+                    <span className="flex items-center">
+                      <FiUser className="w-3 h-3 mr-1" />
+                      {ticket.userId || 'Unknown'}
+                    </span>
+                    <span className="flex items-center">
+                      <FiClock className="w-3 h-3 mr-1" />
+                      {formatTimestamp(ticket.createdAt)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {!ticket.agentId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssignToMe(ticket.id);
+                        }}
+                        disabled={updatingStatus}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors disabled:opacity-50"
+                      >
+                        Assign to Me
+                      </button>
+                    )}
+                    <FiChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <FiFileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No tickets found</p>
+              <p className="text-sm text-gray-400">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
 
-        {/* Tickets List */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            {filteredTickets.length === 0 ? (
-              <div className="text-center py-12">
-                <FiFileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {filter === 'all' ? 'No support tickets available.' : `No ${filter} tickets found.`}
-                </p>
+        {/* Ticket Detail */}
+        <div className="lg:sticky lg:top-6">
+          {selectedTicket ? (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {/* Ticket Header */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {selectedTicket.subject || 'No Subject'}
+                    </h2>
+                    <p className="text-sm text-gray-500">ID: {selectedTicket.id}</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedTicket(null)}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center space-x-4 mb-3">
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(selectedTicket.status)}`}>
+                    {selectedTicket.status}
+                  </span>
+                  {selectedTicket.priority && (
+                    <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(selectedTicket.priority)}`}>
+                      {selectedTicket.priority}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-500">
+                    Created {formatTimestamp(selectedTicket.createdAt)}
+                  </span>
+                </div>
+                
+                {/* Status Actions */}
+                {selectedTicket.agentId === user?.uid && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTicket.status === 'pending' && (
+                      <button
+                        onClick={() => handleStatusChange(selectedTicket.id, 'in-progress')}
+                        disabled={updatingStatus}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors disabled:opacity-50"
+                      >
+                        Start Progress
+                      </button>
+                    )}
+                    {selectedTicket.status === 'in-progress' && (
+                      <button
+                        onClick={() => handleStatusChange(selectedTicket.id, 'resolved')}
+                        disabled={updatingStatus}
+                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors disabled:opacity-50"
+                      >
+                        Mark Resolved
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredTickets.map((ticket) => (
-                  <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 mr-3">
-                            {ticket.title || 'No Title'}
-                          </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                            {getStatusIcon(ticket.status)}
-                            <span className="ml-1">{ticket.status || 'Unknown'}</span>
-                          </span>
-                        </div>
-                        <p className="text-gray-600 mb-3">{ticket.description || 'No description provided'}</p>
-                        <div className="flex items-center text-sm text-gray-500 space-x-4">
-                          <div className="flex items-center">
-                            <FiUser className="w-4 h-4 mr-1" />
-                            <span>{ticket.raisedByName || 'Unknown User'}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <FiCalendar className="w-4 h-4 mr-1" />
-                            <span>{ticket.createdAt?.toDate?.()?.toLocaleDateString?.() || 'No date'}</span>
-                          </div>
-                        </div>
-                      </div>
+              
+              {/* Messages */}
+              <div className="h-96 overflow-y-auto p-4 space-y-4">
+                {/* Initial Description */}
+                {selectedTicket.description && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center mb-2">
+                      <FiUser className="w-4 h-4 text-gray-500 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {selectedTicket.userId || 'User'}
+                      </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {formatTimestamp(selectedTicket.createdAt)}
+                      </span>
                     </div>
-                    
-                    <div className="flex space-x-3">
-                      {ticket.status !== 'Resolved' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setSelectedTicket(ticket);
-                              setShowResponseModal(true);
-                            }}
-                            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <FiMessageSquare className="w-4 h-4 mr-2" />
-                            Respond
-                          </button>
-                          {ticket.status === 'Pending' && (
-                            <button
-                              onClick={() => updateTicketStatus(ticket.id, 'In Progress')}
-                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              Start Working
-                            </button>
-                          )}
-                          {ticket.status === 'In Progress' && (
-                            <button
-                              onClick={() => updateTicketStatus(ticket.id, 'Resolved')}
-                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                            >
-                              Mark Resolved
-                            </button>
-                          )}
-                        </>
-                      )}
+                    <p className="text-sm text-gray-800">{selectedTicket.description}</p>
+                  </div>
+                )}
+                
+                {/* Chat Messages */}
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+                        message.senderType === 'agent'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <p className={`text-xs mt-1 ${
+                        message.senderType === 'agent' ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
+                        {message.senderName} • {formatTimestamp(message.createdAt)}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+              
+              {/* Message Input */}
+              {selectedTicket.agentId === user?.uid && selectedTicket.status !== 'closed' && (
+                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type your message..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={sendingMessage}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newMessage.trim() || sendingMessage}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {sendingMessage ? (
+                        <FiRefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FiSend className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+              <FiMessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Select a ticket to view details</p>
+              <p className="text-sm text-gray-400">Click on any ticket from the list to start managing it</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Response Modal */}
-      {showResponseModal && selectedTicket && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Respond to: {selectedTicket.title}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowResponseModal(false);
-                    setResponse('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Original Issue:</p>
-                <p className="text-gray-900">{selectedTicket.description}</p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Response
-                </label>
-                <textarea
-                  value={response}
-                  onChange={(e) => setResponse(e.target.value)}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your response to help resolve this issue..."
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowResponseModal(false);
-                    setResponse('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => addResponse(selectedTicket.id)}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Send Response
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
