@@ -148,7 +148,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  // Protected user routes
+  // Dashboard home route
   {
     path: '/dashboard',
     element: (
@@ -159,37 +159,48 @@ export const router = createBrowserRouter([
     errorElement: <ErrorElement />,
     children: [
       { index: true, element: <DashboardHome /> },
-      { path: 'users', element: <EnhancedUserManager /> },
-      { path: 'payments', element: <PaymentPage /> },
-      { path: 'send-help', element: <SendHelp /> },
-      { path: 'receive-help', element: <ReceiveHelp /> },
-      { path: 'direct-referral', element: <DirectReferrals /> },
-      { path: 'profile-settings', element: <ProfileSettings /> },
-      { path: 'leaderboard', element: <Leaderboard /> },
-      { path: 'upcoming-payment', element: <UpcomingPayments /> },
+    ],
+  },
+  // Protected user routes with DashboardLayout
+  {
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorElement />,
+    children: [
+      { path: '/users', element: <EnhancedUserManager /> },
+      { path: '/payments', element: <PaymentPage /> },
+      { path: '/send-help', element: <SendHelp /> },
+      { path: '/receive-help', element: <ReceiveHelp /> },
+      { path: '/direct-referral', element: <DirectReferrals /> },
+      { path: '/profile-settings', element: <ProfileSettings /> },
+      { path: '/leaderboard', element: <Leaderboard /> },
+      { path: '/upcoming-payment', element: <UpcomingPayments /> },
       {
-        path: 'support',
+        path: '/support',
         element: <SupportHub />
       },
       {
-        path: 'support/chatbot',
+        path: '/support/chatbot',
         element: <ChatbotSupport />
       },
       {
-        path: 'support/agent',
+        path: '/support/agent',
         element: <AgentChat />
       },
       {
-        path: 'support/tickets',
+        path: '/support/tickets',
         element: <TicketSystem />
       },
-      { path: 'support/form', element: <Support /> },
-      { path: 'support/live-chat', element: <UserSupportTickets /> },
-      { path: 'tasks', element: <Tasks /> },
-      { path: 'earn-epin', element: <EarnFreeEPIN /> },
-      { path: 'testimonials', element: <EarnFreeEPIN /> },
-      { path: 'change-password', element: <ChangePassword /> },
-      { path: 'forgot-password', element: <ForgotPassword /> },
+      { path: '/support/form', element: <Support /> },
+      { path: '/support/live-chat', element: <UserSupportTickets /> },
+      { path: '/tasks', element: <Tasks /> },
+      { path: '/earn-epin', element: <EarnFreeEPIN /> },
+      { path: '/testimonials', element: <EarnFreeEPIN /> },
+      { path: '/change-password', element: <ChangePassword /> },
+      { path: '/forgot-password', element: <ForgotPassword /> },
     ],
   },
   // Protected E-PIN routes
@@ -197,10 +208,11 @@ export const router = createBrowserRouter([
     path: '/epin',
     element: (
       <ProtectedRoute>
-        <Layout />
+        <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
+      { path: 'used', element: <EpinDashboard /> },
       { path: 'request', element: <RequestEPIN /> },
       { path: 'payment', element: <PaymentPage /> },
       { path: 'transfer', element: <TransferEpin /> },

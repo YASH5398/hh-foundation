@@ -50,14 +50,6 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, menuItems, logoutRoute }) =>
 
   return (
     <>
-      {/* 3-line toggle button (same for mobile + desktop) */}
-      <button
-        className="fixed top-4 left-4 z-50 p-2 bg-blue-800 text-white rounded-lg shadow-md"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
-        <FiMenu className="w-6 h-6" />
-      </button>
-
       <div
         ref={sidebarRef}
         id="sidebar"

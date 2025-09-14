@@ -405,7 +405,7 @@ const DashboardHome = () => {
   const navigate = useNavigate();
 
   const handleNavigateToUpgrade = () => {
-    navigate('/dashboard/upgrade-flow');
+    navigate('/upgrade-flow');
   };
 
   // Remove all section-level loading spinners or skeletons

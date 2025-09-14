@@ -39,7 +39,7 @@ const UserMenu = ({ user, onLogout, showEmail }) => {
         <div className="absolute right-0 mt-2 w-44 bg-white shadow-xl rounded-md py-2 z-50">
           <button
             onClick={() => {
-              navigate('/dashboard/profile-settings');
+              navigate('/profile-settings');
               setShowDropdown(false);
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-gray-800 hover:bg-gray-100 text-sm"

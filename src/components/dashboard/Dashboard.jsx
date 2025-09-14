@@ -538,7 +538,7 @@ const Dashboard = () => {
     <div className="w-full min-h-screen p-0 m-0 overflow-x-hidden">
       {/* Activation Banner: Only show if user.isActivated === false and not dismissed */}
       {user && user.isActivated === false && showBanner && (
-        <ActivationBanner onSendHelp={() => navigate('/dashboard/send-help')} onDismiss={handleDismiss} />
+        <ActivationBanner onSendHelp={() => navigate('/send-help')} onDismiss={handleDismiss} />
       )}
       
       {/* Top Bar */}
@@ -726,7 +726,7 @@ const Dashboard = () => {
             whileTap={{ scale: 0.95 }}
             onClick={e => {
               e.preventDefault();
-              navigate('/dashboard/send-help');
+              navigate('/send-help');
             }}
             className="bg-white/20 backdrop-blur-sm text-white p-3 rounded-xl font-semibold text-sm sm:text-base transition-colors"
           >
@@ -739,7 +739,7 @@ const Dashboard = () => {
             whileTap={{ scale: 0.95 }}
             onClick={e => {
               e.preventDefault();
-              navigate('/dashboard/receive-help');
+              navigate('/receive-help');
             }}
             className="bg-white/20 backdrop-blur-sm text-white p-3 rounded-xl font-semibold text-sm sm:text-base transition-colors"
           >
@@ -752,7 +752,7 @@ const Dashboard = () => {
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.preventDefault();
-              navigate('/dashboard/direct-referral');
+              navigate('/direct-referral');
             }}
             className="bg-white/20 backdrop-blur-sm text-white p-3 rounded-xl font-semibold text-sm sm:text-base transition-colors"
           >
@@ -765,7 +765,7 @@ const Dashboard = () => {
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.preventDefault();
-              navigate('/dashboard/profile-settings');
+              navigate('/profile-settings');
             }}
             className="bg-white/20 backdrop-blur-sm text-white p-3 rounded-xl font-semibold text-sm sm:text-base transition-colors"
           >
@@ -878,8 +878,8 @@ const Dashboard = () => {
                   type="button"
                   onClick={e => {
                     e.preventDefault();
-                    console.log('Navigating to /dashboard/send-help');
-                    navigate('/dashboard/send-help');
+                    console.log('Navigating to /send-help');
+                    navigate('/send-help');
                   }}
                   className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-green-400"
                 >
@@ -917,7 +917,7 @@ const Dashboard = () => {
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
-                        navigate('/dashboard/send-help');
+                        navigate('/send-help');
                       }}
                       className="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700 transition text-sm font-semibold"
                     >

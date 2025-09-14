@@ -65,11 +65,11 @@ const DashboardLayout = () => {
         setIsSidebarOpen={setIsSidebarOpen}
         menuItems={[
           { name: 'Dashboard', icon: FiHome, route: '/dashboard' },
-          { name: 'Send Help', icon: FiSend, route: '/dashboard/send-help' },
-          { name: 'Upcoming Payment', icon: FiCalendar, route: '/dashboard/upcoming-payment' },
-          { name: 'Receive Help', icon: FiDownload, route: '/dashboard/receive-help' },
-          { name: 'Leaderboard', icon: FiBarChart2, route: '/dashboard/leaderboard' },
-          { name: 'Direct Referrals', icon: FiUsers, route: '/dashboard/direct-referral' },
+          { name: 'Send Help', icon: FiSend, route: '/send-help' },
+          { name: 'Upcoming Payment', icon: FiCalendar, route: '/upcoming-payment' },
+          { name: 'Receive Help', icon: FiDownload, route: '/receive-help' },
+          { name: 'Leaderboard', icon: FiBarChart2, route: '/leaderboard' },
+          { name: 'Direct Referrals', icon: FiUsers, route: '/direct-referral' },
           {
             name: 'E-PIN',
             icon: FiKey,
@@ -80,10 +80,10 @@ const DashboardLayout = () => {
               { name: 'E-PIN History', route: '/epin/history' },
             ],
           },
-          { name: 'Support', icon: FiHelpCircle, route: '/dashboard/support' },
-          { name: 'Complete Tasks', icon: FiCalendar, route: '/dashboard/tasks' },
-          { name: 'Earn Free E-PIN', icon: null, route: '/dashboard/earn-epin', emoji: '🎁' },
-          { name: 'Profile Settings', icon: FiUser, route: '/dashboard/profile-settings' },
+          { name: 'Support', icon: FiHelpCircle, route: '/support' },
+          { name: 'Complete Tasks', icon: FiCalendar, route: '/tasks' },
+          { name: 'Earn Free E-PIN', icon: null, route: '/earn-epin', emoji: '🎁' },
+          { name: 'Profile Settings', icon: FiUser, route: '/profile-settings' },
         ]}
         logoutRoute="/login"
       />
