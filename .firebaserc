@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "hh-foundation",
+    "production": "contenthumanizer",
+    "hh": "hh-foundation"
+  },
+  "targets": {},
+  "etags": {}
+}
