@@ -147,7 +147,7 @@ const AgentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex w-full overflow-x-hidden">
       {/* Navigation Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
         navigationSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -268,7 +268,7 @@ const AgentDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-0">
+      <div className="flex-1 lg:ml-0 w-full overflow-x-hidden">
         {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200">
           <div className="flex items-center justify-between px-6 py-4">
@@ -291,7 +291,7 @@ const AgentDashboard = () => {
         </div>
 
         {/* Dashboard Content */}
-        <div className="p-6">
+        <div className="p-6 w-full overflow-x-hidden">
           {isNestedRoute ? (
             <ErrorBoundary fallbackMessage="Failed to load this section. Please try refreshing or contact support if the issue persists.">
               <Suspense fallback={

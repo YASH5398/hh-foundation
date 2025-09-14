@@ -1,55 +1,40 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { HiX } from 'react-icons/hi';
-import { FiLogOut, FiChevronDown } from 'react-icons/fi';
-
-// Add custom CSS for animations
-const customStyles = `
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  .animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out forwards;
-  }
-  
-  .animate-fade-in {
-    animation: fade-in 0.4s ease-out forwards;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined' && !document.getElementById('sidebar-animations')) {
-  const styleSheet = document.createElement('style');
-  styleSheet.id = 'sidebar-animations';
-  styleSheet.textContent = customStyles;
-  document.head.appendChild(styleSheet);
-}
+import { FiLogOut, FiChevronDown, FiChevronRight, FiMenu } from 'react-icons/fi';
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, menuItems, logoutRoute }) => {
   const sidebarRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const [openSubmenu, setOpenSubmenu] = useState({});
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [expandedMenus, setExpandedMenus] = useState({});
 
+  // Check if mobile on resize
   useEffect(() => {
-    if (!isSidebarOpen) return;
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Auto-expand submenu if current route matches a submenu item
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.submenu) {
+        const hasActiveSubmenu = item.submenu.some(
+          subItem => location.pathname === subItem.route
+        );
+        if (hasActiveSubmenu && !expandedMenus[item.name]) {
+          setExpandedMenus(prev => ({ ...prev, [item.name]: true }));
+        }
+      }
+    });
+  }, [location.pathname, menuItems, expandedMenus]);
+
+  // Close sidebar when clicking outside (only mobile)
+  useEffect(() => {
+    if (!isSidebarOpen || !isMobile) return;
     const handleClick = (e) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
         setIsSidebarOpen(false);
@@ -57,141 +42,139 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, menuItems, logoutRoute }) =>
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isSidebarOpen, setIsSidebarOpen]);
+  }, [isSidebarOpen, setIsSidebarOpen, isMobile]);
 
   const handleLogout = () => {
     navigate(logoutRoute);
   };
 
-  const toggleSubmenu = (itemName) => {
-    setOpenSubmenu((prev) => ({
-      ...prev,
-      [itemName]: !prev[itemName],
-    }));
-  };
-
   return (
-    <div
-      ref={sidebarRef}
-      id="sidebar"
-      className={`fixed inset-y-0 left-0 z-30 w-64 lg:w-64 h-screen max-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 backdrop-blur-xl bg-opacity-90 border-r border-white/30 shadow-2xl text-white transform transition-all duration-500 ease-out overflow-y-auto rounded-r-xl
-        ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'} lg:translate-x-0 lg:opacity-100 lg:static lg:inset-0`}
-      style={{ 
-        maxWidth: '100vw',
-        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.95) 0%, rgba(124, 58, 237, 0.95) 35%, rgba(147, 51, 234, 0.95) 65%, rgba(219, 39, 119, 0.95) 100%)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-      }}
-    >
-      {/* Sticky header for sidebar */}
-      <div className="flex items-center justify-between h-20 shadow-xl px-6 border-b border-white/20 bg-gradient-to-r from-white/15 to-white/5 backdrop-blur-xl sticky top-0 z-10">
-        <h1 className="text-2xl font-black bg-gradient-to-r from-white via-purple-100 to-cyan-100 bg-clip-text text-transparent tracking-wide drop-shadow-2xl">Menu</h1>
-        <button
-          onClick={() => setIsSidebarOpen(false)}
-          className="text-gray-200 hover:text-white hover:bg-white/20 hover:scale-110 focus:outline-none lg:hidden transition-all duration-300 rounded-xl p-2"
-          aria-label="Close menu"
-        >
-          <HiX className="h-6 w-6" />
-        </button>
-      </div>
-      <nav className="flex-1 flex flex-col py-6 space-y-3 px-3 min-h-0">
-        {menuItems.map((item, index) => (
-          <div 
-            key={item.name}
-            className="animate-fade-in-up"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            {item.submenu ? (
-              <>
-                <button
-                  onClick={() => toggleSubmenu(item.name)}
-                  className={`flex items-center justify-between w-full px-5 py-4 rounded-xl transition-all duration-300 text-base font-semibold border border-transparent group relative overflow-hidden
-                    ${openSubmenu[item.name] 
-                      ? 'bg-white/10 text-white shadow-xl border-white/30 scale-105 backdrop-blur-xl' 
-                      : 'hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:scale-105 text-gray-100 hover:text-white'
+    <>
+      {/* 3-line toggle button (same for mobile + desktop) */}
+      <button
+        className="fixed top-4 left-4 z-50 p-2 bg-blue-800 text-white rounded-lg shadow-md"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
+        <FiMenu className="w-6 h-6" />
+      </button>
+
+      <div
+        ref={sidebarRef}
+        id="sidebar"
+        className={`fixed left-0 top-0 z-40 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 shadow-2xl transform transition-all duration-300 ease-in-out overflow-y-auto border-r border-blue-700
+          ${isMobile 
+            ? (isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64') 
+            : (isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64')
+          }
+        `}
+        style={{
+          height: '100vh',
+          paddingTop: '64px'
+        }}
+      >
+        {/* ❌ Removed "Feature" header completely */}
+
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {menuItems.map((item) => {
+            if (item.submenu) {
+              const isExpanded = expandedMenus[item.name];
+              const hasActiveSubmenu = item.submenu.some(
+                subItem => location.pathname === subItem.route
+              );
+
+              return (
+                <div key={item.name} className="space-y-1">
+                  <button
+                    onClick={() =>
+                      setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }))
                     }
-                  `}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 text-base font-medium group
+                      ${hasActiveSubmenu
+                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-300 text-gray-900 shadow-lg font-semibold'
+                        : 'text-white/90 hover:bg-white/10 hover:text-white hover:shadow-md'}`}
+                  >
+                    <div className="flex items-center">
+                      {item.emoji ? (
+                        <span className="mr-3 text-xl" role="img" aria-label={item.name}>
+                          {item.emoji}
+                        </span>
+                      ) : item.materialIcon ? (
+                        <span className="material-icons mr-3 text-xl">{item.materialIcon}</span>
+                      ) : item.icon ? (
+                        <item.icon className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                      ) : null}
+                      <span>{item.name}</span>
+                    </div>
+                    {isExpanded ? (
+                      <FiChevronDown className="w-4 h-4 transition-transform" />
+                    ) : (
+                      <FiChevronRight className="w-4 h-4 transition-transform" />
+                    )}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="ml-6 space-y-1">
+                      {item.submenu.map((subItem) => (
+                        <NavLink
+                          key={subItem.name}
+                          to={subItem.route}
+                          className={({ isActive }) =>
+                            `flex items-center px-4 py-2 rounded-lg transition-all duration-300 text-sm font-medium
+                            ${isActive
+                              ? 'bg-gradient-to-r from-yellow-400 to-yellow-300 text-gray-900 shadow-md font-semibold'
+                              : 'text-white/80 hover:bg-white/5 hover:text-white'}`}
+                          onClick={() => isMobile && setIsSidebarOpen(false)}
+                        >
+                          <span className="w-2 h-2 bg-current rounded-full mr-3 opacity-60"></span>
+                          <span>{subItem.name}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.route}
+                  className={({ isActive }) =>
+                    `flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-base font-medium group
+                    ${isActive
+                      ? 'bg-gradient-to-r from-yellow-400 to-yellow-300 text-gray-900 shadow-lg font-semibold'
+                      : 'text-white/90 hover:bg-white/10 hover:text-white hover:shadow-md'}`}
+                  onClick={() => isMobile && setIsSidebarOpen(false)}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="flex items-center relative z-10">
-                    {item.emoji ? (
-                      <span className="mr-4 text-2xl group-hover:scale-125 transition-transform duration-300" role="img" aria-label={item.name}>{item.emoji}</span>
-                    ) : item.materialIcon ? (
-                      <span className="material-icons mr-4 text-2xl group-hover:scale-125 transition-transform duration-300">{item.materialIcon}</span>
-                    ) : item.icon ? (
-                      <item.icon className="w-7 h-7 mr-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                    ) : null}
-                    <span className="group-hover:translate-x-1 transition-transform duration-300 truncate">{item.name}</span>
-                  </div>
-                  <FiChevronDown className={`w-5 h-5 transition-all duration-300 group-hover:scale-125 ${openSubmenu[item.name] ? 'rotate-180' : 'rotate-0'}`} />
-                </button>
-                {openSubmenu[item.name] && (
-                  <div className="ml-8 mt-3 space-y-2 animate-fade-in">
-                    {item.submenu.map((subItem, subIndex) => (
-                      <NavLink
-                        key={subItem.name}
-                        to={subItem.route}
-                        className={({ isActive }) =>
-                          `flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium border border-transparent group relative overflow-hidden
-                            ${isActive 
-                              ? 'bg-gradient-to-r from-white/20 to-white/10 text-white shadow-2xl font-bold ring-2 ring-white/30 border-white/20 scale-105 backdrop-blur-xl' 
-                              : 'hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:scale-105 text-gray-200 hover:text-white'
-                            }
-                          `
-                        }
-                        style={{ animationDelay: `${subIndex * 30}ms` }}
-                        onClick={() => setIsSidebarOpen(false)}
-                        aria-current={({ isActive }) => isActive ? 'page' : undefined}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        {subItem.icon && (
-                          <subItem.icon className="w-5 h-5 mr-3 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                        )}
-                        <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">{subItem.name}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <NavLink
-                key={item.name}
-                to={item.route}
-                className={({ isActive }) =>
-                  `flex items-center px-5 py-4 rounded-xl transition-all duration-300 text-base font-semibold border border-transparent group relative overflow-hidden
-                  ${isActive 
-                    ? 'bg-gradient-to-r from-white/20 to-white/10 text-white shadow-2xl font-bold ring-2 ring-white/30 border-white/20 scale-105 backdrop-blur-xl' 
-                    : 'hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:scale-105 text-gray-100 hover:text-white'
-                  }
-                  `
-                }
-                onClick={() => setIsSidebarOpen(false)}
-                aria-current={({ isActive }) => isActive ? 'page' : undefined}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                {item.emoji ? (
-                  <span className="mr-4 text-2xl group-hover:scale-125 transition-transform duration-300 relative z-10" role="img" aria-label={item.name}>{item.emoji}</span>
-                ) : item.materialIcon ? (
-                  <span className="material-icons mr-4 text-2xl group-hover:scale-125 transition-transform duration-300 relative z-10">{item.materialIcon}</span>
-                ) : item.icon ? (
-                  <item.icon className="w-7 h-7 mr-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                ) : null}
-                <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">{item.name}</span>
-              </NavLink>
-            )}
+                  {item.emoji ? (
+                    <span className="mr-3 text-xl" role="img" aria-label={item.name}>
+                      {item.emoji}
+                    </span>
+                  ) : item.materialIcon ? (
+                    <span className="material-icons mr-3 text-xl">{item.materialIcon}</span>
+                  ) : item.icon ? (
+                    <item.icon className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                  ) : null}
+                  <span>{item.name}</span>
+                </NavLink>
+              );
+            }
+          })}
+        </nav>
+
+        {/* Sticky bottom logout button */}
+        <div className="sticky bottom-0 p-4 bg-gradient-to-t from-blue-900 to-blue-800 border-t border-blue-600/30">
+          <div className="flex flex-col space-y-3">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
+            >
+              <FiLogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
           </div>
-        ))}
-      </nav>
-      <div className="px-4 pb-6 pt-4 sticky bottom-0 bg-gradient-to-t from-violet-900/95 via-purple-800/90 to-transparent backdrop-blur-xl">
-        <button
-          onClick={handleLogout}
-          className="flex items-center w-full px-5 py-4 rounded-2xl transition-all duration-300 bg-gradient-to-r from-red-600/80 via-red-500/80 to-pink-600/80 hover:from-red-700 hover:via-red-600 hover:to-pink-700 hover:scale-105 text-white font-bold shadow-2xl border border-white/20 hover:border-white/40 group relative overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <FiLogOut className="w-6 h-6 mr-3 group-hover:scale-125 group-hover:-rotate-12 transition-all duration-300 relative z-10" />
-          <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10">Logout</span>
-        </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

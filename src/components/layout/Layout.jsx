@@ -1,53 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  FiMenu, FiHome, FiSend, FiDownload, FiCalendar, FiBarChart2, FiUsers, 
-  FiKey, FiHelpCircle, FiLogOut, FiUser, FiChevronDown, FiChevronUp, FiVideo 
-} from 'react-icons/fi';
+import { FiMenu, FiHome, FiSend, FiDownload, FiCalendar, FiBarChart2, FiUsers, FiKey, FiHelpCircle, FiLogOut, FiUser } from 'react-icons/fi';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
-import { SendHelpProvider } from '../../context/SendHelpContext';
-import FloatingChatbot from '../common/FloatingChatbot';
-
-// Add custom CSS for animations
-const customStyles = `
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  .animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out forwards;
-  }
-  
-  .animate-fade-in {
-    animation: fade-in 0.4s ease-out forwards;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined' && !document.getElementById('layout-animations')) {
-  const styleSheet = document.createElement('style');
-  styleSheet.id = 'layout-animations';
-  styleSheet.textContent = customStyles;
-  document.head.appendChild(styleSheet);
-}
 
 const menuLinks = [
   { label: 'Dashboard', icon: FiHome, to: '/dashboard' },
@@ -57,31 +13,19 @@ const menuLinks = [
   { label: 'Leaderboard', icon: FiBarChart2, to: '/leaderboard' },
   { label: 'Direct Referrals', icon: FiUsers, to: '/direct-referral' },
   { label: 'E-PIN Management', icon: FiKey, to: '/epin-management' },
-  { label: 'Testimonials', icon: FiVideo, to: '/testimonials' },
   { label: 'Support', icon: FiHelpCircle, to: '/support' },
   { label: 'Profile Settings', icon: FiUser, to: '/profile-settings' },
 ];
-
-const epinSubmenuLinks = [
-  { label: 'Request E-PIN', to: '/epin/request' },
-  { label: 'Transfer E-PIN', to: '/epin/transfer' },
-  { label: 'E-PIN History', to: '/epin/history' },
-];
-
-
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isEpinSubmenuOpen, setIsEpinSubmenuOpen] = useState(false);
-
-
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
-  // Responsive check
+  // Detect mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -89,10 +33,12 @@ const Layout = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Close sidebar on route change if mobile
   useEffect(() => {
     if (isMobile) setIsSidebarOpen(false);
   }, [location.pathname, isMobile]);
 
+  // Close sidebar on Esc
   useEffect(() => {
     if (!isSidebarOpen) return;
     const handleEsc = (e) => { if (e.key === 'Escape') setIsSidebarOpen(false); };
@@ -100,6 +46,7 @@ const Layout = () => {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isSidebarOpen]);
 
+  // Close sidebar on click outside (mobile)
   useEffect(() => {
     if (!isMobile || !isSidebarOpen) return;
     const handleClickOutside = (e) => {
@@ -112,14 +59,6 @@ const Layout = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMobile, isSidebarOpen]);
-
-  // Open E-PIN submenu if current route is E-PIN
-  useEffect(() => {
-    const isEpinRoute = epinSubmenuLinks.some(link => location.pathname.startsWith(link.to));
-    setIsEpinSubmenuOpen(isEpinRoute);
-  }, [location.pathname]);
-
-
 
   const handleLogout = async () => {
     await logout();
@@ -134,13 +73,12 @@ const Layout = () => {
     }
   };
 
-  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
-  const toggleEpinSubmenu = () => setIsEpinSubmenuOpen(prev => !prev);
-
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   return (
     <div className="w-full">
       <div className="min-h-screen bg-white w-full">
+        {/* Header */}
         <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center px-4">
           <div className="relative">
             <button
@@ -166,146 +104,61 @@ const Layout = () => {
           </div>
         </header>
 
+        {/* Mobile Overlay */}
         {isMobile && isSidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsSidebarOpen(false)}
+          />
         )}
 
+        {/* Sidebar */}
         <aside
           id="sidebar"
           className={clsx(
-            "fixed top-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 backdrop-blur-xl bg-opacity-90 border-r border-white/30 shadow-2xl text-white transition-all duration-500 ease-out z-50 rounded-r-xl",
-            !isMobile && "left-0 h-[calc(100vh-4rem)] w-64",
-            isMobile && "left-0 h-[calc(100vh-4rem)] w-[80%]",
-            !isMobile && (isSidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"),
-            isMobile && (isSidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0")
+            "fixed top-16 bg-black text-white transition-transform duration-300 ease-in-out z-50",
+            "h-[calc(100vh-4rem)] w-64",
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
-          style={{
-            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.95) 0%, rgba(124, 58, 237, 0.95) 35%, rgba(147, 51, 234, 0.95) 65%, rgba(219, 39, 119, 0.95) 100%)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-          }}
         >
-          <nav className="flex flex-col py-6 gap-3 h-full overflow-y-auto px-3" aria-label="Main menu">
-            {menuLinks.map(({ label, icon: Icon, to }, index) => {
-              const isActive = location.pathname === to;
-              // E-PIN and Support menus handled separately
-              if (label === 'E-PIN Management' || label === 'Support') return null;
-
-              return (
-                <button
-                  key={label}
-                  className={clsx(
-                    "flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-semibold transition-all duration-300 w-full text-left border border-transparent group relative overflow-hidden animate-fade-in-up",
-                    isActive 
-                      ? "bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 text-gray-900 shadow-2xl font-bold ring-2 ring-amber-300/50 border-amber-200 scale-105" 
-                      : "text-gray-100 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:scale-105 transition-all"
-                  )}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                  onClick={() => handleMenuClick(to)}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <Icon className="w-7 h-7 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                  <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">{label}</span>
-                </button>
-              );
-            })}
-
-            {/* E-PIN Collapsible Menu */}
-            <div className="animate-fade-in-up" style={{ animationDelay: `${(menuLinks.length - 1) * 50}ms` }}>
+          <nav className="flex flex-col py-6 gap-2 h-full overflow-y-auto px-4">
+            {menuLinks.map(({ label, icon: Icon, to }) => (
               <button
+                key={label}
                 className={clsx(
-                  "flex items-center justify-between gap-4 px-5 py-4 rounded-2xl text-base font-semibold w-full text-left transition-all duration-300 border border-transparent group relative overflow-hidden",
-                  isEpinSubmenuOpen 
-                    ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl border-white/30 scale-105" 
-                    : "text-gray-100 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:scale-105 transition-all"
+                  "flex items-center gap-3 px-6 py-3 rounded-lg text-base font-medium transition-colors w-full text-left",
+                  location.pathname === to ? "bg-yellow-400 text-black" : "text-white hover:bg-yellow-400 hover:text-black"
                 )}
-                onClick={toggleEpinSubmenu}
+                onClick={() => handleMenuClick(to)}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="flex items-center gap-4 relative z-10">
-                  <FiKey className="w-7 h-7 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                  <span className="group-hover:translate-x-1 transition-transform duration-300 truncate">E-PIN Management</span>
-                </div>
-                {isEpinSubmenuOpen ? 
-                  <FiChevronUp className="w-5 h-5 transition-all duration-300 group-hover:scale-125 relative z-10" /> : 
-                  <FiChevronDown className="w-5 h-5 transition-all duration-300 group-hover:scale-125 relative z-10" />
-                }
+                {Icon && <Icon className="w-5 h-5" aria-hidden="true" />}
+                <span>{label}</span>
               </button>
-              {isEpinSubmenuOpen && (
-                <div className="ml-8 mt-3 flex flex-col gap-2 animate-fade-in">
-                  {epinSubmenuLinks.map(({ label, to }, subIndex) => {
-                    const isActive = location.pathname === to;
-                    return (
-                      <button
-                        key={label}
-                        className={clsx(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium w-full text-left transition-all duration-300 border border-transparent group relative overflow-hidden",
-                          isActive 
-                            ? "bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 text-gray-900 shadow-2xl font-bold ring-2 ring-amber-300/50 border-amber-200 scale-105" 
-                            : "text-gray-200 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:scale-105 transition-all"
-                        )}
-                        style={{ animationDelay: `${subIndex * 30}ms` }}
-                        onClick={() => handleMenuClick(to)}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Support Menu */}
-            <div className="animate-fade-in-up" style={{ animationDelay: `${(menuLinks.length) * 50}ms` }}>
-              <button
-                className={clsx(
-                  "flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-semibold w-full text-left transition-all duration-300 border border-transparent group relative overflow-hidden",
-                  location.pathname.startsWith('/support')
-                    ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl border-white/30 scale-105" 
-                    : "text-gray-100 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:scale-105 transition-all"
-                )}
-                onClick={() => {
-                  navigate('/support');
-                  if (isMobile) setIsSidebarOpen(false);
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="flex items-center gap-4 relative z-10">
-                  <FiHelpCircle className="w-7 h-7 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                  <span className="group-hover:translate-x-1 transition-transform duration-300 truncate">Support</span>
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <button
-                onClick={() => handleMenuClick('logout')}
-                className="flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-bold w-full transition-all duration-300 bg-gradient-to-r from-red-600/80 via-red-500/80 to-pink-600/80 hover:from-red-700 hover:via-red-600 hover:to-pink-700 hover:scale-105 text-white shadow-2xl border border-white/20 hover:border-white/40 group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <FiLogOut className="w-6 h-6 group-hover:scale-125 group-hover:-rotate-12 transition-all duration-300 relative z-10" />
-                <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">Logout</span>
-              </button>
-            </div>
+            ))}
+            <button
+              onClick={() => handleMenuClick('logout')}
+              className="flex items-center gap-3 px-6 py-3 rounded-lg text-base font-medium bg-yellow-400 text-black hover:bg-yellow-500 w-full mt-2"
+            >
+              <FiLogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
           </nav>
         </aside>
 
+        {/* Main Content */}
         <main
           className={clsx(
             "transition-all duration-300 ease-in-out pt-16",
-            !isMobile && (isSidebarOpen ? "ml-64" : "ml-0"),
-            isMobile && "ml-0"
+            !isMobile ? (isSidebarOpen ? "ml-64 mr-0" : "ml-0") : "ml-0"
           )}
         >
-          <div className="flex-1 overflow-y-auto bg-transparent p-0 m-0 h-[calc(100vh-4rem)] w-full">
-            <SendHelpProvider>
-              <Outlet />
-            </SendHelpProvider>
+          <div className={clsx(
+            "flex-1 overflow-y-auto p-0 m-0 h-[calc(100vh-4rem)]",
+            !isMobile ? (isSidebarOpen ? "w-[calc(100vw-16rem)]" : "w-full") : "w-full"
+          )}>
+            <Outlet />
           </div>
         </main>
-        
-        {/* Floating Chatbot */}
-        <FloatingChatbot />
       </div>
     </div>
   );

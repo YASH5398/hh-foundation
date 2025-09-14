@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 // Layouts & Protected Routes
 import Layout from './components/layout/Layout';
+import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './admin/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './admin/ProtectedRoute';
@@ -22,6 +23,7 @@ import EpinDashboard from './components/epin/EpinDashboard';
 import TransferEpin from './components/epin/TransferEpin';
 import RequestEPIN from './components/epin/RequestEpin';
 import PaymentPage from './components/epin/PaymentPage';
+import EnhancedUserManager from './components/agent/EnhancedUserManager';
 
 import EpinHistory from './components/epin/EpinHistory';
 import NotFound from './pages/NotFound';
@@ -52,6 +54,7 @@ import HiddenHelpRecords from './pages/admin/HiddenHelpRecords';
 import SupportManager from './admin/components/SupportManager';
 import MakeAgent from './admin/components/MakeAgent';
 import EarnFreeEPIN from './pages/EarnFreeEPIN';
+import Tasks from './pages/Tasks';
 import ChatbotSupport from './pages/support/ChatbotSupport';
 import AgentChat from './pages/support/AgentChat';
 import TicketSystem from './pages/support/TicketSystem';
@@ -150,12 +153,14 @@ export const router = createBrowserRouter([
     path: '/dashboard',
     element: (
       <ProtectedRoute>
-        <Layout />
+        <DashboardLayout />
       </ProtectedRoute>
     ),
     errorElement: <ErrorElement />,
     children: [
       { index: true, element: <DashboardHome /> },
+      { path: 'users', element: <EnhancedUserManager /> },
+      { path: 'payments', element: <PaymentPage /> },
       { path: 'send-help', element: <SendHelp /> },
       { path: 'receive-help', element: <ReceiveHelp /> },
       { path: 'direct-referral', element: <DirectReferrals /> },
@@ -180,6 +185,8 @@ export const router = createBrowserRouter([
       },
       { path: 'support/form', element: <Support /> },
       { path: 'support/live-chat', element: <UserSupportTickets /> },
+      { path: 'tasks', element: <Tasks /> },
+      { path: 'earn-epin', element: <EarnFreeEPIN /> },
       { path: 'testimonials', element: <EarnFreeEPIN /> },
       { path: 'change-password', element: <ChangePassword /> },
       { path: 'forgot-password', element: <ForgotPassword /> },

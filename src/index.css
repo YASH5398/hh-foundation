@@ -2,18 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Base body styling */
 @layer base {
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Horizontal scroll remove */
+    min-height: 100vh;
+    min-width: 100vw;
+  }
+
   body {
     @apply bg-[#0F172A] text-[#F1F5F9];
   }
 }
 
+/* Global utilities */
 @layer utilities {
   .animate-marquee {
     animation: marquee 35s linear infinite;
     white-space: nowrap;
     display: inline-block;
   }
+
   .animate-marquee2 {
     animation: marquee2 35s linear infinite;
     white-space: nowrap;
@@ -22,66 +33,65 @@
     left: 100%;
     top: 0;
   }
+
   @keyframes marquee {
     0% { transform: translateX(100%); }
     100% { transform: translateX(-100%); }
   }
+
   @keyframes marquee2 {
     0% { transform: translateX(200%); }
     100% { transform: translateX(0%); }
   }
+
   .dark-card {
     @apply bg-[#1E1E2F] shadow-inner border border-[#2A2F45];
   }
+
   .glow-border {
     box-shadow: 0 0 0 2px #FACC15, 0 0 8px #FACC15;
     border-color: #FACC15;
   }
+
   .gold-btn {
     @apply bg-[#FACC15] text-[#1E293B] font-bold hover:bg-yellow-400 transition;
   }
+
   .gold-btn-outline {
     @apply border border-[#FACC15] text-[#FACC15] bg-transparent hover:bg-[#FACC15] hover:text-[#1E293B] transition;
   }
+
   @keyframes gradientMove {
     0% { background-position: 0% 50%; }
     100% { background-position: 100% 50%; }
   }
+
   .animate-gradient-slow {
     background-size: 400% 400%;
     animation: gradientMove 12s ease infinite;
   }
+
   .ticker-track {
     display: inline-flex;
     white-space: nowrap;
     will-change: transform;
     animation: ticker-loop 15s linear infinite;
   }
+
   @keyframes ticker-loop {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
   }
 }
 
-html, body, #root {
-  margin: 0;
-  padding: 0;
-}
-
+/* Universal reset */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* Optional: gradient background override */
 body {
   background: linear-gradient(to bottom right, #0d0d0d, #1a1a2e);
-  min-height: 100vh;
-  min-width: 100vw;
-  margin: 0;
-  padding: 0;
 }

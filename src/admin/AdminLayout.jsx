@@ -18,7 +18,7 @@ const AdminLayout = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 w-full overflow-x-hidden">
       <AdminSidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
       {isSidebarOpen && (
         <div
@@ -39,8 +39,10 @@ const AdminLayout = () => {
           <h1 className="text-lg font-bold text-blue-800">Admin Panel</h1>
           <div className="w-10"></div> {/* Spacer for centering */}
         </header>
-        <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 lg:pt-2 pt-16">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 md:p-6 lg:pt-2 pt-16 w-full">
+          <div className="w-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
