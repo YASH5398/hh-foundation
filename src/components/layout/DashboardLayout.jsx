@@ -150,8 +150,8 @@ const DashboardLayout = () => {
             <UserMenu user={user} onLogout={handleLogout} showEmail={true} />
           </div>
         </header>
-          <main className="transition-all duration-300 ease-in-out pt-16 px-4 pb-8 flex-1 w-full">
-            <div className="max-w-6xl mx-auto w-full">
+          <main className="transition-all duration-300 ease-in-out pt-16 px-4 pb-8 flex-1">
+            <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>
         </main>
