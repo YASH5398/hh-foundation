@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../config/firebase';
+import { db, storage } from '../../config/firebase';
 import { 
   collection, 
   query, 
@@ -16,9 +16,9 @@ import {
   limit,
   serverTimestamp 
 } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { toast } from 'react-hot-toast';
 import LoginRequired from '../auth/LoginRequired';
-import { uploadImage } from '../../utils/uploadImage';
 
 // Step 1: Receiver Card Component
 const ReceiverCard = ({ receiver, onNext }) => {
@@ -145,40 +145,154 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
   const [utr, setUtr] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+    console.log('📁 File selected:', file);
+    
     if (file) {
+      console.log('📊 File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast.error('File size should be less than 5MB');
         return;
       }
+      
       setScreenshot(file);
+      console.log('✅ File stored in state successfully');
+      
       const reader = new FileReader();
-      reader.onload = (e) => setScreenshotPreview(e.target.result);
+      reader.onload = (e) => {
+        setScreenshotPreview(e.target.result);
+        console.log('🖼️ File preview generated');
+      };
       reader.readAsDataURL(file);
+    } else {
+      console.log('❌ No file selected');
     }
   };
 
+  const uploadImageToFirebase = async (file) => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create unique filename with timestamp
+        const timestamp = Date.now();
+        const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const storageRef = ref(storage, `payment-proofs/${fileName}`);
+        
+        console.log('🔄 Starting upload to Firebase Storage:', fileName);
+        
+        // Create upload task with progress tracking
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        
+        // Track upload progress
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(Math.round(progress));
+            console.log(`📊 Upload progress: ${Math.round(progress)}%`);
+          },
+          (error) => {
+            console.error('❌ Upload failed:', error);
+            setIsUploading(false);
+            setUploadProgress(0);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('✅ Upload completed! Download URL:', downloadURL);
+              setIsUploading(false);
+              setUploadProgress(100);
+              resolve(downloadURL);
+            } catch (error) {
+              console.error('❌ Error getting download URL:', error);
+              setIsUploading(false);
+              setUploadProgress(0);
+              reject(error);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('❌ Error creating upload task:', error);
+        setIsUploading(false);
+        setUploadProgress(0);
+        reject(error);
+      }
+    });
+  };
+
   const handleSubmit = async () => {
+    console.log('🔍 Submit button clicked - validating inputs...');
+    console.log('📝 UTR value:', utr.trim());
+    console.log('📁 Screenshot file:', screenshot);
+    
     if (!utr.trim()) {
+      console.log('❌ UTR validation failed');
       toast.error('Please enter UTR/Transaction ID');
       return;
     }
     if (!screenshot) {
+      console.log('❌ Screenshot validation failed - no file selected');
       toast.error('Please upload payment screenshot');
       return;
     }
 
+    console.log('✅ All validations passed, starting upload...');
+    setIsUploading(true);
+    setUploadProgress(0);
+    
     try {
-      const screenshotUrl = await uploadImage(screenshot, 'payment-proofs');
+      console.log('🚀 Starting payment submission process...');
+      console.log('📤 About to upload file:', {
+        name: screenshot.name,
+        size: screenshot.size,
+        type: screenshot.type
+      });
+      
+      // Upload image to Firebase Storage with progress tracking
+      const screenshotUrl = await uploadImageToFirebase(screenshot);
+      
+      console.log('✅ Image uploaded successfully, submitting payment data...');
+      console.log('🔗 Screenshot URL:', screenshotUrl);
+      
+      // Submit payment data with screenshot URL
       await onSubmit({
         utr: utr.trim(),
         screenshotUrl
       });
+      
+      console.log('✅ Payment submission completed successfully!');
+      toast.success('Payment proof uploaded and submitted successfully!');
+      
     } catch (error) {
-      console.error('Error submitting payment:', error);
-      toast.error('Failed to submit payment. Please try again.');
+      console.error('❌ Error submitting payment:', error);
+      console.error('❌ Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      setIsUploading(false);
+      setUploadProgress(0);
+      
+      // Provide specific error messages
+      if (error.code === 'storage/unauthorized') {
+        toast.error('Upload failed: Permission denied. Storage rules updated, please try again.');
+      } else if (error.code === 'storage/canceled') {
+        toast.error('Upload was canceled. Please try again.');
+      } else if (error.code === 'storage/unknown') {
+        toast.error('Upload failed due to unknown error. Please check your internet connection.');
+      } else {
+        toast.error(`Failed to submit payment: ${error.message}`);
+      }
     }
   };
 
@@ -274,21 +388,42 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
         </div>
       </div>
 
+      {/* Upload Progress Bar */}
+      {isUploading && (
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-gray-700">Uploading payment proof...</span>
+            <span className="text-sm font-medium text-indigo-600">{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex gap-3 mt-8">
         <button
           onClick={onBack}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isUploading}
           className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-semibold hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50"
         >
           Back
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || !utr.trim() || !screenshot}
+          disabled={isSubmitting || isUploading || !utr.trim() || !screenshot}
           className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition-colors duration-200 shadow-lg hover:shadow-xl"
         >
-          {isSubmitting ? (
+          {isUploading ? (
+            <>
+              <FiLoader className="w-4 h-4 animate-spin" />
+              Uploading... {uploadProgress}%
+            </>
+          ) : isSubmitting ? (
             <>
               <FiLoader className="w-4 h-4 animate-spin" />
               Submitting...
@@ -488,6 +623,8 @@ const SendHelp = () => {
 
     setIsSubmitting(true);
     try {
+      console.log('💾 Creating sendHelp document with payment data...');
+      
       // Create sendHelp document with custom ID format
       const timestamp = Date.now();
       const sendHelpId = `${receiver.userId}_${currentUser.uid}_${timestamp}`;
@@ -501,10 +638,12 @@ const SendHelp = () => {
         amount: 300,
         status: 'pending',
         utr: paymentData.utr,
-        screenshotUrl: paymentData.screenshotUrl,
+        screenshotUrl: paymentData.screenshotUrl, // This now comes from Firebase Storage
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
+      
+      console.log('📝 Saving to Firestore:', { ...sendHelpData, screenshotUrl: 'URL_SAVED' });
       
       await setDoc(sendHelpRef, sendHelpData);
       
@@ -519,12 +658,14 @@ const SendHelp = () => {
         amount: 300,
         status: 'pending',
         utr: paymentData.utr,
-        screenshotUrl: paymentData.screenshotUrl,
+        screenshotUrl: paymentData.screenshotUrl, // This now comes from Firebase Storage
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
       await setDoc(receiveHelpRef, receiveHelpData);
+      
+      console.log('✅ SendHelp and ReceiveHelp documents created successfully with ID:', sendHelpId);
       
       setHelpStatus('pending');
       setActiveHelp({ id: sendHelpId, status: 'pending' });
@@ -541,7 +682,7 @@ const SendHelp = () => {
       toast.success('Payment submitted successfully!');
       
     } catch (error) {
-      console.error('Error creating help documents:', error);
+      console.error('❌ Error creating help documents:', error);
       toast.error('Failed to submit payment. Please try again.');
     } finally {
       setIsSubmitting(false);

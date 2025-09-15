@@ -29,7 +29,7 @@ const firebaseConfig = {
   authDomain: "hh-foundation.firebaseapp.com",
   databaseURL: "https://hh-foundation-default-rtdb.firebaseio.com",
   projectId: "hh-foundation",
-  storageBucket: "hh-foundation.appspot.com",
+  storageBucket: "hh-foundation.appspot.com",  // fixed to standard bucket
   messagingSenderId: "310213307250",
   appId: "1:310213307250:web:bcd588790c923ddbdb0beb",
   measurementId: "G-H1J3X51DF0"
@@ -61,7 +61,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 }
 
 // ✅ Export services
-export const storage = getStorage(app, 'gs://hh-foundation.appspot.com');
+export const storage = getStorage(app); // use default bucket from app config
 
 export { 
   app, 

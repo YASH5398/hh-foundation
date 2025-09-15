@@ -63,34 +63,39 @@ const PaymentPage = () => {
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const base64Screenshot = reader.result;
-          
-          const epinRequestDoc = await addDoc(collection(db, 'epinRequests'), {
-             userId: user.uid,
-             userEmail: user.email,
-             packageDetails: selectedPackage,
-             totalAmount: totalPrice,
-             utrNumber: utrNumber.trim(),
-             screenshot: base64Screenshot,
-             status: 'pending',
-             createdAt: serverTimestamp(),
-             updatedAt: serverTimestamp()
-           });
-           
-           // Create notification for E-PIN request
-           await notificationService.createNotification({
-             userId: user.uid,
-             title: 'E-PIN Request Submitted',
-             message: `Your E-PIN request for ${selectedPackage.name} package (₹${totalPrice}) has been submitted successfully. UTR: ${utrNumber.trim()}`,
-             type: 'success',
-             category: 'epin_request',
-             data: {
-               requestId: epinRequestDoc.id,
-               packageName: selectedPackage.name,
-               amount: totalPrice,
-               utrNumber: utrNumber.trim()
-             }
-           });
+        // inside reader.onload
+const base64Screenshot = reader.result;
+
+// fallback for packageName
+const packageName = selectedPackage?.name || "Unknown Package";
+
+const epinRequestDoc = await addDoc(collection(db, 'epinRequests'), {
+   userId: user.uid,
+   userEmail: user.email,
+   packageDetails: selectedPackage,
+   totalAmount: totalPrice,
+   utrNumber: utrNumber.trim(),
+   screenshot: base64Screenshot,
+   status: 'pending',
+   createdAt: serverTimestamp(),
+   updatedAt: serverTimestamp()
+});
+
+// Create notification for E-PIN request
+await notificationService.createNotification({
+  uid: user.uid,
+  userId: user.userId || user.uid,
+  title: 'E-PIN Request Submitted',
+  message: `Your E-PIN request for ${packageName} package (₹${totalPrice}) has been submitted successfully. UTR: ${utrNumber.trim()}`,
+  type: 'success',
+  category: 'epin_request',
+  data: {
+    requestId: epinRequestDoc.id,
+    packageName: packageName,
+    amount: totalPrice,
+    utrNumber: utrNumber.trim()
+  }
+});
            
            toast.success('E-PIN request submitted successfully!');
           

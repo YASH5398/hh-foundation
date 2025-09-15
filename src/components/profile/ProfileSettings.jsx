@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from '../../context/AuthContext';
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db, auth } from '../../config/firebase';
+import { db, auth, storage } from '../../config/firebase';
 import { updatePassword, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const paymentOptions = [
   { label: "Select Payment Method", value: "" },
@@ -32,7 +33,7 @@ const paymentOptions = [
   { label: "Bank Transfer", value: "bank" },
 ];
 
-export default function ProfileSettings({ onUploadAvatar }) {
+export default function ProfileSettings() {
   const { user } = useAuth();
   const [profile, setProfile] = useState({
     fullName: '',
@@ -58,6 +59,12 @@ export default function ProfileSettings({ onUploadAvatar }) {
     newPassword: '',
     confirmPassword: ''
   });
+  // Avatar upload states
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewImage, setPreviewImage] = useState('');
+  const fileInputRef = useRef(null);
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -263,20 +270,65 @@ export default function ProfileSettings({ onUploadAvatar }) {
     toast.success('Profile reset to original values');
   };
   
-  const handleUploadAvatar = async (file) => {
-    if (onUploadAvatar) {
-      try {
-        await onUploadAvatar(file);
-        // Refresh profile data after avatar upload
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setProfile(prev => ({ ...prev, profileImage: userData.profileImage || '' }));
-        }
-      } catch (error) {
-        console.error('Error uploading avatar:', error);
-        toast.error('Failed to upload avatar');
+  const handleUploadAvatar = async (e) => {
+    try {
+      const file = e?.target?.files?.[0];
+      if (!file) return;
+      
+      // Validate file type and size (max 5MB)
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please select a JPG, PNG, or WEBP image');
+        return;
       }
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error('Image is too large (max 5MB)');
+        return;
+      }
+      
+      // Show local preview immediately
+      const localUrl = URL.createObjectURL(file);
+      setPreviewImage(localUrl);
+      
+      if (!user?.uid) {
+        toast.error('User not found');
+        return;
+      }
+      
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const path = `profileImages/${user.uid}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, path);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', (snapshot) => {
+          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setUploadProgress(progress);
+        }, (error) => {
+          reject(error);
+        }, () => {
+          resolve();
+        });
+      });
+      
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      
+      // Update Firestore with new URL
+      await setDoc(doc(db, 'users', user.uid), { profileImage: downloadURL }, { merge: true });
+      
+      // Update UI immediately
+      setProfile(prev => ({ ...prev, profileImage: downloadURL }));
+      toast.success('Profile image updated successfully!');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Failed to upload avatar');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -330,36 +382,44 @@ export default function ProfileSettings({ onUploadAvatar }) {
                 <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
                 <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full overflow-hidden border-4 border-white/50 shadow-2xl backdrop-blur-sm">
                   <img
-                    src={profile.avatar || '/images/default-avatar.png'}
+                    src={previewImage || profile.profileImage || '/images/default-avatar.png'}
                     alt="Profile"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileHover={{ opacity: 1 }}
-                    className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-full flex items-end justify-center cursor-pointer pb-6"
-                    onClick={onUploadAvatar}
-                  >
-                    <motion.div 
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="text-white text-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-2"
-                    >
-                      <Camera className="w-6 h-6 mx-auto mb-1" />
-                      <span className="text-sm font-medium">Change Photo</span>
-                    </motion.div>
-                  </motion.div>
-                </div>
-              </div>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="mt-4 sm:mt-6 text-center"
-              >
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">{profile.name || 'User'}</h2>
-                <p className="text-white/70 text-xs sm:text-sm bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1">{profile.email}</p>
-              </motion.div>
+                  {/* Hidden file input for avatar upload */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleUploadAvatar}
+                    className="hidden"
+                  />
+                   <motion.div
+                     initial={{ opacity: 0 }}
+                     whileHover={{ opacity: 1 }}
+                     className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-full flex items-end justify-center cursor-pointer pb-6"
+                     onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                   >
+                     <motion.div 
+                       whileHover={{ scale: 1.1 }}
+                       whileTap={{ scale: 0.9 }}
+                       className="text-white text-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-2"
+                     >
+                       <Camera className="w-6 h-6 mx-auto mb-1" />
+                       <span className="text-sm font-medium">{uploading ? `Uploading ${uploadProgress}%` : 'Change Photo'}</span>
+                     </motion.div>
+                   </motion.div>
+                 </div>
+               </div>
+               <motion.div
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ duration: 0.5, delay: 0.3 }}
+                 className="mt-4 sm:mt-6 text-center"
+               >
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">{profile.fullName || 'User'}</h2>
+                 <p className="text-white/70 text-xs sm:text-sm bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1">{profile.email}</p>
+               </motion.div>
             </motion.div>
 
             {/* Form Fields */}
