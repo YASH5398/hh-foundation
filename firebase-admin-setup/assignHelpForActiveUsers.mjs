@@ -186,37 +186,44 @@ async function assignReceiverOnActivation(userUid) {
     user.isOnHold === false &&
     user.isReceivingHeld === false
   );
-  // Log eligible receivers
-  console.log('Eligible receivers (4 conditions):', eligibleReceivers.map(u => ({ userId: u.userId, referralCount: u.referralCount, helpReceived: u.helpReceived })));
-  // Sort by referralCount descending
-  const sortedReceivers = eligibleReceivers.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
-  // Pick the top eligible receiver
-  const selectedReceiver = sortedReceivers.length > 0 ? sortedReceivers[0] : null;
-  if (!selectedReceiver) {
+  
+  if (eligibleReceivers.length === 0) {
     console.log('❌ No eligible receiver found (4 conditions failed). Skipping assignment.');
     return false;
   }
-  console.log('Chosen receiver:', selectedReceiver.userId, 'referrals:', selectedReceiver.referralCount, 'helpReceived:', selectedReceiver.helpReceived);
-  // Check if any user satisfies the main eligibility conditions
-  const anyEligible = allReceivers.some(user =>
-    user.isReceivingHeld === false &&
-    user.isBlocked === false &&
-    user.isOnHold === false &&
-    user.isActivated === true
-  );
-  if (!anyEligible) {
-    console.log('❌ No eligible users found with isReceivingHeld: false, isBlocked: false, isOnHold: false, isActivated: true. Skipping assignment.');
+  
+  // Log eligible receivers with their scores
+  console.log('Eligible receivers (4 conditions):', eligibleReceivers.map(u => ({ 
+    userId: u.userId, 
+    referralCount: u.referralCount || 0, 
+    taskScore: u.taskScore || 0, 
+    helpReceived: u.helpReceived || 0 
+  })));
+  
+  // Prioritize users with referralCount > 0, then use taskScore for users with no referrals
+  const usersWithReferrals = eligibleReceivers.filter(u => (u.referralCount || 0) > 0);
+  const usersWithoutReferrals = eligibleReceivers.filter(u => (u.referralCount || 0) === 0);
+  
+  let selectedReceiver = null;
+  
+  if (usersWithReferrals.length > 0) {
+    // Sort users with referrals by referralCount descending
+    const sortedWithReferrals = usersWithReferrals.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
+    selectedReceiver = sortedWithReferrals[0];
+    console.log('Selected receiver with referrals:', selectedReceiver.userId, 'referrals:', selectedReceiver.referralCount);
+  } else if (usersWithoutReferrals.length > 0) {
+    // Sort users without referrals by taskScore descending
+    const sortedByTaskScore = usersWithoutReferrals.sort((a, b) => (b.taskScore || 0) - (a.taskScore || 0));
+    selectedReceiver = sortedByTaskScore[0];
+    console.log('Selected receiver by taskScore:', selectedReceiver.userId, 'taskScore:', selectedReceiver.taskScore);
+  }
+  
+  if (!selectedReceiver) {
+    console.log('❌ No eligible receiver found after ranking. Skipping assignment.');
     return false;
   }
-  // Prioritize users with referralCount > 0, fallback to all eligible if none
-  let prioritizedReceivers = allReceivers.filter(u => (u.referralCount || 0) > 0);
-  if (prioritizedReceivers.length === 0) {
-    prioritizedReceivers = allReceivers;
-  }
-  // Sort by referralCount descending
-  prioritizedReceivers = prioritizedReceivers.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
-  // Step 7: Log and select
-  console.log("Filtered eligible receivers:", prioritizedReceivers.map(u => u.userId));
+  
+  console.log('Final chosen receiver:', selectedReceiver.userId, 'referrals:', selectedReceiver.referralCount || 0, 'taskScore:', selectedReceiver.taskScore || 0, 'helpReceived:', selectedReceiver.helpReceived || 0);
   // Do NOT skip or hide system account documents in sendHelp/receiveHelp creation or display
   // Only exclude system accounts during receiver selection for new assignments
   if (selectedReceiver.uid === SYSTEM_RESERVED_UID || SYSTEM_USER_IDS.includes(selectedReceiver.userId) || selectedReceiver.isSystemUser) {
@@ -412,4 +419,4 @@ async function checkAndHoldReceiver(userId, uid, level) {
   console.log(`🛑 Receiver ${userId} (Level: ${level}) has been put ON HOLD.`);
 }
 
-assignHelpForActiveUsers(); 
+assignHelpForActiveUsers();

@@ -163,6 +163,26 @@ const PaymentVerification = () => {
         updatedAt: serverTimestamp()
       });
       
+      // Send notification to user about payment verification
+      try {
+        const payment = filteredPayments.find(p => p.id === paymentId);
+        const targetUserId = payment?.userId || payment?.senderId || payment?.receiverId;
+        
+        if (targetUserId) {
+          const { sendNotification } = await import('../../context/NotificationContext');
+          await sendNotification({
+            title: `Payment ${action === 'confirm' ? 'Verified' : 'Rejected'}`,
+            message: `Your payment of ₹${payment?.amount || 'N/A'} has been ${action === 'confirm' ? 'verified' : 'rejected'} by agent`,
+            type: action === 'confirm' ? 'success' : 'error',
+            priority: 'high',
+            actionLink: paymentType === 'send' ? '/user/send-help' : '/user/receive-help',
+            targetUserId: targetUserId
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error sending payment verification notification:', notificationError);
+      }
+      
       toast.success(`Payment ${action === 'confirm' ? 'confirmed' : 'rejected'} successfully`);
       setSelectedPayment(null);
     } catch (error) {

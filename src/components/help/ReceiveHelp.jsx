@@ -235,6 +235,25 @@ export default function ReceiveHelp() {
       }
       
       await batch.commit();
+      
+      // Send notification to sender about payment confirmation
+      try {
+        const helpData = receiveHelps.find(h => h.id === selectedHelpId);
+        if (helpData?.senderUid) {
+          const { sendNotification } = await import('../../context/NotificationContext');
+          await sendNotification({
+            title: 'Payment Confirmed',
+            message: `Your payment has been confirmed by ${user.displayName || user.email}`,
+            type: 'success',
+            priority: 'high',
+            actionLink: '/user/send-help',
+            targetUserId: helpData.senderUid
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error sending payment confirmation notification:', notificationError);
+      }
+      
       toast.success("Payment confirmed successfully!");
     } catch (error) {
       console.error("Error confirming payment:", error);

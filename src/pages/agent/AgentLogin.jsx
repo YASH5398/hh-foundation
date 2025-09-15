@@ -81,10 +81,25 @@ const AgentLogin = () => {
       return;
     }
 
-    // Format phone number (ensure it starts with +91 for India)
-    let phoneNumber = formData.phoneNumber.trim();
+    // Validate and format phone number
+    let phoneNumber = formData.phoneNumber.trim().replace(/\s+/g, '');
+    
+    // Remove leading zeros and non-digit characters except +
+    phoneNumber = phoneNumber.replace(/[^\d+]/g, '');
+    
+    // Add country code if not present
     if (!phoneNumber.startsWith('+')) {
-      phoneNumber = '+91' + phoneNumber.replace(/^0+/, '');
+      // Remove leading zeros
+      phoneNumber = phoneNumber.replace(/^0+/, '');
+      // Add +91 for India (default)
+      phoneNumber = '+91' + phoneNumber;
+    }
+    
+    // Validate phone number format
+    const phoneRegex = /^\+91[6-9]\d{9}$/; // Indian mobile number format
+    if (!phoneRegex.test(phoneNumber)) {
+      toast.error('Please enter a valid 10-digit Indian mobile number');
+      return;
     }
 
     setLoading(true);
@@ -93,6 +108,8 @@ const AgentLogin = () => {
       setConfirmationResult(result);
       setOtpSent(true);
       setCountdown(60);
+      // Update form data with formatted number
+      setFormData(prev => ({ ...prev, phoneNumber }));
       toast.success('OTP sent to your phone number');
     } catch (error) {
       console.error('OTP send error:', error);
@@ -110,8 +127,20 @@ const AgentLogin = () => {
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    if (!formData.otp) {
+    
+    // Validate OTP input
+    if (!formData.otp || formData.otp.trim().length === 0) {
       toast.error('Please enter the OTP');
+      return;
+    }
+    
+    if (formData.otp.length !== 6) {
+      toast.error('OTP must be 6 digits');
+      return;
+    }
+    
+    if (!/^\d{6}$/.test(formData.otp)) {
+      toast.error('OTP must contain only numbers');
       return;
     }
 
@@ -123,8 +152,11 @@ const AgentLogin = () => {
     setLoading(true);
     try {
       await verifyOTP(confirmationResult, formData.otp, tempUser);
-      toast.success('Login successful!');
-      navigate('/agent-dashboard', { replace: true });
+      toast.success('Login successful! Redirecting to dashboard...');
+      // Small delay to show success message
+      setTimeout(() => {
+        navigate('/agent-dashboard', { replace: true });
+      }, 1000);
     } catch (error) {
       console.error('OTP verification error:', error);
       if (error.code === 'auth/invalid-verification-code') {
@@ -133,6 +165,7 @@ const AgentLogin = () => {
         toast.error('OTP has expired. Please request a new one.');
         setOtpSent(false);
         setConfirmationResult(null);
+        setFormData(prev => ({ ...prev, otp: '' }));
       } else {
         toast.error(error.message || 'OTP verification failed');
       }
@@ -267,11 +300,12 @@ const AgentLogin = () => {
                         value={formData.phoneNumber}
                         onChange={handleInputChange}
                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Enter your phone number"
+                        placeholder="Enter your 10-digit mobile number"
+                        maxLength="13"
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Enter your 10-digit mobile number (without +91)
+                      Enter your 10-digit Indian mobile number (e.g., 9876543210)
                     </p>
                   </div>
 
@@ -313,6 +347,9 @@ const AgentLogin = () => {
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
                       Enter the 6-digit code sent to {formData.phoneNumber}
+                    </p>
+                    <p className="mt-1 text-xs text-red-500 font-medium">
+                      ⚠️ OTP verification is mandatory to complete login
                     </p>
                   </div>
 

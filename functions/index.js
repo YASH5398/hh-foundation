@@ -6,6 +6,79 @@ admin.initializeApp();
 const db = admin.firestore();
 const messaging = admin.messaging();
 
+// Helper functions for creating standardized notification data
+const createNotificationData = (params) => {
+  const {
+    title,
+    message,
+    type = 'activity',
+    priority = 'medium',
+    uid,
+    userId,
+    senderName = 'System',
+    sentBy = 'system',
+    actionLink,
+    iconUrl,
+    category,
+    relatedAction,
+    relatedHelpId,
+    relatedUserId,
+    levelStatus,
+    dismissible = true,
+    ...otherFields
+  } = params;
+
+  // Validate required fields
+  if (!title || !message || !uid || !userId) {
+    throw new Error('Title, message, uid, and userId are required');
+  }
+
+  // Base notification object with required fields
+  const notification = {
+    title,
+    message,
+    type,
+    priority,
+    uid,
+    userId,
+    senderName,
+    sentBy,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    isRead: false,
+    isDeleted: false,
+    seenInUI: false,
+    readAt: null,
+    dismissible
+  };
+
+  // Add optional fields only if they have values
+  if (actionLink) notification.actionLink = actionLink;
+  if (iconUrl) notification.iconUrl = iconUrl;
+  if (category) notification.category = category;
+  if (relatedAction) notification.relatedAction = relatedAction;
+  if (relatedHelpId) notification.relatedHelpId = relatedHelpId;
+  if (relatedUserId) notification.relatedUserId = relatedUserId;
+  if (levelStatus) notification.levelStatus = levelStatus;
+
+  // Add any other valid fields
+  Object.keys(otherFields).forEach(key => {
+    if (otherFields[key] !== undefined && otherFields[key] !== null) {
+      notification[key] = otherFields[key];
+    }
+  });
+
+  return notification;
+};
+
+const createActivityNotificationData = (params) => {
+  return createNotificationData({
+    ...params,
+    type: 'activity',
+    sentBy: 'system',
+    senderName: params.senderName || 'System'
+  });
+};
+
 exports.onReceiveHelpConfirmed = functions.firestore
   .document('receiveHelp/{docId}')
   .onUpdate(async (change, context) => {
@@ -47,14 +120,7 @@ const createNotification = async (userId, notificationData) => {
   try {
     const notificationId = `${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    await db.collection('notifications').doc(notificationId).set({
-      ...notificationData,
-      uid: userId,
-      userId: userId,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      isRead: false,
-      isDeleted: false
-    });
+    await db.collection('notifications').doc(notificationId).set(notificationData);
     
     console.log(`Notification created for user ${userId}:`, notificationData.title);
     return notificationId;
@@ -144,18 +210,18 @@ exports.sendNotification = functions.https.onRequest(async (req, res) => {
     }
     
     // Create notification in Firestore
-    const notificationData = {
+    const notificationData = createActivityNotificationData({
       title,
       message: body,
-      type: data?.type || 'activity',
+      uid: userId,
+      userId: userId,
       priority: priority || 'medium',
       actionLink: data?.actionLink || '/dashboard',
-      iconUrl: '/logo192.png',
-      levelStatus: 'Star',
+      category: data?.category || 'system',
+      relatedAction: data?.relatedAction,
       relatedHelpId: data?.helpId || null,
-      senderName: 'System',
-      sentBy: 'system'
-    };
+      senderName: 'System'
+    });
     
     await createNotification(userId, notificationData);
     await sendPushNotification(userId, notificationData);
@@ -209,18 +275,18 @@ exports.sendNotificationCallable = functions.https.onCall(async (data, context) 
     
     // If userId is provided, use existing notification system
     if (data.userId) {
-      const notificationPayload = {
+      const notificationPayload = createActivityNotificationData({
         title,
         message: body,
-        type: notificationData?.type || 'activity',
+        uid: data.userId,
+        userId: data.userId,
         priority: notificationData?.priority || 'medium',
         actionLink: notificationData?.actionLink || '/dashboard',
-        iconUrl: '/logo192.png',
-        levelStatus: 'Star',
+        category: notificationData?.category || 'system',
+        relatedAction: notificationData?.relatedAction,
         relatedHelpId: notificationData?.helpId || null,
-        senderName: 'System',
-        sentBy: 'system'
-      };
+        senderName: 'System'
+      });
       
       await createNotification(data.userId, notificationPayload);
       await sendPushNotification(data.userId, notificationPayload);
@@ -243,18 +309,17 @@ exports.onUserCreate = functions.firestore
     
     try {
       // Send welcome notification to the new user
-      const welcomeNotification = {
-        title: 'Welcome to Helping Hands Foundation!',
+      const welcomeNotification = createActivityNotificationData({
+        title: '🎉 Welcome to Helping Hands Foundation!',
         message: 'Thank you for joining our community. Start helping others and making a difference today!',
-        type: 'system',
+        uid: userId,
+        userId: userId,
         priority: 'high',
         actionLink: '/dashboard',
-        iconUrl: 'https://example.com/welcome-icon.png',
-        levelStatus: 'Star',
-        relatedHelpId: null,
-        senderName: 'Helping Hands Foundation',
-        sentBy: 'system'
-      };
+        category: 'welcome',
+        relatedAction: 'user_registration',
+        senderName: 'Helping Hands Foundation'
+      });
       
       await createNotification(userId, welcomeNotification);
       await sendPushNotification(userId, welcomeNotification);
@@ -264,23 +329,25 @@ exports.onUserCreate = functions.firestore
         .where('role', '==', 'admin')
         .get();
       
-      const adminNotification = {
-        title: 'New User Joined',
+      const adminNotification = createActivityNotificationData({
+        title: '👥 New User Joined',
         message: `${userData.name || 'A new user'} has joined Helping Hands Foundation.`,
-        type: 'activity',
         priority: 'medium',
         actionLink: '/admin/users',
-        iconUrl: 'https://example.com/user-icon.png',
-        levelStatus: 'Star',
-        relatedHelpId: null,
-        senderName: 'System',
-        sentBy: 'system'
-      };
+        category: 'admin',
+        relatedAction: 'user_registration',
+        relatedUserId: userId
+      });
       
       const adminPromises = adminsSnapshot.docs.map(adminDoc => {
+        const adminNotificationWithUid = {
+          ...adminNotification,
+          uid: adminDoc.id,
+          userId: adminDoc.id
+        };
         return Promise.all([
-          createNotification(adminDoc.id, adminNotification),
-          sendPushNotification(adminDoc.id, adminNotification)
+          createNotification(adminDoc.id, adminNotificationWithUid),
+          sendPushNotification(adminDoc.id, adminNotificationWithUid)
         ]);
       });
       
@@ -312,18 +379,18 @@ exports.onSendHelpCreate = functions.firestore
       const senderName = senderDoc.exists ? senderDoc.data().name || 'Someone' : 'Someone';
       
       // Notify receiver
-      const receiverNotification = {
-        title: 'New Help Request Received!',
-        message: `${senderName} has sent you a help request. Check your dashboard to respond.`,
-        type: 'activity',
+      const receiverNotification = createActivityNotificationData({
+        title: '💰 New Help Assignment',
+        message: `You have been assigned to receive help from ${senderName}. Check your dashboard for details.`,
+        uid: helpData.receiverUid,
+        userId: helpData.receiverUid,
         priority: 'high',
         actionLink: '/dashboard',
-        iconUrl: 'https://example.com/help-icon.png',
-        levelStatus: 'Star',
+        category: 'help',
+        relatedAction: 'receive_help',
         relatedHelpId: helpId,
-        senderName: senderName,
-        sentBy: helpData.senderUid
-      };
+        senderName: senderName
+      });
       
       await createNotification(helpData.receiverUid, receiverNotification);
       await sendPushNotification(helpData.receiverUid, receiverNotification);
@@ -355,18 +422,18 @@ exports.onReceiveHelpCreate = functions.firestore
       const receiverName = receiverDoc.exists ? receiverDoc.data().name || 'Someone' : 'Someone';
       
       // Notify sender
-      const senderNotification = {
-        title: 'Help Request Confirmed!',
+      const senderNotification = createActivityNotificationData({
+        title: '✅ Help Request Confirmed!',
         message: `${receiverName} has confirmed your help request. Great job helping others!`,
-        type: 'activity',
+        uid: helpData.senderUid,
+        userId: helpData.senderUid,
         priority: 'high',
         actionLink: '/dashboard',
-        iconUrl: 'https://example.com/confirm-icon.png',
-        levelStatus: 'Star',
+        category: 'help',
+        relatedAction: 'help_confirmed',
         relatedHelpId: helpId,
-        senderName: receiverName,
-        sentBy: helpData.receiverUid
-      };
+        senderName: receiverName
+      });
       
       await createNotification(helpData.senderUid, senderNotification);
       await sendPushNotification(helpData.senderUid, senderNotification);
@@ -408,32 +475,32 @@ exports.onPaymentConfirm = functions.firestore
         const receiverName = receiverDoc.exists ? receiverDoc.data().name || 'Someone' : 'Someone';
         
         // Notify sender
-        const senderNotification = {
-          title: 'Payment Confirmed!',
+        const senderNotification = createActivityNotificationData({
+          title: '💳 Payment Confirmed!',
           message: `Your payment of ₹${amount} to ${receiverName} has been confirmed successfully.`,
-          type: 'activity',
+          uid: senderUid,
+          userId: senderUid,
           priority: 'high',
           actionLink: '/dashboard',
-          iconUrl: 'https://example.com/payment-icon.png',
-          levelStatus: 'Star',
+          category: 'payment',
+          relatedAction: 'payment_confirmed',
           relatedHelpId: relatedHelpId || null,
-          senderName: 'Payment System',
-          sentBy: 'system'
-        };
+          senderName: 'Payment System'
+        });
         
         // Notify receiver
-        const receiverNotification = {
-          title: 'Payment Received!',
+        const receiverNotification = createActivityNotificationData({
+          title: '💰 Payment Received!',
           message: `You have received ₹${amount} from ${senderName}. Payment confirmed successfully.`,
-          type: 'activity',
+          uid: receiverUid,
+          userId: receiverUid,
           priority: 'high',
           actionLink: '/dashboard',
-          iconUrl: 'https://example.com/payment-icon.png',
-          levelStatus: 'Star',
+          category: 'payment',
+          relatedAction: 'payment_received',
           relatedHelpId: relatedHelpId || null,
-          senderName: 'Payment System',
-          sentBy: 'system'
-        };
+          senderName: 'Payment System'
+        });
         
         // Send notifications to both users
         await Promise.all([

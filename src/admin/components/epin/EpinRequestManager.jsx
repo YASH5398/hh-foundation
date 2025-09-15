@@ -104,6 +104,21 @@ const EpinRequestManager = () => {
     setProcessingRequest(req.id);
     try {
       await approveEpinRequest(req.id, adminInfo);
+      
+      // Send notification to user about EPIN approval
+      try {
+        const { sendNotification } = await import('../../../context/NotificationContext');
+        await sendNotification({
+          title: 'E-PIN Request Approved',
+          message: `Your request for ${req.totalEpins || req.quantityRequested} E-PINs has been approved by admin`,
+          type: 'success',
+          priority: 'high',
+          actionLink: '/user/epin-requests',
+          targetUserId: req.userId
+        });
+      } catch (notificationError) {
+        console.error('Error sending approval notification:', notificationError);
+      }
     } catch (error) {
       // approveEpinRequest already handles toast and logging
     } finally {
@@ -177,6 +192,22 @@ const EpinRequestManager = () => {
         throw new Error('Invalid rejection data prepared');
       }
       await updateDoc(doc(db, 'epinRequests', req.id), updateData);
+      
+      // Send notification to user about EPIN rejection
+      try {
+        const { sendNotification } = await import('../../../context/NotificationContext');
+        await sendNotification({
+          title: 'E-PIN Request Rejected',
+          message: `Your request for ${req.totalEpins || req.quantityRequested} E-PINs has been rejected by admin`,
+          type: 'error',
+          priority: 'high',
+          actionLink: '/user/epin-requests',
+          targetUserId: req.userId
+        });
+      } catch (notificationError) {
+        console.error('Error sending rejection notification:', notificationError);
+      }
+      
       toast.success('Request rejected successfully');
     } catch (error) {
       console.error('Error rejecting E-PIN request:', error);

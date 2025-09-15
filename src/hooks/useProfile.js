@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, storage } from '../config/firebase';
-import { doc, getDoc, updateDoc, onSnapshot, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, increment, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes } from 'firebase/storage';
 import { createDirectImageUrl } from '../utils/firebaseStorageUtils';
 import { getSocialTasks, updateSocialTask } from '../services/userService';
@@ -83,7 +83,7 @@ export function useSocialTasks(uid) {
     if (!uid) return;
     setLoading(true);
     setError('');
-    const ref = doc(db, 'tasks', uid);
+    const ref = doc(db, 'socialTasks', uid);
     const unsubscribe = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         setTasks(snap.data());
@@ -98,27 +98,20 @@ export function useSocialTasks(uid) {
     return () => unsubscribe();
   }, [uid]);
 
-  const completeTask = async (taskKey) => {
+  const completeTask = async (taskKey, username = '') => {
     if (!uid || !taskKey) return;
-    const ref = doc(db, 'tasks', uid);
     // Prevent duplicate update if already completed
     if (tasks && tasks[taskKey]) return;
-    const updateObj = {
-      [taskKey]: true,
-      [`taskDetails.${taskKey}`]: new Date(),
-    };
-    // Only increment if not already completed
-    if (!tasks || !tasks[taskKey]) {
-      updateObj.taskScore = increment(1);
-    }
+    
     try {
-      await updateDoc(ref, updateObj);
-    } catch (e) {
-      setError('Failed to update task');
+      await updateSocialTask(uid, taskKey, username);
+    } catch (error) {
+      setError('Failed to complete task');
+      console.error('Error completing task:', error);
     }
   };
 
   return { tasks, loading, error, completeTask };
 }
 
-export default useProfile; 
+export default useProfile;

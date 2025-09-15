@@ -7,7 +7,7 @@ import { getAuth, getIdToken, getIdTokenResult, signOut } from "firebase/auth";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import AdminProtectedRoute from '../admin/ProtectedRoute';
 import { useAuth } from '../context/AuthContext';
-import AdminDashboard from '../admin/AdminDashboard';
+import AdminDashboard from './AdminDashboard';
 import EpinManager from '../admin/components/EpinManager';
 import AccessDenied from './AccessDenied';
 

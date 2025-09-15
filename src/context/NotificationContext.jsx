@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { notificationService } from '../services/notificationService';
+import notificationService from '../services/notificationService';
+import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
 
 const NotificationContext = createContext();
 
@@ -105,12 +106,92 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Send notification (admin only)
-  const sendNotification = async (notificationData) => {
+  const sendNotification = async ({ title, message, type, priority, targetType, targetUserId, targetRole, actionLink, senderName, ...otherData }) => {
     try {
+      // Validate required fields
+      if (!title || !message) {
+        throw new Error('Title and message are required');
+      }
+
+      const notificationType = type || 'admin';
+      
+      // Handle different target types for admin notifications
+      if (targetType === 'all') {
+        // Send to all users - will be handled by service
+        return await notificationService.sendToAllUsers({
+          title,
+          message,
+          type: notificationType,
+          priority: priority || 'medium',
+          actionLink,
+          senderName: senderName || 'Admin',
+          ...otherData
+        });
+      } else if (targetType === 'role' && targetRole) {
+        // Send to specific role - will be handled by service
+        return await notificationService.sendToRole(targetRole, {
+          title,
+          message,
+          type: notificationType,
+          priority: priority || 'medium',
+          actionLink,
+          senderName: senderName || 'Admin',
+          ...otherData
+        });
+      } else if (targetType === 'specific' && targetUserId) {
+        // Send to specific user
+        const userData = await notificationService.getUserData(targetUserId);
+        if (!userData) {
+          throw new Error('User not found');
+        }
+
+        const notificationData = createAdminNotificationData({
+          title,
+          message,
+          priority: priority || 'medium',
+          uid: userData.uid,
+          userId: userData.userId,
+          actionLink,
+          senderName: senderName || 'Admin',
+          ...otherData
+        });
+
+        await notificationService.createNotification(notificationData);
+        return { success: true };
+      } else {
+        throw new Error('Invalid target configuration');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Send activity notification (system generated)
+  const sendActivityNotification = async ({ title, message, uid, userId, category, relatedAction, relatedHelpId, relatedUserId, levelStatus, ...otherData }) => {
+    try {
+      // Validate required fields
+      if (!title || !message || !uid || !userId) {
+        throw new Error('Title, message, uid, and userId are required for activity notifications');
+      }
+
+      const notificationData = createActivityNotificationData({
+        title,
+        message,
+        uid,
+        userId,
+        category,
+        relatedAction,
+        relatedHelpId,
+        relatedUserId,
+        levelStatus,
+        ...otherData
+      });
+
       await notificationService.createNotification(notificationData);
       return { success: true };
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('Error sending activity notification:', error);
       return { success: false, error: error.message };
     }
   };
@@ -125,7 +206,8 @@ export const NotificationProvider = ({ children }) => {
     deleteNotification,
     toggleDropdown,
     closeDropdown,
-    sendNotification
+    sendNotification,
+    sendActivityNotification
   };
 
   return (

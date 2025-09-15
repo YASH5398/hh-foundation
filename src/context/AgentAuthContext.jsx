@@ -64,8 +64,20 @@ export const AgentAuthProvider = ({ children }) => {
   // Setup reCAPTCHA for phone verification
   const setupRecaptcha = (containerId) => {
     try {
+      // Clear any existing reCAPTCHA verifier
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {
+          console.log('Previous reCAPTCHA already cleared');
+        }
+        window.recaptchaVerifier = null;
+      }
+      
+      // Clear the container
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = '';
       }
       
       window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
@@ -75,6 +87,11 @@ export const AgentAuthProvider = ({ children }) => {
         },
         'expired-callback': () => {
           console.log('reCAPTCHA expired');
+          // Clear and recreate on expiry
+          if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear();
+            window.recaptchaVerifier = null;
+          }
         }
       });
       
@@ -88,11 +105,26 @@ export const AgentAuthProvider = ({ children }) => {
   // Send OTP to phone
   const sendOTP = async (phoneNumber) => {
     try {
+      // Validate phone number format
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        throw new Error('Invalid phone number format. Please include country code.');
+      }
+      
       const recaptchaVerifier = setupRecaptcha('recaptcha-container');
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
       return confirmationResult;
     } catch (error) {
       console.error('Error sending OTP:', error);
+      // Clean up reCAPTCHA on error
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {
+          console.log('Error clearing reCAPTCHA:', e);
+        }
+        window.recaptchaVerifier = null;
+      }
       throw error;
     }
   };
@@ -100,11 +132,18 @@ export const AgentAuthProvider = ({ children }) => {
   // Verify OTP and complete login
   const verifyOTP = async (confirmationResult, otp, tempUser) => {
     try {
+      if (!confirmationResult) {
+        throw new Error('No OTP confirmation result. Please request OTP first.');
+      }
+      
+      if (!otp || otp.length !== 6) {
+        throw new Error('Please enter a valid 6-digit OTP.');
+      }
+      
       const result = await confirmationResult.confirm(otp);
       
-      // Link the phone credential with the email user
+      // Verify phone number belongs to the same user
       if (tempUser && result.user.uid !== tempUser.uid) {
-        // If phone number belongs to different user, we need to handle this
         await signOut(auth);
         throw new Error('Phone number is associated with a different account');
       }
@@ -113,6 +152,16 @@ export const AgentAuthProvider = ({ children }) => {
       if (!isAgentUser) {
         await signOut(auth);
         throw new Error('Access denied. Only agents can access this portal.');
+      }
+      
+      // Clean up reCAPTCHA after successful verification
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {
+          console.log('Error clearing reCAPTCHA:', e);
+        }
+        window.recaptchaVerifier = null;
       }
       
       setOtpVerified(true);
@@ -126,6 +175,16 @@ export const AgentAuthProvider = ({ children }) => {
   // Logout
   const logout = async () => {
     try {
+      // Clean up reCAPTCHA on logout
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {
+          console.log('Error clearing reCAPTCHA on logout:', e);
+        }
+        window.recaptchaVerifier = null;
+      }
+      
       await signOut(auth);
       setCurrentUser(null);
       setIsAgent(false);

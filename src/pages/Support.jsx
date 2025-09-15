@@ -3,6 +3,7 @@ import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, query, where 
 import { db } from '../config/firebase';
 import { getAuth } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
+import FloatingChatbot from '../components/common/FloatingChatbot';
 
 const initialState = {
   userName: '',
@@ -279,6 +280,9 @@ const Support = () => {
           </div>
         </form>
       </div>
+      
+      {/* Floating Chatbot */}
+      <FloatingChatbot fullScreen={true} />
     </div>
   );
 };

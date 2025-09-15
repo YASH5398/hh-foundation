@@ -82,6 +82,21 @@ const EpinRequestForm = () => {
         createdAt: serverTimestamp(),
       });
 
+      // Send notification to admins about new EPIN request
+      try {
+        const { sendNotification } = await import('../../../context/NotificationContext');
+        await sendNotification({
+          title: 'New E-PIN Request',
+          message: `${user.displayName || user.email} has requested ${quantity + bonus} E-PINs (₹${amountPaid})`,
+          type: 'admin',
+          priority: 'medium',
+          actionLink: '/admin/epin-requests',
+          targetRole: 'admin'
+        });
+      } catch (notificationError) {
+        console.error('Error sending admin notification:', notificationError);
+      }
+
       toast.success('E-PIN request submitted successfully!');
       // Reset form
       setQuantity('');

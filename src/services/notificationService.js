@@ -11,9 +11,11 @@ import {
   serverTimestamp,
   getDocs,
   writeBatch,
-  limit
+  limit,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { createNotificationData, createAdminNotificationData, createActivityNotificationData, cleanNotificationData } from '../utils/createNotificationData';
 
 class NotificationService {
   constructor() {
@@ -35,7 +37,6 @@ class NotificationService {
         where('title', '==', title),
         where('message', '==', message),
         where('uid', '==', uid),
-        where('isDeleted', '==', false),
         limit(1)
       );
       
@@ -47,9 +48,14 @@ class NotificationService {
     }
   }
 
-  // Create a new notification with duplicate prevention
+  // Create a new notification with standardized structure
   async createNotification(notificationData) {
     try {
+      // Validate that the notification data follows the standard structure
+      if (!notificationData.title || !notificationData.message || !notificationData.uid || !notificationData.userId) {
+        throw new Error('Missing required fields: title, message, uid, userId');
+      }
+
       // Check for duplicates if preventDuplicates is enabled
       if (notificationData.preventDuplicates !== false) {
         const isDuplicate = await this.checkDuplicateNotification(
@@ -64,25 +70,131 @@ class NotificationService {
         }
       }
 
-      const notificationId = this.generateNotificationId(
-        notificationData.title,
-        notificationData.message,
-        notificationData.uid
-      );
+      // Clean the notification data to remove undefined fields
+      const cleanedData = cleanNotificationData(notificationData);
+      
+      // Remove preventDuplicates from the data before saving
+      const { preventDuplicates, ...finalData } = cleanedData;
 
-      const notification = {
-        ...notificationData,
-        notificationId,
-        isRead: false,
-        isDeleted: false,
-        timestamp: serverTimestamp(),
-        sentBy: notificationData.sentBy || 'system'
-      };
-
-      const docRef = await addDoc(this.notificationsRef, notification);
-      return { success: true, id: docRef.id, notificationId };
+      const docRef = await addDoc(this.notificationsRef, finalData);
+      return { success: true, id: docRef.id };
     } catch (error) {
       console.error('Error creating notification:', error);
+      throw error;
+    }
+  }
+
+  // Get user data by userId
+  async getUserData(userId) {
+    try {
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('userId', '==', userId),
+        limit(1)
+      );
+      
+      const snapshot = await getDocs(usersQuery);
+      if (snapshot.empty) {
+        return null;
+      }
+      
+      const userData = snapshot.docs[0].data();
+      return {
+        uid: snapshot.docs[0].id,
+        userId: userData.userId,
+        ...userData
+      };
+    } catch (error) {
+      console.error('Error getting user data:', error);
+      return null;
+    }
+  }
+
+  // Send notification to all users
+  async sendToAllUsers(notificationData) {
+    try {
+      const usersQuery = query(collection(db, 'users'));
+      const usersSnapshot = await getDocs(usersQuery);
+      
+      if (usersSnapshot.empty) {
+        return { success: true, created: 0, message: 'No users found' };
+      }
+      
+      const batch = writeBatch(db);
+      let created = 0;
+      
+      usersSnapshot.docs.forEach(userDoc => {
+        const userData = userDoc.data();
+        const uid = userDoc.id;
+        const userId = userData.userId;
+        
+        if (uid && userId) {
+          const notification = createAdminNotificationData({
+            ...notificationData,
+            uid,
+            userId
+          });
+          
+          const notificationRef = doc(this.notificationsRef);
+          batch.set(notificationRef, notification);
+          created++;
+        }
+      });
+      
+      if (created > 0) {
+        await batch.commit();
+      }
+      
+      return { success: true, created };
+    } catch (error) {
+      console.error('Error sending to all users:', error);
+      throw error;
+    }
+  }
+
+  // Send notification to users with specific role
+  async sendToRole(targetRole, notificationData) {
+    try {
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', targetRole)
+      );
+      
+      const usersSnapshot = await getDocs(usersQuery);
+      
+      if (usersSnapshot.empty) {
+        console.log(`No users found with role: ${targetRole}`);
+        return { success: true, created: 0, message: `No users found with role: ${targetRole}` };
+      }
+      
+      const batch = writeBatch(db);
+      let created = 0;
+      
+      usersSnapshot.docs.forEach(userDoc => {
+        const userData = userDoc.data();
+        const uid = userDoc.id;
+        const userId = userData.userId;
+        
+        if (uid && userId) {
+          const notification = createAdminNotificationData({
+            ...notificationData,
+            uid,
+            userId
+          });
+          
+          const notificationRef = doc(this.notificationsRef);
+          batch.set(notificationRef, notification);
+          created++;
+        }
+      });
+      
+      if (created > 0) {
+        await batch.commit();
+      }
+      
+      return { success: true, created };
+    } catch (error) {
+      console.error('Error sending to role:', error);
       throw error;
     }
   }
@@ -125,8 +237,7 @@ class NotificationService {
             type: notificationData.type || 'system',
             notificationId,
             isRead: false,
-            isDeleted: false,
-            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
             sentBy: notificationData.sentBy || 'system'
           };
           batch.set(notificationRef, notification);
@@ -156,62 +267,31 @@ class NotificationService {
     try {
       console.log('Setting up notification subscription for user:', uid);
       
-      // Query for notifications where userId == uid OR userId == "all"
+      // Query for notifications where uid == uid
       const userQuery = query(
         collection(db, 'notifications'),
-        where('userId', '==', uid),
+        where('uid', '==', uid),
         where('isDeleted', '==', false),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const allUsersQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', 'all'),
-        where('isDeleted', '==', false),
-        orderBy('createdAt', 'desc')
+        orderBy('timestamp', 'desc')
       );
 
-      // Subscribe to both queries and merge results
-      const userNotifications = [];
-      const allNotifications = [];
-      let userUnsubscribe = null;
-      let allUnsubscribe = null;
-      
-      const mergeAndCallback = () => {
-        console.log('Merging notifications - User specific:', userNotifications.length, 'All users:', allNotifications.length);
-        const merged = [...userNotifications, ...allNotifications]
-          .sort((a, b) => (b.createdAt?.toDate() || new Date()) - (a.createdAt?.toDate() || new Date()));
-        console.log('Total merged notifications:', merged.length);
-        callback(merged);
-      };
-
-      userUnsubscribe = onSnapshot(userQuery, (snapshot) => {
-        console.log('User-specific notifications updated:', snapshot.docs.length);
-        userNotifications.length = 0;
-        userNotifications.push(...snapshot.docs.map(doc => ({
+      // Subscribe to user notifications
+      const unsubscribe = onSnapshot(userQuery, (snapshot) => {
+        console.log('User notifications updated:', snapshot.docs.length);
+        const notifications = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date()
-        })));
-        mergeAndCallback();
-      }, errorCallback);
-      
-      allUnsubscribe = onSnapshot(allUsersQuery, (snapshot) => {
-        console.log('All-users notifications updated:', snapshot.docs.length);
-        allNotifications.length = 0;
-        allNotifications.push(...snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date()
-        })));
-        mergeAndCallback();
+          // Convert Firestore timestamp to Date for compatibility
+          timestamp: doc.data().timestamp?.toDate() || new Date(),
+          readAt: doc.data().readAt?.toDate() || null
+        }));
+        callback(notifications);
       }, errorCallback);
 
-      // Return combined unsubscribe function
+      // Return unsubscribe function
       return () => {
-        console.log('Unsubscribing from notification listeners for user:', uid);
-        if (userUnsubscribe) userUnsubscribe();
-        if (allUnsubscribe) allUnsubscribe();
+        console.log('Unsubscribing from notification listener for user:', uid);
+        unsubscribe();
       };
     } catch (error) {
       console.error('Error subscribing to notifications:', error);
@@ -226,7 +306,8 @@ class NotificationService {
     try {
       const notificationRef = doc(db, this.collectionName, notificationId);
       await updateDoc(notificationRef, {
-        isRead: true
+        isRead: true,
+        readAt: Timestamp.now()
       });
       return { success: true };
     } catch (error) {
@@ -247,9 +328,13 @@ class NotificationService {
       
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
+      const readTimestamp = Timestamp.now();
       
       snapshot.docs.forEach(doc => {
-        batch.update(doc.ref, { isRead: true });
+        batch.update(doc.ref, { 
+          isRead: true,
+          readAt: readTimestamp
+        });
       });
       
       await batch.commit();
@@ -278,147 +363,192 @@ class NotificationService {
     }
   }
 
-  // System notification triggers
-  async sendWelcomeNotification(uid, userName) {
-    const notificationData = {
-      uid,
-      title: '🎉 Welcome to HH Foundation!',
-      message: `Welcome ${userName}! Your account has been successfully created. Start exploring our platform and connect with the community.`,
-      type: 'system',
-      sentBy: 'system',
-      preventDuplicates: true
-    };
-    
-    return this.createNotification(notificationData);
-  }
-
-  async sendHelpAssignmentNotification(receiverUid, senderName, amount) {
-    const notificationData = {
-      uid: receiverUid,
-      title: '💰 New Help Assignment',
-      message: `You have been assigned to receive help of ₹${amount} from ${senderName}. Check your dashboard for details.`,
-      type: 'system',
-      sentBy: 'system',
-      preventDuplicates: false // Allow multiple assignments
-    };
-    
-    return this.createNotification(notificationData);
-  }
-
-  async sendPaymentConfirmationNotification(uid, amount, type = 'received') {
-    const title = type === 'received' ? '✅ Payment Received' : '📤 Payment Sent';
-    const message = type === 'received' 
-      ? `Payment of ₹${amount} has been confirmed and received successfully.`
-      : `Your payment of ₹${amount} has been sent and confirmed.`;
-    
-    const notificationData = {
-      uid,
-      title,
-      message,
-      type: 'system',
-      sentBy: 'system',
-      preventDuplicates: false // Allow multiple payment notifications
-    };
-    
-    return this.createNotification(notificationData);
-  }
-
-  async sendAdminNotification(uid, title, message, preventDuplicates = true) {
-    const notificationData = {
-      uid,
-      title,
-      message,
-      type: 'admin',
-      sentBy: 'admin',
-      preventDuplicates
-    };
-    
-    return this.createNotification(notificationData);
-  }
-
-  // Activity-based notification methods
-  async sendUserJoinedNotification(newUserUid, newUserName, adminUids = []) {
+  // Soft delete notification
+  async deleteNotification(notificationId) {
     try {
-      const results = [];
-      
-      // Notify the new user
-      const welcomeResult = await this.sendWelcomeNotification(newUserUid, newUserName);
-      results.push(welcomeResult);
-      
-      // Notify admins about new user
-      for (const adminUid of adminUids) {
-        const adminNotification = {
-          uid: adminUid,
-          userId: adminUid,
-          title: '👥 New User Joined',
-          message: `${newUserName} has joined the platform. Welcome them to the community!`,
-          type: 'system',
-          sentBy: 'system',
-          preventDuplicates: true
-        };
-        const adminResult = await this.createNotification(adminNotification);
-        results.push(adminResult);
-      }
-      
-      return { success: true, results };
+      const notificationRef = doc(db, this.collectionName, notificationId);
+      await updateDoc(notificationRef, {
+        isDeleted: true
+      });
+      return { success: true };
     } catch (error) {
-      console.error('Error sending user joined notifications:', error);
+      console.error('Error deleting notification:', error);
       throw error;
     }
   }
 
-  async sendLevelUpgradeNotification(uid, newLevel, oldLevel) {
-    const notificationData = {
-      uid,
-      userId: uid,
-      title: '🎉 Level Upgrade!',
-      message: `Congratulations! You have been upgraded from Level ${oldLevel} to Level ${newLevel}. Enjoy your new benefits!`,
-      type: 'system',
-      sentBy: 'system',
-      preventDuplicates: false // Allow multiple level upgrades
-    };
-    
-    return this.createNotification(notificationData);
+  // System notification triggers
+  async sendWelcomeNotification(uid, userId, userName) {
+    try {
+      const notificationData = createActivityNotificationData({
+        title: '🎉 Welcome to HH Foundation!',
+        message: `Welcome ${userName}! Your account has been successfully created. Start exploring our platform and connect with the community.`,
+        uid,
+        userId,
+        category: 'welcome',
+        relatedAction: 'user_registration',
+        preventDuplicates: true
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending welcome notification:', error);
+      throw error;
+    }
   }
 
-  async sendBlockedStatusNotification(uid, isBlocked, reason = '') {
-    const title = isBlocked ? '🚫 Account Blocked' : '✅ Account Unblocked';
-    const message = isBlocked 
-      ? `Your account has been blocked. ${reason ? `Reason: ${reason}` : 'Please contact support for more information.'}`
-      : 'Your account has been unblocked. You can now access all features.';
-    
-    const notificationData = {
-      uid,
-      userId: uid,
-      title,
-      message,
-      type: 'admin',
-      sentBy: 'admin',
-      preventDuplicates: false // Allow status change notifications
-    };
-    
-    return this.createNotification(notificationData);
+  async sendHelpAssignmentNotification(receiverUid, receiverUserId, senderName, amount, helpId = null) {
+    try {
+      const notificationData = createActivityNotificationData({
+        title: '💰 New Help Assignment',
+        message: `You have been assigned to receive help of ₹${amount} from ${senderName}. Check your dashboard for details.`,
+        uid: receiverUid,
+        userId: receiverUserId,
+        category: 'help',
+        relatedAction: 'receive_help',
+        relatedHelpId: helpId,
+        actionLink: '/dashboard',
+        preventDuplicates: false // Allow multiple assignments
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending help assignment notification:', error);
+      throw error;
+    }
   }
 
-  async sendSendHelpAssignmentNotification(senderUid, receiverUid, amount, senderName, receiverName) {
+  async sendPaymentConfirmationNotification(uid, userId, amount, type = 'received', helpId = null) {
+    try {
+      const title = type === 'received' ? '✅ Payment Received' : '📤 Payment Sent';
+      const message = type === 'received' 
+        ? `Payment of ₹${amount} has been confirmed and received successfully.`
+        : `Your payment of ₹${amount} has been sent and confirmed.`;
+      
+      const notificationData = createActivityNotificationData({
+        title,
+        message,
+        uid,
+        userId,
+        category: 'payment',
+        relatedAction: type === 'received' ? 'payment_received' : 'payment_sent',
+        relatedHelpId: helpId,
+        actionLink: '/dashboard',
+        preventDuplicates: false // Allow multiple payment notifications
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending payment confirmation notification:', error);
+      throw error;
+    }
+  }
+
+  async sendAdminNotification(uid, userId, title, message, actionLink = null, preventDuplicates = true) {
+    try {
+      const notificationData = createAdminNotificationData({
+        title,
+        message,
+        uid,
+        userId,
+        actionLink,
+        preventDuplicates
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending admin notification:', error);
+      throw error;
+    }
+  }
+
+  // Activity-based notification methods
+  async sendUserJoinedNotification(uid, userId, userName, referrerName, newUserId = null) {
+    try {
+      const notificationData = createActivityNotificationData({
+        title: '👥 New User Joined',
+        message: `${userName} has joined through your referral link. Welcome them to the community!`,
+        uid,
+        userId,
+        category: 'referral',
+        relatedAction: 'referral_join',
+        relatedUserId: newUserId,
+        actionLink: '/dashboard',
+        preventDuplicates: false // Allow multiple referral notifications
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending user joined notification:', error);
+      throw error;
+    }
+  }
+
+  async sendLevelUpgradeNotification(uid, userId, newLevel, oldLevel) {
+    try {
+      const notificationData = createActivityNotificationData({
+        title: '🎉 Level Upgrade!',
+        message: `Congratulations! You have been upgraded from Level ${oldLevel} to Level ${newLevel}. Enjoy your new benefits!`,
+        uid,
+        userId,
+        category: 'upgrade',
+        relatedAction: 'level_upgrade',
+        levelStatus: newLevel,
+        actionLink: '/dashboard',
+        preventDuplicates: true // Prevent duplicate level notifications
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending level upgrade notification:', error);
+      throw error;
+    }
+  }
+
+  async sendBlockedStatusNotification(uid, userId, isBlocked, reason = '') {
+    try {
+      const title = isBlocked ? '🚫 Account Blocked' : '✅ Account Unblocked';
+      const message = isBlocked 
+        ? `Your account has been blocked. ${reason ? `Reason: ${reason}` : 'Please contact support for more information.'}`
+        : 'Your account has been unblocked. You can now access all features.';
+      
+      const notificationData = createAdminNotificationData({
+        title,
+        message,
+        uid,
+        userId,
+        actionLink: '/dashboard',
+        preventDuplicates: false // Allow status change notifications
+      });
+      
+      return this.createNotification(notificationData);
+    } catch (error) {
+      console.error('Error sending blocked status notification:', error);
+      throw error;
+    }
+  }
+
+  async sendSendHelpAssignmentNotification(senderUid, senderUserId, receiverUid, receiverUserId, amount, senderName, receiverName, helpId = null) {
     try {
       const results = [];
       
       // Notify receiver
-      const receiverResult = await this.sendHelpAssignmentNotification(receiverUid, senderName, amount);
+      const receiverResult = await this.sendHelpAssignmentNotification(receiverUid, receiverUserId, senderName, amount, helpId);
       results.push(receiverResult);
       
       // Notify sender
-      const senderNotification = {
-        uid: senderUid,
-        userId: senderUid,
+      const senderNotificationData = createActivityNotificationData({
         title: '📤 Help Assignment Created',
         message: `You have been assigned to send help of ₹${amount} to ${receiverName}. Please complete the payment as instructed.`,
-        type: 'system',
-        sentBy: 'system',
+        uid: senderUid,
+        userId: senderUserId,
+        category: 'help',
+        relatedAction: 'send_help',
+        relatedHelpId: helpId,
+        actionLink: '/dashboard',
         preventDuplicates: false
-      };
-      const senderResult = await this.createNotification(senderNotification);
+      });
+      const senderResult = await this.createNotification(senderNotificationData);
       results.push(senderResult);
       
       return { success: true, results };
@@ -428,14 +558,14 @@ class NotificationService {
     }
   }
 
-  // Broadcast notification to all users
-  async broadcastNotification(title, message, type = 'admin') {
+  // Broadcast notification to all users or specific role
+  async broadcastNotification(title, message, targetRole = null, actionLink = null) {
     try {
-      // This would require getting all user UIDs first
-      // For now, we'll create a method that can be called with user list
-      console.log('Broadcast notification:', { title, message, type });
-      // Implementation would depend on how you want to handle broadcasting
-      return { success: true, message: 'Broadcast functionality needs user list' };
+      if (targetRole) {
+        return this.sendToRole(targetRole, title, message, actionLink);
+      } else {
+        return this.sendToAllUsers(title, message, actionLink);
+      }
     } catch (error) {
       console.error('Error broadcasting notification:', error);
       throw error;
@@ -449,13 +579,19 @@ class NotificationService {
 const subscribeToAllNotifications = (onUpdate, onError) => {
   try {
     const notificationsRef = collection(db, 'notifications');
-    const q = query(notificationsRef, orderBy('timestamp', 'desc'));
+    const q = query(
+      notificationsRef, 
+      where('isDeleted', '==', false),
+      orderBy('timestamp', 'desc'),
+      limit(100)
+    );
     
     return onSnapshot(q, 
       (snapshot) => {
         const notifications = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          timestamp: doc.data().timestamp?.toDate() || new Date()
         }));
         onUpdate(notifications);
       },
@@ -471,27 +607,11 @@ const subscribeToAllNotifications = (onUpdate, onError) => {
   }
 };
 
-// Delete notification (soft delete)
-const deleteNotification = async (notificationId) => {
-  try {
-    const notificationRef = doc(db, 'notifications', notificationId);
-    await updateDoc(notificationRef, {
-      isDeleted: true,
-      deletedAt: serverTimestamp()
-    });
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting notification:', error);
-    throw error;
-  }
-};
-
 // Create the service instance
 const notificationService = new NotificationService();
 
 // Add methods to the service object
 notificationService.subscribeToAllNotifications = subscribeToAllNotifications;
-notificationService.deleteNotification = deleteNotification;
 
 export { notificationService };
 export default notificationService;

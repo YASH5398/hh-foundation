@@ -146,28 +146,33 @@ export async function getSocialTasks(uid) {
 //   allow write: if request.auth.uid == userId;
 // }
 
-export async function updateSocialTask(uid, taskKey) {
+export async function updateSocialTask(uid, taskKey, username = '') {
   const userUid = auth.currentUser?.uid;
   if (!userUid || (uid && uid !== userUid)) {
     console.warn('User not authenticated or UID mismatch. Aborting task update.');
     return;
-      }
+  }
   if (!taskKey) return;
-  const ref = doc(db, 'tasks', userUid);
+  const ref = doc(db, 'socialTasks', userUid);
   try {
     await updateDoc(ref, {
+      uid: userUid,
       [taskKey]: true,
       [`taskDetails.${taskKey}`]: Timestamp.now(),
+      [`usernames.${taskKey}`]: username,
       taskScore: increment(1),
+      completedAt: Timestamp.now(),
     });
   } catch (error) {
-    if (error.code === 'not-found' || error.code === 'not-found' || error.message?.includes('No document to update')) {
+    if (error.code === 'not-found' || error.message?.includes('No document to update')) {
       // If document does not exist, create it
       await setDoc(ref, {
+        uid: userUid,
         [taskKey]: true,
         [`taskDetails.${taskKey}`]: Timestamp.now(),
+        [`usernames.${taskKey}`]: username,
         taskScore: 1,
-        completedAt: null,
+        completedAt: Timestamp.now(),
       }, { merge: true });
     } else {
       console.error('Failed to update task:', error);
@@ -185,17 +190,35 @@ export async function updateTelegramTask() {
       }
       const uid = currentUser.uid;
       console.log('Updating telegram task for UID:', uid);
-      const ref = doc(db, 'tasks', uid);
+      const ref = doc(db, 'socialTasks', uid);
       try {
         await updateDoc(ref, {
+          uid: uid,
           telegram: true,
           taskScore: increment(1),
           'taskDetails.telegram': Timestamp.now(),
+          completedAt: Timestamp.now(),
         });
         resolve();
       } catch (err) {
-        console.error('Failed to update telegram task:', err);
-        reject(err);
+        if (err.code === 'not-found') {
+          try {
+            await setDoc(ref, {
+              uid: uid,
+              telegram: true,
+              taskScore: 1,
+              'taskDetails.telegram': Timestamp.now(),
+              completedAt: Timestamp.now(),
+            }, { merge: true });
+            resolve();
+          } catch (createErr) {
+            console.error('Failed to create telegram task document:', createErr);
+            reject(createErr);
+          }
+        } else {
+          console.error('Failed to update telegram task:', err);
+          reject(err);
+        }
       }
     });
   });

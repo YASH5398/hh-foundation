@@ -182,7 +182,7 @@ const NotificationDropdown = () => {
                               <div className="flex items-center space-x-1 text-xs text-gray-400">
                                 <FiClock className="w-3 h-3" />
                                 <span className="text-xs">
-                                  {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                                  {notification.createdAt ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true }) : 'Just now'}
                                 </span>
                               </div>
                               <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full ${
