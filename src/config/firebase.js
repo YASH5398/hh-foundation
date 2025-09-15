@@ -41,14 +41,23 @@ const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ✅ Initialize messaging (only in browser environment)
+// ✅ Initialize messaging (only in browser environment with proper checks)
 let messaging = null;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   try {
-    messaging = getMessaging(app);
+    // Check if we're in a secure context (required for FCM)
+    if (window.isSecureContext) {
+      messaging = getMessaging(app);
+      console.log('✅ Firebase Messaging initialized successfully');
+    } else {
+      console.warn('⚠️ Firebase Messaging requires a secure context (HTTPS or localhost)');
+    }
   } catch (error) {
-    console.log('Messaging not supported in this environment');
+    console.error('❌ Firebase Messaging initialization failed:', error);
+    messaging = null;
   }
+} else {
+  console.log('ℹ️ Firebase Messaging not available: missing window or serviceWorker support');
 }
 
 // ✅ Export services

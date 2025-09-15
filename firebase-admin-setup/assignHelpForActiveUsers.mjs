@@ -169,14 +169,22 @@ async function assignReceiverOnActivation(userUid) {
     user.uid !== userUid && // skip self
     (!user.isSystemUser) // skip system accounts
   );
-  // Before assigning SendHelp, check and update users with helpReceived >= 3
+  // Before assigning SendHelp, check and update users with helpReceived >= 3 or upline payment blocking
   for (const user of allReceivers) {
-    if ((user.helpReceived || 0) >= 3) {
+    const helpReceived = user.helpReceived || 0;
+    const lastUplinePayment = user.lastUplinePayment || 0;
+    
+    // Block after every 2 received helps until upline payment
+    const shouldBlockForUpline = helpReceived > 0 && helpReceived % 2 === 0 && 
+      (helpReceived > lastUplinePayment * 2);
+    
+    if (helpReceived >= 3 || shouldBlockForUpline) {
         await db.collection('users').doc(user.uid).update({
           isReceivingHeld: true,
           isOnHold: true
         });
-      console.log(`⛔ User ${user.userId} set to hold (helpReceived >= 3)`);
+      const reason = helpReceived >= 3 ? 'helpReceived >= 3' : 'upline payment required';
+      console.log(`⛔ User ${user.userId} set to hold (${reason})`);
     }
   }
   // Strict eligibility filter for receivers (only 4 conditions)

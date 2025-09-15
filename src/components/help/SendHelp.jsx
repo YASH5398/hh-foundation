@@ -10,6 +10,7 @@ import {
   getDocs, 
   addDoc, 
   doc, 
+  setDoc,
   onSnapshot, 
   orderBy, 
   limit,
@@ -487,7 +488,10 @@ const SendHelp = () => {
 
     setIsSubmitting(true);
     try {
-      // Create sendHelp document
+      // Create sendHelp document with custom ID format
+      const timestamp = Date.now();
+      const sendHelpId = `${receiver.userId}_${currentUser.uid}_${timestamp}`;
+      const sendHelpRef = doc(db, 'sendHelp', sendHelpId);
       const sendHelpData = {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.name || currentUser.email,
@@ -502,10 +506,10 @@ const SendHelp = () => {
         updatedAt: serverTimestamp()
       };
       
-      const sendHelpRef = await addDoc(collection(db, 'sendHelp'), sendHelpData);
-      const sendHelpId = sendHelpRef.id;
+      await setDoc(sendHelpRef, sendHelpData);
       
-      // Create receiveHelp document
+      // Create receiveHelp document with same ID
+      const receiveHelpRef = doc(db, 'receiveHelp', sendHelpId);
       const receiveHelpData = {
         sendHelpId: sendHelpId,
         senderId: currentUser.uid,
@@ -520,7 +524,7 @@ const SendHelp = () => {
         updatedAt: serverTimestamp()
       };
       
-      await addDoc(collection(db, 'receiveHelp'), receiveHelpData);
+      await setDoc(receiveHelpRef, receiveHelpData);
       
       setHelpStatus('pending');
       setActiveHelp({ id: sendHelpId, status: 'pending' });

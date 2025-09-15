@@ -226,11 +226,38 @@ export default function ReceiveHelp() {
         confirmationTime: serverTimestamp()
       });
       
-      // Increment helpReceived for receiver
+      // Increment helpReceived and totalReceived for receiver, and activate if first payment
       if (user?.uid) {
         const userRef = doc(db, "users", user.uid);
-        batch.update(userRef, {
-          helpReceived: increment(1)
+        const updateData = {
+          helpReceived: increment(1),
+          totalReceived: increment(300)
+        };
+        
+        // Activate user if this is their first received payment
+        const currentHelpReceived = user.helpReceived || 0;
+        if (currentHelpReceived === 0) {
+          updateData.isActivated = true;
+        }
+        
+        // Check for level upgrade requirement after completing 3 helps (₹900)
+        const newHelpReceived = currentHelpReceived + 1;
+        if (newHelpReceived === 3 && user.totalReceived >= 900) {
+          updateData.levelUpgradeRequired = true;
+          updateData.levelUpgradeAmount = 600;
+          updateData.isReceivingHeld = true;
+          updateData.isOnHold = true;
+        }
+        
+        batch.update(userRef, updateData);
+      }
+      
+      // Increment totalSent for sender
+      const helpData = receiveHelps.find(h => h.id === selectedHelpId);
+      if (helpData?.senderId) {
+        const senderRef = doc(db, "users", helpData.senderId);
+        batch.update(senderRef, {
+          totalSent: increment(300)
         });
       }
       
@@ -254,7 +281,17 @@ export default function ReceiveHelp() {
         console.error('Error sending payment confirmation notification:', notificationError);
       }
       
-      toast.success("Payment confirmed successfully!");
+      // Check if level upgrade is required and show appropriate message
+      const currentHelpReceived = user.helpReceived || 0;
+      const newHelpReceived = currentHelpReceived + 1;
+      
+      if (newHelpReceived === 3 && user.totalReceived >= 900) {
+        toast.success("Payment confirmed! Level upgrade required (₹600) to continue receiving helps.", {
+          duration: 6000
+        });
+      } else {
+        toast.success("Payment confirmed successfully!");
+      }
     } catch (error) {
       console.error("Error confirming payment:", error);
       toast.error("Failed to confirm payment");
