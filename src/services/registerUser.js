@@ -14,6 +14,8 @@ import {
 import { auth, db } from "../config/firebase";
 import emailjs from 'emailjs-com';
 import { assignReceiverToNewUser } from "./assignHelpForActiveUsers";
+import { NotificationService } from './notificationService';
+import { DEFAULT_PROFILE_IMAGE } from '../utils/profileUtils';
 
 const generateUserId = () => {
   const randomNumber = Math.floor(10000000 + Math.random() * 90000000);
@@ -84,7 +86,7 @@ export const registerUser = async (userData) => {
       isSystemAccount: false,
       role: 'user', // Default role for new users
       epins: epins || '',
-      profileImage: '',
+      profileImage: DEFAULT_PROFILE_IMAGE,
       deviceToken: '',
       registrationTime: serverTimestamp(),
       referredUsers: [],
@@ -153,7 +155,23 @@ export const registerUser = async (userData) => {
       // Optionally: continue, don't block registration
     }
 
-    // ✅ STEP 5: Return details to UI
+    // ✅ STEP 5: Create welcome notification
+    try {
+      await NotificationService.createNotification({
+        userId: user.uid,
+        title: '🎉 Welcome to Helping Hands Foundation!',
+        message: `Welcome ${fullName}! Your account has been successfully created. Your User ID is ${userId}. Start your journey with us today!`,
+        type: 'welcome',
+        targetAudience: 'user',
+        createdBy: 'system',
+        actionLink: '/dashboard',
+        priority: 'high'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create welcome notification:', notificationError);
+    }
+
+    // ✅ STEP 6: Return details to UI
     return {
       fullName,
       email,

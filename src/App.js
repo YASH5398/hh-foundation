@@ -200,8 +200,9 @@ export const router = createBrowserRouter([
       { path: 'support/form', element: <Support /> },
       { path: 'support/live-chat', element: <UserSupportTickets /> },
       // E-PIN routes under dashboard
-      { path: 'epins/used', element: <EpinDashboard /> },
+
       { path: 'epins/request', element: <RequestEPIN /> },
+      { path: 'epins/payment', element: <PaymentPage /> },
       { path: 'epins/transfer', element: <TransferEpin /> },
       { path: 'epins/history', element: <EpinHistory /> },
       { path: 'tasks', element: <Tasks /> },

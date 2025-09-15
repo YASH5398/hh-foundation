@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 import '../../index.css';
 
 const getInitial = (name) => (name && name.length > 0 ? name[0].toUpperCase() : '?');
@@ -84,18 +85,14 @@ const PodiumCard = ({ user, rank, earnings }) => {
 
       {/* Profile Image/Initial */}
       <div className={`${config.size} ${config.border} ${config.glow} rounded-full flex items-center justify-center mb-3 relative overflow-hidden`}>
-      {user.profileImage ? (
-        <img
-          src={user.profileImage}
-          alt={user.fullName}
-            className="w-full h-full object-cover rounded-full"
-            onError={e => { e.target.onerror = null; e.target.style.display = 'none'; }}
-        />
-      ) : (
-          <div className={`w-full h-full ${config.bg} flex items-center justify-center ${config.textColor} font-bold`}>
-            {getInitial(user.fullName)}
-          </div>
-      )}
+      <img
+        src={getProfileImageUrl(user)}
+        alt={user.fullName}
+        className="w-full h-full object-cover rounded-full"
+        onError={(e) => {
+          e.target.src = getProfileImageUrl(null); // Fallback to default
+        }}
+      />
       </div>
 
       {/* User Info */}
@@ -327,18 +324,14 @@ const Leaderboard = () => {
                 </span>
                 {/* Profile Image */}
                 <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-200 shadow-md">
-                  {user.profileImage ? (
-                    <img
-                      src={user.profileImage}
-                      alt={user.fullName}
-                      className="w-full h-full object-cover"
-                      onError={e => { e.target.onerror = null; e.target.style.display = 'none'; }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-base">
-                      {getInitial(user.fullName)}
-                    </div>
-                  )}
+                  <img
+                    src={getProfileImageUrl(user)}
+                    alt={user.fullName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = getProfileImageUrl(null); // Fallback to default
+                    }}
+                  />
                 </div>
                 {/* User Info */}
                   <div className="flex-1 min-w-0">

@@ -15,6 +15,7 @@ import { db } from '../../config/firebase';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
 import UserProfileView from '../../components/agent/UserProfileView';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const UserManagement = () => {
   const { currentUser } = useAgentAuth();
@@ -345,17 +346,14 @@ const UserManagement = () => {
               {/* User Header */}
               <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
                 <div className="flex-shrink-0">
-                  {searchedUser.profileImage ? (
-                    <img
-                      src={searchedUser.profileImage}
-                      alt={searchedUser.fullName}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
-                      <FiUser className="w-8 h-8 text-gray-600" />
-                    </div>
-                  )}
+                  <img
+                    src={getProfileImageUrl(searchedUser)}
+                    alt={searchedUser.fullName}
+                    className="w-16 h-16 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.src = getProfileImageUrl(null); // Fallback to default
+                    }}
+                  />
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900">

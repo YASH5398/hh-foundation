@@ -44,9 +44,13 @@ const Notifications = () => {
   }, []);
 
   const filteredNotifications = notifications.filter(notification => {
+    // First exclude deleted notifications
+    if (notification.deleted || notification.isDeleted) return false;
+    
+    // Then apply the selected filter
     if (filter === 'all') return true;
-    if (filter === 'unread') return !notification.read;
-    if (filter === 'read') return notification.read;
+    if (filter === 'unread') return !notification.read && !notification.isRead;
+    if (filter === 'read') return notification.read || notification.isRead;
     return true;
   });
 
@@ -54,6 +58,7 @@ const Notifications = () => {
     try {
       await updateDoc(doc(db, 'notifications', notificationId), {
         read: true,
+        isRead: true,
         readAt: serverTimestamp()
       });
       toast.success('Notification marked as read');
@@ -65,10 +70,11 @@ const Notifications = () => {
 
   const markAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
+      const unreadNotifications = notifications.filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted);
       const promises = unreadNotifications.map(notification => 
         updateDoc(doc(db, 'notifications', notification.id), {
           read: true,
+          isRead: true,
           readAt: serverTimestamp()
         })
       );
@@ -84,6 +90,7 @@ const Notifications = () => {
     try {
       await updateDoc(doc(db, 'notifications', notificationId), {
         deleted: true,
+        isDeleted: true,
         deletedAt: serverTimestamp()
       });
       toast.success('Notification deleted');
@@ -146,7 +153,7 @@ const Notifications = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  const unreadCount = notifications.filter(n => !n.read && !n.deleted).length;
+  const unreadCount = notifications.filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted).length;
 
   if (loading) {
     return (
@@ -217,7 +224,7 @@ const Notifications = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Read</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {notifications.filter(n => n.read && !n.deleted).length}
+                  {notifications.filter(n => (n.read || n.isRead) && !n.deleted && !n.isDeleted).length}
                 </p>
               </div>
               <FiCheckCircle className="h-8 w-8 text-green-600" />
@@ -267,7 +274,7 @@ const Notifications = () => {
                   <div
                     key={notification.id}
                     className={`border rounded-lg p-6 transition-all ${
-                      notification.read
+                      (notification.read || notification.isRead)
                         ? 'border-gray-200 bg-gray-50'
                         : 'border-blue-200 bg-blue-50 shadow-md'
                     }`}
@@ -282,7 +289,7 @@ const Notifications = () => {
                             {getTypeIcon(notification.type)}
                             <span className="ml-1">{notification.type?.toUpperCase()}</span>
                           </span>
-                          {!notification.read && (
+                          {!notification.read && !notification.isRead && (
                             <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               New
                             </span>
@@ -298,7 +305,7 @@ const Notifications = () => {
                         </div>
                       </div>
                       <div className="flex space-x-2 ml-4">
-                        {!notification.read && (
+                        {!notification.read && !notification.isRead && (
                           <button
                             onClick={() => markAsRead(notification.id)}
                             className="p-2 text-gray-400 hover:text-blue-600 focus:outline-none"

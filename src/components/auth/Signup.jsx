@@ -16,6 +16,7 @@ import {
   requiresCleanup
 } from '../../utils/registrationUtils';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_PROFILE_IMAGE } from '../../utils/profileUtils';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -264,7 +265,7 @@ const Signup = () => {
         isActivated: false,
         levelStatus: "Star",
         registrationTime: serverTimestamp(),
-        profileImage: "",
+        profileImage: DEFAULT_PROFILE_IMAGE,
         referralCount: 0,
         totalEarnings: 0,
         totalReceived: 0,

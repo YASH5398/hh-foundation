@@ -74,7 +74,6 @@ const DashboardLayout = () => {
             name: 'E-PIN',
             icon: FiKey,
             submenu: [
-              { name: 'Used E-PINs', route: '/dashboard/epins/used' },
               { name: 'Request E-PIN', route: '/dashboard/epins/request' },
               { name: 'Transfer E-PIN', route: '/dashboard/epins/transfer' },
               { name: 'E-PIN History', route: '/dashboard/epins/history' },

@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import notificationService from '../../services/notificationService';
 
 const PaymentPage = () => {
   const { user } = useAuth();
@@ -35,6 +36,16 @@ const PaymentPage = () => {
   const handleSubmitRequest = async (e) => {
     e.preventDefault();
     
+    if (!user?.uid) {
+      toast.error('User not authenticated. Please login again.');
+      return;
+    }
+    
+    if (!selectedPackage) {
+      toast.error('No package selected. Please go back and select a package.');
+      return;
+    }
+    
     if (!utrNumber.trim()) {
       toast.error('Please enter UTR/Transaction ID');
       return;
@@ -51,29 +62,64 @@ const PaymentPage = () => {
       // Convert file to base64
       const reader = new FileReader();
       reader.onload = async () => {
-        const base64Screenshot = reader.result;
-        
-        await addDoc(collection(db, 'epinRequests'), {
-          userId: user.uid,
-          userEmail: user.email,
-          packageDetails: selectedPackage,
-          totalAmount: totalPrice,
-          utrNumber: utrNumber.trim(),
-          screenshot: base64Screenshot,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        
-        toast.success('E-PIN request submitted successfully!');
-        navigate('/epin/request');
+        try {
+          const base64Screenshot = reader.result;
+          
+          const epinRequestDoc = await addDoc(collection(db, 'epinRequests'), {
+             userId: user.uid,
+             userEmail: user.email,
+             packageDetails: selectedPackage,
+             totalAmount: totalPrice,
+             utrNumber: utrNumber.trim(),
+             screenshot: base64Screenshot,
+             status: 'pending',
+             createdAt: serverTimestamp(),
+             updatedAt: serverTimestamp()
+           });
+           
+           // Create notification for E-PIN request
+           await notificationService.createNotification({
+             userId: user.uid,
+             title: 'E-PIN Request Submitted',
+             message: `Your E-PIN request for ${selectedPackage.name} package (₹${totalPrice}) has been submitted successfully. UTR: ${utrNumber.trim()}`,
+             type: 'success',
+             category: 'epin_request',
+             data: {
+               requestId: epinRequestDoc.id,
+               packageName: selectedPackage.name,
+               amount: totalPrice,
+               utrNumber: utrNumber.trim()
+             }
+           });
+           
+           toast.success('E-PIN request submitted successfully!');
+          
+          // Reset form
+          setUtrNumber('');
+          setScreenshot(null);
+          setShowPaymentForm(false);
+          setLoading(false);
+          
+          // Navigate back to request page after a short delay
+          setTimeout(() => {
+            navigate('/dashboard/epins/request');
+          }, 1500);
+        } catch (error) {
+          console.error('Error submitting request:', error);
+          toast.error('Failed to submit request. Please try again.');
+          setLoading(false);
+        }
+      };
+      
+      reader.onerror = () => {
+        toast.error('Failed to process screenshot. Please try again.');
+        setLoading(false);
       };
       
       reader.readAsDataURL(screenshot);
     } catch (error) {
       console.error('Error submitting request:', error);
       toast.error('Failed to submit request. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

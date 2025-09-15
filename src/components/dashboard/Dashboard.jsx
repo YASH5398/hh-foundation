@@ -15,6 +15,7 @@ import { addNotification } from '../utils/addNotification';
 import ChatModal from '../ui/ChatModal';
 import { useSocialTasks } from '../../hooks/useProfile';
 import { Link } from 'react-router-dom';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const LEVELS = [
   'Star',
@@ -42,20 +43,12 @@ const PodiumProfile = ({ user, rank }) => {
       className="flex flex-col items-center"
     >
       <div className="mb-1 text-2xl sm:text-3xl">{crown}</div>
-      {user.profileImage ? (
-        <img
-          src={user.profileImage}
-          alt={user.fullName}
-          className={`rounded-full object-cover border-4 border-white ${size} ${glow} bg-[#232345]`}
-          onError={e => { e.target.onerror = null; e.target.src = 'https://freeimage.host/i/F0D8xMN'; }}
-        />
-      ) : (
-        <img
-          src={'https://freeimage.host/i/F0D8xMN'}
-          alt={user.fullName}
-          className={`rounded-full object-cover border-4 border-white ${size} ${glow}`}
-        />
-      )}
+      <img
+        src={getProfileImageUrl(user)}
+        alt={user.fullName}
+        className={`rounded-full object-cover border-4 border-white ${size} ${glow} bg-[#232345]`}
+        onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
+      />
       <div className="flex flex-col items-center mt-2">
         <span className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg leading-tight text-center">{user.fullName}</span>
         <span className="text-xs sm:text-sm text-gray-500 font-mono text-center">{user.userId}</span>
@@ -688,16 +681,12 @@ const Dashboard = () => {
                     transition={{ duration: 0.4, delay: idx * 0.03 }}
                   >
                     <span className="text-blue-500 font-bold text-sm sm:text-base lg:text-lg w-6 sm:w-8 lg:w-10 text-center mr-2 flex-shrink-0">{idx + 4}</span>
-                    {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt={user.fullName}
-                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40 shadow mr-2 sm:mr-3 lg:mr-4 flex-shrink-0"
-                        onError={e => { e.target.onerror = null; e.target.src = 'https://freeimage.host/i/F0D8xMN'; }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm sm:text-base lg:text-lg mr-2 sm:mr-3 lg:mr-4 flex-shrink-0">{getInitial(user.fullName)}</div>
-                    )}
+                    <img
+              src={getProfileImageUrl(user)}
+              alt={user.fullName}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40 shadow mr-2 sm:mr-3 lg:mr-4 flex-shrink-0"
+              onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
+            />
                     <div className="flex-1 min-w-0">
                       <div className="text-gray-800 font-semibold text-sm sm:text-base lg:text-lg truncate">{user.fullName || 'N/A'}</div>
                       <div className="text-xs sm:text-sm text-gray-500 font-mono truncate">{user.userId}</div>
@@ -856,18 +845,12 @@ const Dashboard = () => {
                   Send Help ₹300 and Activate Your ID
                 </h2>
                 <div className="flex items-center gap-4 mb-4">
-                  {receiver.profileImage ? (
-                    <img
-                      src={receiver.profileImage}
-                      alt="Profile"
-                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 hover:ring-2 hover:ring-blue-300 transition-all duration-200"
-                      onError={e => { e.target.onerror = null; e.target.src = '/images/default-avatar.png'; }}
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 hover:ring-2 hover:ring-blue-300 transition-all duration-200">
-                      {receiver.fullName?.[0] || '?'}
-                    </div>
-                  )}
+                  <img
+                    src={getProfileImageUrl(receiver)}
+                    alt="Profile"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 hover:ring-2 hover:ring-blue-300 transition-all duration-200"
+                    onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'Unknown User'}</div>
                     <div className="text-sm text-gray-600 font-mono">ID: {receiver.userId || 'N/A'}</div>
@@ -893,17 +876,12 @@ const Dashboard = () => {
                   Your Send Help Status
                 </h2>
                 <div className="flex items-center gap-4 mb-4">
-                  {receiver.profileImage ? (
-                    <img
-                      src={receiver.profileImage}
-                      alt="Profile"
-                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-700">
-                      {receiver.fullName?.[0] || '?'}
-                    </div>
-                  )}
+                  <img
+                    src={getProfileImageUrl(receiver)}
+                    alt="Profile"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
+                    onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'Unknown User'}</div>
                     <div className="text-sm text-gray-600 font-mono">ID: {receiver.userId || 'N/A'}</div>

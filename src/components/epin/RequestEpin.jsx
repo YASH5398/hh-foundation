@@ -67,7 +67,7 @@ const RequestEpin = () => {
       toast.error('Please select a package');
       return;
     }
-    navigate('/epin/payment', { state: { selectedPackage } });
+    navigate('/dashboard/epins/payment', { state: { selectedPackage } });
   };
 
 

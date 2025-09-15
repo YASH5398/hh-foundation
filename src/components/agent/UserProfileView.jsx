@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCreditCard, FiDollarSign, FiCalendar, FiEdit3, FiSave, FiX, FiEye, FiMessageSquare, FiAlertTriangle, FiCheck, FiClock, FiArrowLeft } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const UserProfileView = ({ userId, onClose }) => {
   const { user: currentAgent } = useAuth();
@@ -201,16 +202,15 @@ const UserProfileView = ({ userId, onClose }) => {
                 <FiArrowLeft className="h-5 w-5" />
               </button>
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  {userProfile.profileImage ? (
-                    <img 
-                      src={userProfile.profileImage} 
-                      alt={userProfile.fullName}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <FiUser className="h-6 w-6 text-blue-600" />
-                  )}
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={getProfileImageUrl(userProfile)} 
+                    alt={userProfile.fullName}
+                    className="w-12 h-12 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.src = getProfileImageUrl(null); // Fallback to default
+                    }}
+                  />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">{userProfile.fullName}</h2>

@@ -169,14 +169,16 @@ const PaymentVerification = () => {
         const targetUserId = payment?.userId || payment?.senderId || payment?.receiverId;
         
         if (targetUserId) {
-          const { sendNotification } = await import('../../context/NotificationContext');
-          await sendNotification({
-            title: `Payment ${action === 'confirm' ? 'Verified' : 'Rejected'}`,
-            message: `Your payment of ₹${payment?.amount || 'N/A'} has been ${action === 'confirm' ? 'verified' : 'rejected'} by agent`,
+          const { NotificationService } = await import('../../services/notificationService');
+          await NotificationService.createNotification({
+            userId: targetUserId,
+            title: `💰 Payment ${action === 'confirm' ? 'Verified' : 'Rejected'}`,
+            message: `Your payment of ₹${payment?.amount || 'N/A'} has been ${action === 'confirm' ? 'verified and approved' : 'rejected'} by our verification team.`,
             type: action === 'confirm' ? 'success' : 'error',
-            priority: 'high',
-            actionLink: paymentType === 'send' ? '/user/send-help' : '/user/receive-help',
-            targetUserId: targetUserId
+            targetAudience: 'user',
+            createdBy: user.uid,
+            actionLink: paymentType === 'send' ? '/dashboard/send-help' : '/dashboard/receive-help',
+            priority: 'high'
           });
         }
       } catch (notificationError) {

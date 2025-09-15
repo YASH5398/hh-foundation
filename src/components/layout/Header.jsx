@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import NotificationDropdown from "../notifications/NotificationDropdown";
 import { Menu, X } from "lucide-react"; // added X for close
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const Header = () => {
   const { currentUser } = useAuth();
@@ -43,17 +44,14 @@ const Header = () => {
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Profile menu"
           >
-            {user.profileImage ? (
-              <img
-                src={user.profileImage}
-                alt="Profile"
-                className="w-10 h-10 rounded-full border-2 border-white/30 object-cover bg-white cursor-pointer shadow-xl group-hover:border-amber-400/60 group-hover:shadow-2xl transition-all duration-300"
-              />
-            ) : (
-              <span className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 text-white font-bold text-lg border-2 border-white/30 cursor-pointer select-none shadow-xl group-hover:border-amber-400/60 group-hover:shadow-2xl transition-all duration-300">
-                {getInitial()}
-              </span>
-            )}
+            <img
+              src={getProfileImageUrl(user)}
+              alt="Profile"
+              className="w-10 h-10 rounded-full border-2 border-white/30 object-cover bg-white cursor-pointer shadow-xl group-hover:border-amber-400/60 group-hover:shadow-2xl transition-all duration-300"
+              onError={(e) => {
+                e.target.src = getProfileImageUrl(null); // Fallback to default
+              }}
+            />
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-3 w-52 bg-white/95 backdrop-blur-xl text-gray-800 rounded-2xl shadow-2xl border border-white/30 z-50 py-3 animate-fade-in">

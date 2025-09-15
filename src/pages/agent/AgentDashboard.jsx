@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import AgentProfile from '../../components/agent/AgentProfile';
 import AgentDashboardOverview from '../../components/agent/AgentDashboardOverview';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const AgentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -239,17 +240,14 @@ const AgentDashboard = () => {
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-              {profile?.profileImage ? (
-                <img
-                  src={profile.profileImage}
-                  alt={profile.fullName || 'Agent'}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              ) : (
-                <FiUser className="w-4 h-4 text-gray-600" />
-              )}
-            </div>
+            <img
+              src={getProfileImageUrl(profile)}
+              alt={profile?.fullName || 'Agent'}
+              className="w-8 h-8 rounded-full object-cover"
+              onError={(e) => {
+                e.target.src = getProfileImageUrl(null); // Fallback to default
+              }}
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
                 {profile?.fullName || user?.email || currentUser?.email || 'Agent'}
@@ -308,17 +306,14 @@ const AgentDashboard = () => {
                   }}
                   className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100"
                 >
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    {profile?.profileImage ? (
-                      <img
-                        src={profile.profileImage}
-                        alt={profile.fullName || 'Agent'}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <FiUser className="w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
+                  <img
+                    src={getProfileImageUrl(profile)}
+                    alt={profile?.fullName || 'Agent'}
+                    className="w-8 h-8 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.src = getProfileImageUrl(null); // Fallback to default
+                    }}
+                  />
                   <FiChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
 

@@ -8,6 +8,7 @@ import {
   ClipboardDocumentIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
+import { getProfileImageUrl, hasCustomProfileImage } from '../../utils/profileUtils';
 
 /**
  * ProfileSettingsUI - A modern, professional Profile Settings component
@@ -93,17 +94,14 @@ const ProfileSettingsUI = ({
                   <div className="relative inline-block">
                     {/* Avatar Display */}
                     <div className="relative group">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt="Profile Avatar"
-                          className="w-32 h-32 lg:w-48 lg:h-48 rounded-full object-cover border-4 border-white shadow-lg"
-                        />
-                      ) : (
-                        <div className="w-32 h-32 lg:w-48 lg:h-48 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center border-4 border-white shadow-lg">
-                          <UserCircleIcon className="w-16 h-16 lg:w-24 lg:h-24 text-white" />
-                        </div>
-                      )}
+                      <img
+                        src={getProfileImageUrl(user)}
+                        alt="Profile Avatar"
+                        className="w-32 h-32 lg:w-48 lg:h-48 rounded-full object-cover border-4 border-white shadow-lg"
+                        onError={(e) => {
+                          e.target.src = getProfileImageUrl(null); // Fallback to default
+                        }}
+                      />
                       
                       {/* Hover Overlay */}
                       <motion.div
@@ -129,6 +127,16 @@ const ProfileSettingsUI = ({
                       aria-label="Upload profile picture"
                     />
                   </div>
+                  
+                  {/* Change Profile Picture Button */}
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('avatar-upload').click()}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200 shadow-sm"
+                  >
+                    <CameraIcon className="w-4 h-4" />
+                    Change Profile Picture
+                  </button>
                   
                   <h3 className="mt-4 text-lg font-semibold text-gray-900">
                     {user.fullName || 'Your Name'}
