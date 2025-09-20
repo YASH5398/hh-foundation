@@ -15,7 +15,7 @@ import { addNotification } from '../utils/addNotification';
 import ChatModal from '../ui/ChatModal';
 import { useSocialTasks } from '../../hooks/useProfile';
 import { Link } from 'react-router-dom';
-import { getProfileImageUrl } from '../../utils/profileUtils';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 
 const LEVELS = [
   'Star',
@@ -46,7 +46,7 @@ const PodiumProfile = ({ user, rank }) => {
       <img
         src={getProfileImageUrl(user)}
         alt={user.fullName}
-        className={`rounded-full object-cover border-4 border-white ${size} ${glow} bg-[#232345]`}
+        className={`${PROFILE_IMAGE_CLASSES.base} border-4 border-white ${size} ${glow} bg-[#232345]`}
         onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
       />
       <div className="flex flex-col items-center mt-2">
@@ -684,7 +684,7 @@ const Dashboard = () => {
                     <img
               src={getProfileImageUrl(user)}
               alt={user.fullName}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40 shadow mr-2 sm:mr-3 lg:mr-4 flex-shrink-0"
+              className={`${PROFILE_IMAGE_CLASSES.small} border-2 border-white/40 shadow mr-2 sm:mr-3 lg:mr-4 flex-shrink-0`}
               onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
             />
                     <div className="flex-1 min-w-0">

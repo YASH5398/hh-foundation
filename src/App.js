@@ -78,6 +78,7 @@ import UserSupportTickets from './components/support/UserSupportTickets';
 import SupportHub from './pages/SupportHub';
 import SuspiciousActivityDetection from './components/agent/SuspiciousActivityDetection';
 import FCMTestComponent from './components/notifications/FCMTestComponent';
+import ChatApp from './components/chat/ChatApp';
 
 // Legal and Company Pages
 import TermsConditions from './pages/TermsConditions';
@@ -210,6 +211,7 @@ export const router = createBrowserRouter([
       { path: 'earn-epin', element: <EarnFreeEPIN /> },
       { path: 'testimonials', element: <EarnFreeEPIN /> },
       { path: 'fcm-test', element: <FCMTestComponent /> },
+      { path: 'chat', element: <ChatApp /> },
       { path: 'change-password', element: <ChangePassword /> },
       { path: 'forgot-password', element: <ForgotPassword /> },
     ],

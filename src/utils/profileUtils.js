@@ -1,9 +1,16 @@
-/**
- * Utility functions for handling user profile images
- */
+// Profile utility functions for handling user profile images and data
+// Updated to use the new MLM logo fallback URL
 
-// Default profile image URL
-export const DEFAULT_PROFILE_IMAGE = '/default-mlm-logo.svg';
+// Default profile image - MLM logo from external URL
+export const DEFAULT_PROFILE_IMAGE = 'https://iili.io/KYn4qFV.md.png';
+
+// Default Tailwind classes for consistent profile image styling
+export const PROFILE_IMAGE_CLASSES = {
+  small: 'w-8 h-8 rounded-full object-cover',
+  medium: 'w-12 h-12 rounded-full object-cover',
+  large: 'w-16 h-16 rounded-full object-cover',
+  xlarge: 'w-24 h-24 rounded-full object-cover'
+};
 
 /**
  * Get profile image URL with fallback to default
@@ -48,4 +55,14 @@ export const getUserInitials = (user) => {
   }
   
   return name[0].toUpperCase();
+};
+
+/**
+ * Handle image load errors by setting fallback image
+ * @param {Event} e - Image error event
+ */
+export const handleImageError = (e) => {
+  console.log('Image failed to load, using default MLM logo');
+  e.target.src = DEFAULT_PROFILE_IMAGE;
+  e.target.onerror = null; // Prevent infinite loop
 };

@@ -24,6 +24,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { DEFAULT_PROFILE_IMAGE, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 
 const paymentOptions = [
   { label: "Select Payment Method", value: "" },
@@ -276,9 +277,9 @@ export default function ProfileSettings() {
       if (!file) return;
       
       // Validate file type and size (max 5MB)
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
       if (!allowedTypes.includes(file.type)) {
-        toast.error('Please select a JPG, PNG, or WEBP image');
+        toast.error('Please select a JPEG, PNG, WebP, or GIF image');
         return;
       }
       const maxSize = 5 * 1024 * 1024;
@@ -316,20 +317,46 @@ export default function ProfileSettings() {
       
       const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
       
-      // Update Firestore with new URL
-      await setDoc(doc(db, 'users', user.uid), { profileImage: downloadURL }, { merge: true });
+      // Update Firestore with new URL and timestamp
+      await setDoc(doc(db, 'users', user.uid), { 
+        profileImage: downloadURL,
+        profileImageUpdatedAt: new Date().toISOString()
+      }, { merge: true });
       
       // Update UI immediately
       setProfile(prev => ({ ...prev, profileImage: downloadURL }));
       toast.success('Profile image updated successfully!');
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      toast.error('Failed to upload avatar');
+      toast.error('Failed to upload avatar. Using default image.');
+      
+      // Fallback to default image on error
+      setProfile(prev => ({ ...prev, profileImage: DEFAULT_PROFILE_IMAGE }));
+      setPreviewImage(DEFAULT_PROFILE_IMAGE);
+      
+      // Update Firestore with default image
+      try {
+        if (user?.uid) {
+          await setDoc(doc(db, 'users', user.uid), { 
+            profileImage: DEFAULT_PROFILE_IMAGE,
+            profileImageUpdatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (firestoreError) {
+        console.error('Error updating Firestore with default image:', firestoreError);
+      }
     } finally {
       setUploading(false);
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // Function to handle image load errors
+  const handleProfileImageError = (e) => {
+    console.log('Profile image failed to load, using default MLM logo');
+    e.target.src = DEFAULT_PROFILE_IMAGE;
+    e.target.onerror = null; // Prevent infinite loop
   };
 
   return (
@@ -382,9 +409,10 @@ export default function ProfileSettings() {
                 <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
                 <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full overflow-hidden border-4 border-white/50 shadow-2xl backdrop-blur-sm">
                   <img
-                    src={previewImage || profile.profileImage || '/images/default-avatar.png'}
+                    src={previewImage || profile.profileImage || DEFAULT_PROFILE_IMAGE}
                     alt="Profile"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={handleProfileImageError}
                   />
                   {/* Hidden file input for avatar upload */}
                   <input

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import NotificationDropdown from "../notifications/NotificationDropdown";
 import { Menu, X } from "lucide-react"; // added X for close
-import { getProfileImageUrl } from '../../utils/profileUtils';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 
 const Header = () => {
   const { currentUser } = useAuth();
@@ -47,7 +47,7 @@ const Header = () => {
             <img
               src={getProfileImageUrl(user)}
               alt="Profile"
-              className="w-10 h-10 rounded-full border-2 border-white/30 object-cover bg-white cursor-pointer shadow-xl group-hover:border-amber-400/60 group-hover:shadow-2xl transition-all duration-300"
+              className={`${PROFILE_IMAGE_CLASSES.small} border-2 border-white/30 bg-white cursor-pointer shadow-xl group-hover:border-amber-400/60 group-hover:shadow-2xl transition-all duration-300`}
               onError={(e) => {
                 e.target.src = getProfileImageUrl(null); // Fallback to default
               }}

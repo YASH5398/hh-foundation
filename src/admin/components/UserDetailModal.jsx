@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { toast } from 'react-hot-toast';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 import { getAllEpinsForUser } from '../../services/epin/epinService';
 import { getUserByUserId } from '../../services/userService';
 import { listenToSendHelps, listenToReceiveHelps } from '../../services/helpService';
@@ -41,9 +45,12 @@ const UserDetailModal = ({ user, onClose }) => {
         <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl" onClick={onClose}>&times;</button>
         <div className="flex flex-col items-center mb-4">
           <img
-            src={user.profileImage || defaultAvatar}
+            src={getProfileImageUrl(user)}
             alt="Profile"
-            className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow mb-2"
+            className={`${PROFILE_IMAGE_CLASSES.xlarge} border-2 border-gray-200 shadow mb-2`}
+            onError={(e) => {
+              e.target.src = getProfileImageUrl(null);
+            }}
           />
           <h2 className="text-xl font-bold mb-1">{user.fullName}</h2>
           <div className="text-gray-500 text-sm">{user.email}</div>
@@ -122,4 +129,4 @@ const UserDetailModal = ({ user, onClose }) => {
   );
 };
 
-export default UserDetailModal; 
+export default UserDetailModal;
