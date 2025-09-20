@@ -9,6 +9,7 @@ import {
   FiRefreshCw
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 
 /**
  * Agent Profile Component
@@ -119,17 +120,14 @@ const AgentProfile = ({
       {/* Profile Information */}
       <div className="flex items-center space-x-4 mb-6">
         <div className="relative">
-          {profilePicture ? (
-            <img
-              src={profilePicture}
-              alt={name || 'Agent'}
-              className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-            />
-          ) : (
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <FiUser className="w-8 h-8 text-white" />
-            </div>
-          )}
+          <img
+            src={getProfileImageUrl(agentProfile)}
+            alt={name || 'Agent'}
+            className={`${PROFILE_IMAGE_CLASSES.large} border-2 border-gray-200`}
+            onError={(e) => {
+              e.target.src = getProfileImageUrl(null);
+            }}
+          />
           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
         </div>
         

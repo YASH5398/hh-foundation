@@ -9,7 +9,6 @@ const PaymentConfirmationSection = ({
   onCancel,
   isSubmitting = false 
 }) => {
-  const [utrNumber, setUtrNumber] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);

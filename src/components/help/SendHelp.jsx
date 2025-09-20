@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard } from 'react-icons/fi';
+import ChatBadge from '../chat/ChatBadge';
 import { useAuth } from '../../context/AuthContext';
 import { db, storage } from '../../config/firebase';
 import { 
@@ -19,9 +20,13 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { toast } from 'react-hot-toast';
 import LoginRequired from '../auth/LoginRequired';
+import TransactionChat from '../chat/TransactionChat';
+import ChatWindow from '../chat/ChatWindow';
 
 // Step 1: Receiver Card Component
 const ReceiverCard = ({ receiver, onNext }) => {
+  const { user } = useAuth();
+  const [showChat, setShowChat] = useState(false);
 
   return (
     <motion.div
@@ -75,6 +80,17 @@ const ReceiverCard = ({ receiver, onNext }) => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Chat Button */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowChat(true)}
+          className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          <FiMessageCircle className="w-5 h-5" />
+          <span className="font-semibold">Start Chat</span>
+        </button>
       </div>
 
       {/* Payment Details */}
@@ -136,6 +152,19 @@ const ReceiverCard = ({ receiver, onNext }) => {
       >
         Activate Account – Send ₹300
       </button>
+
+      {/* Chat Window */}
+      <ChatWindow
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        receiverId={receiver.userId}
+        senderId={user?.uid}
+        receiverName={receiver.name}
+        senderName={user?.name || user?.displayName}
+        receiverAvatar={receiver.profileImage}
+        receiverPhone={receiver.phone}
+        receiverWhatsapp={receiver.whatsapp}
+      />
     </motion.div>
   );
 };
@@ -438,7 +467,7 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
 };
 
 // Step 3: Waiting State Component
-const WaitingState = ({ receiver, status }) => {
+const WaitingState = ({ receiver, status, showChat, setShowChat, transactionId }) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'pending':
@@ -507,20 +536,46 @@ const WaitingState = ({ receiver, status }) => {
       )}
       
       {receiver && (
-        <div className="bg-white bg-opacity-70 rounded-xl p-4">
-          <p className="text-sm text-gray-600 mb-1">Receiver</p>
-          <div className="flex items-center justify-center gap-3">
-            <img
-              src={receiver.profileImage || '/images/default-avatar.png'}
-              alt={receiver.name}
-              className="w-8 h-8 rounded-full"
-              onError={(e) => {
-                e.target.src = '/images/default-avatar.png';
-              }}
-            />
-            <span className="font-semibold text-gray-800">{receiver.name}</span>
+        <div className="space-y-4">
+          <div className="bg-white bg-opacity-70 rounded-xl p-4">
+            <p className="text-sm text-gray-600 mb-1">Receiver</p>
+            <div className="flex items-center justify-center gap-3">
+              <img
+                src={receiver.profileImage || '/images/default-avatar.png'}
+                alt={receiver.name}
+                className="w-8 h-8 rounded-full"
+                onError={(e) => {
+                  e.target.src = '/images/default-avatar.png';
+                }}
+              />
+              <span className="font-semibold text-gray-800">{receiver.name}</span>
+            </div>
           </div>
+          
+          {/* Chat Button */}
+          <ChatBadge
+            transactionType="sendHelp"
+            transactionId={transactionId}
+            onClick={() => setShowChat(true)}
+            showText={true}
+            size="default"
+            className="w-full"
+          />
         </div>
+      )}
+      
+      {/* Chat Modal */}
+      {transactionId && (
+        <TransactionChat
+          transactionType="sendHelp"
+          transactionId={transactionId}
+          otherUser={{
+            name: receiver?.name,
+            profileImage: receiver?.profileImage
+          }}
+          isOpen={showChat}
+          onClose={() => setShowChat(false)}
+        />
       )}
     </motion.div>
   );
@@ -535,6 +590,8 @@ const SendHelp = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpStatus, setHelpStatus] = useState(null);
   const [activeHelp, setActiveHelp] = useState(null);
+  const [showChat, setShowChat] = useState(false);
+  const [transactionId, setTransactionId] = useState(null);
 
   // Fetch eligible receiver for new users
   const fetchEligibleReceiver = async () => {
@@ -600,6 +657,7 @@ const SendHelp = () => {
         const helpData = helpDoc.data();
         setActiveHelp({ id: helpDoc.id, ...helpData });
         setHelpStatus(helpData.status);
+        setTransactionId(helpDoc.id);
         setCurrentStep(3); // Go to waiting state
         
         // Set up real-time listener for status updates
@@ -669,6 +727,7 @@ const SendHelp = () => {
       
       setHelpStatus('pending');
       setActiveHelp({ id: sendHelpId, status: 'pending' });
+      setTransactionId(sendHelpId);
       setCurrentStep(3);
       
       // Set up real-time listener
@@ -766,6 +825,9 @@ const SendHelp = () => {
               key="waiting-state"
               receiver={receiver}
               status={helpStatus}
+              showChat={showChat}
+              setShowChat={setShowChat}
+              transactionId={transactionId}
             />
           )}
           

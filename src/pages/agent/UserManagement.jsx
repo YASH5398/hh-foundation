@@ -15,7 +15,7 @@ import { db } from '../../config/firebase';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
 import UserProfileView from '../../components/agent/UserProfileView';
-import { getProfileImageUrl } from '../../utils/profileUtils';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 
 const UserManagement = () => {
   const { currentUser } = useAgentAuth();
@@ -349,7 +349,7 @@ const UserManagement = () => {
                   <img
                     src={getProfileImageUrl(searchedUser)}
                     alt={searchedUser.fullName}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className={`${PROFILE_IMAGE_CLASSES.large}`}
                     onError={(e) => {
                       e.target.src = getProfileImageUrl(null); // Fallback to default
                     }}

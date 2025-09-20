@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db } from "../../config/firebase"; // Corrected path
 import { useAuth } from "../../context/AuthContext"; // Corrected path
-import ChatModal from "../ui/ChatModal";
+import TransactionChat from "../chat/TransactionChat";
 
 const SendHelpStatus = () => {
   const { user } = useAuth(); // 'user' is the key in your context
   const [sendHelpData, setSendHelpData] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatInfo, setChatInfo] = useState(null);
+  const [transactionId, setTransactionId] = useState(null);
 
   useEffect(() => {
     const fetchSendHelp = async () => {
@@ -22,7 +22,10 @@ const SendHelpStatus = () => {
 
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-          setSendHelpData(querySnapshot.docs[0].data());
+          const docData = querySnapshot.docs[0].data();
+          const docId = querySnapshot.docs[0].id;
+          setSendHelpData(docData);
+          setTransactionId(docId);
         }
       } catch (error) {
         console.error("Error fetching Send Help data:", error);
@@ -32,9 +35,7 @@ const SendHelpStatus = () => {
     if (user?.uid) fetchSendHelp();
   }, [user]);
 
-  const openChatDrawer = ({ senderUid, receiverUid, chatId }) => {
-    console.log('openChatDrawer called with:', { senderUid, receiverUid, chatId });
-    setChatInfo({ chatId, otherUser: { uid: receiverUid } });
+  const openChat = () => {
     setChatOpen(true);
   };
 
@@ -61,21 +62,23 @@ const SendHelpStatus = () => {
           )}
         </div>
         {/* Universal Chat Button Below Status */}
-        {sendHelpData.senderUid && sendHelpData.receiverUid && (
+        {transactionId && (
           <button
-            onClick={() => openChatDrawer({
-              senderUid: sendHelpData.senderUid,
-              receiverUid: sendHelpData.receiverUid,
-              chatId: `${sendHelpData.senderId}_${sendHelpData.receiverId}`
-            })}
+            onClick={openChat}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm mt-2 w-full"
             type="button"
           >
-            💬 Chat
+            💬 Chat with Receiver
           </button>
         )}
       </div>
-      <ChatModal
+      <TransactionChat
+        transactionType="sendHelp"
+        transactionId={transactionId}
+        otherUser={{
+          name: sendHelpData?.receiverName,
+          profileImage: sendHelpData?.receiverProfileImage
+        }}
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         chatId={chatInfo?.chatId}
@@ -86,4 +89,4 @@ const SendHelpStatus = () => {
   );
 };
 
-export default SendHelpStatus; 
+export default SendHelpStatus;

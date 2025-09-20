@@ -7,6 +7,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { AgentAuthProvider } from './context/AgentAuthContext';
 import { router } from './App'; // Import the router from App.js
 import NotificationPermissionPopup from './components/notifications/NotificationPermissionPopup';
+import FCMHandler from './components/FCMHandler';
 import './index.css';
 
 // Register Firebase Messaging Service Worker
@@ -27,9 +28,11 @@ root.render(
     <AuthProvider>
       <AgentAuthProvider>
         <NotificationProvider>
-          <Toaster position="top-center" reverseOrder={false} />
-          <NotificationPermissionPopup />
-          <RouterProvider router={router} />
+          <FCMHandler>
+            <Toaster position="top-center" reverseOrder={false} />
+            <NotificationPermissionPopup />
+            <RouterProvider router={router} />
+          </FCMHandler>
         </NotificationProvider>
       </AgentAuthProvider>
     </AuthProvider>

@@ -33,6 +33,89 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
 });
 
+// Send chat notification endpoint
+app.post('/api/notifications/send', async (req, res) => {
+  try {
+    const { token, notification, data = {}, webpush } = req.body;
+
+    if (!token || !notification || !notification.title || !notification.body) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: token, notification.title, notification.body'
+      });
+    }
+
+    // Prepare notification message for chat
+    const message = {
+      token: token,
+      notification: {
+        title: notification.title,
+        body: notification.body,
+        icon: '/logo192.png'
+      },
+      data: {
+        timestamp: new Date().toISOString(),
+        ...data
+      },
+      android: {
+        notification: {
+          sound: 'default',
+          priority: 'high',
+          channelId: 'hh_foundation_chat'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1
+          }
+        }
+      },
+      webpush: {
+        notification: {
+          icon: '/logo192.png',
+          badge: '/logo192.png',
+          requireInteraction: true,
+          tag: data.chatId || 'chat',
+          actions: [
+            {
+              action: 'open_chat',
+              title: 'Open Chat'
+            },
+            {
+              action: 'mark_read',
+              title: 'Mark as Read'
+            }
+          ]
+        },
+        fcmOptions: webpush?.fcmOptions || {
+          link: '/dashboard/chat'
+        }
+      }
+    };
+
+    // Send the notification
+    const response = await messaging.send(message);
+    
+    console.log('Successfully sent chat notification:', response);
+    
+    res.json({
+      success: true,
+      messageId: response,
+      message: 'Chat notification sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Error sending chat notification:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send chat notification'
+    });
+  }
+});
+
 // Send notification endpoint
 app.post('/api/send-notification', async (req, res) => {
   try {
@@ -328,6 +411,303 @@ app.delete('/api/user/:userId/token', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete user token'
+    });
+  }
+});
+
+// Chat endpoints
+
+// Send chat message endpoint
+app.post('/api/chat/send-message', async (req, res) => {
+  try {
+    const { senderId, receiverId, text, senderName } = req.body;
+
+    if (!senderId || !receiverId || !text || !senderName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: senderId, receiverId, text, senderName'
+      });
+    }
+
+    // Create chat ID (consistent ordering)
+    const chatId = [senderId, receiverId].sort().join('_');
+    
+    // Create message object
+    const message = {
+      senderId,
+      receiverId,
+      text,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      readStatus: false,
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+
+    // Get chat document reference
+    const chatRef = db.collection('chats').doc(chatId);
+    const chatDoc = await chatRef.get();
+
+    if (!chatDoc.exists) {
+      // Create new chat document
+      await chatRef.set({
+        participants: [senderId, receiverId],
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastMessage: text,
+        lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+        lastSenderId: senderId,
+        messages: [message]
+      });
+    } else {
+      // Update existing chat
+      await chatRef.update({
+        messages: admin.firestore.FieldValue.arrayUnion(message),
+        lastMessage: text,
+        lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+        lastSenderId: senderId
+      });
+    }
+
+    // Send push notification to receiver
+    try {
+      const receiverTokenDoc = await db.collection('fcmTokens').doc(receiverId).get();
+      
+      if (receiverTokenDoc.exists) {
+        const receiverToken = receiverTokenDoc.data().token;
+        
+        if (receiverToken) {
+          // Truncate message for notification
+          const notificationText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+          
+          const notificationMessage = {
+            token: receiverToken,
+            notification: {
+              title: `New message from ${senderName}`,
+              body: notificationText,
+              icon: '/logo192.png'
+            },
+            data: {
+              type: 'chat_message',
+              chatId: chatId,
+              senderId: senderId,
+              senderName: senderName,
+              messageId: message.id,
+              timestamp: new Date().toISOString()
+            },
+            android: {
+              notification: {
+                sound: 'default',
+                priority: 'high',
+                channelId: 'hh_foundation_chat'
+              }
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: 1
+                }
+              }
+            },
+            webpush: {
+              notification: {
+                icon: '/logo192.png',
+                badge: '/logo192.png',
+                requireInteraction: true,
+                tag: chatId,
+                actions: [
+                  {
+                    action: 'open_chat',
+                    title: 'Reply'
+                  },
+                  {
+                    action: 'mark_read',
+                    title: 'Mark as Read'
+                  }
+                ]
+              },
+              fcmOptions: {
+                link: `/dashboard/chat?chatId=${chatId}`
+              }
+            }
+          };
+
+          await messaging.send(notificationMessage);
+          console.log('Chat notification sent to receiver:', receiverId);
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending chat notification:', notificationError);
+      // Don't fail the message send if notification fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Message sent successfully',
+      chatId: chatId,
+      messageId: message.id
+    });
+
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send message'
+    });
+  }
+});
+
+// Get chat messages endpoint
+app.get('/api/chat/:chatId/messages', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { limit = 50, lastMessageId } = req.query;
+
+    const chatDoc = await db.collection('chats').doc(chatId).get();
+    
+    if (!chatDoc.exists) {
+      return res.json({
+        success: true,
+        messages: [],
+        hasMore: false
+      });
+    }
+
+    let messages = chatDoc.data().messages || [];
+    
+    // Sort messages by timestamp (newest first for pagination)
+    messages.sort((a, b) => {
+      const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp) || new Date(0);
+      const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp) || new Date(0);
+      return bTime - aTime;
+    });
+
+    // Handle pagination
+    if (lastMessageId) {
+      const lastIndex = messages.findIndex(msg => msg.id === lastMessageId);
+      if (lastIndex !== -1) {
+        messages = messages.slice(lastIndex + 1);
+      }
+    }
+
+    // Limit results
+    const limitNum = parseInt(limit);
+    const hasMore = messages.length > limitNum;
+    const paginatedMessages = messages.slice(0, limitNum);
+
+    // Reverse for chronological order (oldest first)
+    paginatedMessages.reverse();
+
+    res.json({
+      success: true,
+      messages: paginatedMessages,
+      hasMore: hasMore
+    });
+
+  } catch (error) {
+    console.error('Error getting chat messages:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get messages'
+    });
+  }
+});
+
+// Mark messages as read endpoint
+app.post('/api/chat/:chatId/mark-read', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: userId'
+      });
+    }
+
+    const chatRef = db.collection('chats').doc(chatId);
+    const chatDoc = await chatRef.get();
+
+    if (!chatDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Chat not found'
+      });
+    }
+
+    const chatData = chatDoc.data();
+    const messages = chatData.messages || [];
+
+    // Mark all messages from other users as read
+    const updatedMessages = messages.map(message => {
+      if (message.senderId !== userId && !message.readStatus) {
+        return { ...message, readStatus: true };
+      }
+      return message;
+    });
+
+    await chatRef.update({
+      messages: updatedMessages
+    });
+
+    res.json({
+      success: true,
+      message: 'Messages marked as read'
+    });
+
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to mark messages as read'
+    });
+  }
+});
+
+// Get user's chat list endpoint
+app.get('/api/user/:userId/chats', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const chatsSnapshot = await db.collection('chats')
+      .where('participants', 'array-contains', userId)
+      .orderBy('lastMessageTime', 'desc')
+      .get();
+
+    const chats = [];
+    
+    for (const doc of chatsSnapshot.docs) {
+      const chatData = doc.data();
+      const messages = chatData.messages || [];
+      
+      // Count unread messages
+      const unreadCount = messages.filter(msg => 
+        msg.senderId !== userId && !msg.readStatus
+      ).length;
+
+      // Get other participant info
+      const otherParticipantId = chatData.participants.find(id => id !== userId);
+      
+      chats.push({
+        chatId: doc.id,
+        otherParticipantId,
+        lastMessage: chatData.lastMessage || '',
+        lastMessageTime: chatData.lastMessageTime,
+        lastSenderId: chatData.lastSenderId,
+        unreadCount,
+        participants: chatData.participants
+      });
+    }
+
+    res.json({
+      success: true,
+      chats: chats
+    });
+
+  } catch (error) {
+    console.error('Error getting user chats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get chats'
     });
   }
 });

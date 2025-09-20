@@ -4,8 +4,11 @@ import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, 
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
 import { Phone, MessageCircle, DollarSign, Send, Eye, X, Clock, CheckCircle, ExternalLink, User, AlertCircle } from 'lucide-react';
+import ChatBadge from '../chat/ChatBadge';
 import { toast } from 'react-hot-toast';
 import defaultImage from '../../assets/default-avatar.png';
+import TransactionChat from '../chat/TransactionChat';
+import { getProfileImageUrl } from '../../utils/profileUtils';
 
 export default function ReceiveHelp() {
   const { user } = useAuth();
@@ -20,6 +23,8 @@ export default function ReceiveHelp() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedCancelHelp, setSelectedCancelHelp] = useState(null);
   const [requestCooldowns, setRequestCooldowns] = useState({});
+  const [showChat, setShowChat] = useState(false);
+  const [selectedChatHelp, setSelectedChatHelp] = useState(null);
 
   // Helper function to normalize status for consistent comparison
   const normalizeStatus = (status) => {
@@ -359,10 +364,7 @@ export default function ReceiveHelp() {
 
   // Helper function to get profile image or default avatar
   const getProfileImage = (help) => {
-    if (help.profileImage) {
-      return help.profileImage;
-    }
-    return null; // Will show default avatar with first letter
+    return getProfileImageUrl({ profileImage: help.profileImage });
   };
 
   // Helper function to get first letter for default avatar
@@ -689,6 +691,19 @@ export default function ReceiveHelp() {
                       </motion.button>
                     )}
 
+                    {/* Chat Button - Available for all transactions */}
+                    <ChatBadge
+                      transactionType="receiveHelp"
+                      transactionId={help.id}
+                      onClick={() => {
+                        setSelectedChatHelp(help);
+                        setShowChat(true);
+                      }}
+                      showText={true}
+                      size="default"
+                      className="w-full"
+                    />
+
                     {/* Cancel Payment Button - Available when proof is submitted but payment not confirmed */}
                     {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && 
                      normalizeStatus(help.status) !== 'confirmed' && (
@@ -857,6 +872,23 @@ export default function ReceiveHelp() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Chat Modal */}
+      {showChat && selectedChatHelp && (
+        <TransactionChat
+          transactionType="receiveHelp"
+          transactionId={selectedChatHelp.id}
+          otherUser={{
+            name: selectedChatHelp.senderName || selectedChatHelp.fullName || 'Unknown User',
+            profileImage: selectedChatHelp.senderProfileImage || selectedChatHelp.profileImage
+          }}
+          isOpen={showChat}
+          onClose={() => {
+            setShowChat(false);
+            setSelectedChatHelp(null);
+          }}
+        />
+      )}
     </div>
   );
 }

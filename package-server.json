@@ -1,0 +1,27 @@
+{
+  "name": "firebase-notification-server",
+  "version": "1.0.0",
+  "description": "Firebase Admin SDK server for sending push notifications",
+  "main": "src/server/notificationServer.js",
+  "scripts": {
+    "start": "node src/server/notificationServer.js",
+    "dev": "nodemon src/server/notificationServer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "firebase",
+    "push-notifications",
+    "fcm",
+    "admin-sdk"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

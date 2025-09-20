@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProfileImageUrl } from '../../utils/profileUtils';
+import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 import '../../index.css';
 
 const getInitial = (name) => (name && name.length > 0 ? name[0].toUpperCase() : '?');
@@ -88,7 +88,7 @@ const PodiumCard = ({ user, rank, earnings }) => {
       <img
         src={getProfileImageUrl(user)}
         alt={user.fullName}
-        className="w-full h-full object-cover rounded-full"
+        className={`w-full h-full ${PROFILE_IMAGE_CLASSES.base}`}
         onError={(e) => {
           e.target.src = getProfileImageUrl(null); // Fallback to default
         }}
@@ -323,11 +323,11 @@ const Leaderboard = () => {
                   #{idx + 4}
                 </span>
                 {/* Profile Image */}
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-200 shadow-md">
+                <div className={`${PROFILE_IMAGE_CLASSES.small} border-2 border-blue-200 shadow-md`}>
                   <img
                     src={getProfileImageUrl(user)}
                     alt={user.fullName}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full ${PROFILE_IMAGE_CLASSES.base}`}
                     onError={(e) => {
                       e.target.src = getProfileImageUrl(null); // Fallback to default
                     }}
