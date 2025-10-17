@@ -61,8 +61,8 @@ const SendHelpStatus = () => {
             <p className="text-yellow-600 font-medium">⏳ Status: Pending (Waiting for receiver to confirm)</p>
           )}
         </div>
-        {/* Universal Chat Button Below Status */}
-        {transactionId && (
+        {/* TEMPORARILY DISABLED - Chat Button Below Status */}
+        {/* {transactionId && (
           <button
             onClick={openChat}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm mt-2 w-full"
@@ -70,9 +70,10 @@ const SendHelpStatus = () => {
           >
             💬 Chat with Receiver
           </button>
-        )}
+        )} */}
       </div>
-      <TransactionChat
+      {/* TEMPORARILY DISABLED - Transaction Chat */}
+      {/* <TransactionChat
         transactionType="sendHelp"
         transactionId={transactionId}
         otherUser={{
@@ -84,7 +85,7 @@ const SendHelpStatus = () => {
         chatId={chatInfo?.chatId}
         currentUser={user}
         otherUser={chatInfo?.otherUser}
-      />
+      /> */}
     </>
   );
 };

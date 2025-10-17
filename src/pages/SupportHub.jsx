@@ -1,62 +1,13 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  FiMessageCircle, 
+  FiClock,
+  FiSettings,
   FiHeadphones,
-  FiFileText,
-  FiArrowRight,
-  FiZap,
-  FiStar,
-  FiShield
+  FiStar
 } from 'react-icons/fi';
 
 const SupportHub = () => {
-  const navigate = useNavigate();
-
-  const supportOptions = [
-    {
-      id: 'chatbot',
-      title: 'AI Chatbot',
-      subtitle: 'Instant Support',
-      description: 'Get immediate answers from our advanced AI assistant, available 24/7 with lightning-fast responses',
-      icon: <FiMessageCircle className="w-10 h-10" />,
-      path: '/support/chatbot',
-      gradient: 'from-cyan-400 via-blue-500 to-purple-600',
-      glowColor: 'cyan',
-      features: ['⚡ Instant Responses', '🤖 AI-Powered', '🌙 24/7 Available'],
-      badge: 'Most Popular'
-    },
-    {
-      id: 'agent',
-      title: 'Live Agent',
-      subtitle: 'Human Expert',
-      description: 'Connect with our professional support agents for personalized assistance and complex problem solving',
-      icon: <FiHeadphones className="w-10 h-10" />,
-      path: '/support/agent',
-      gradient: 'from-emerald-400 via-green-500 to-teal-600',
-      glowColor: 'emerald',
-      features: ['👨‍💼 Expert Agents', '💬 Real-time Chat', '🎯 Personalized Help'],
-      badge: 'Premium'
-    },
-    {
-      id: 'tickets',
-      title: 'Support Tickets',
-      subtitle: 'Detailed Tracking',
-      description: 'Submit comprehensive support requests with file attachments and track progress with detailed updates',
-      icon: <FiFileText className="w-10 h-10" />,
-      path: '/support/tickets',
-      gradient: 'from-violet-400 via-purple-500 to-indigo-600',
-      glowColor: 'violet',
-      features: ['📋 Detailed Tracking', '📎 File Attachments', '🏷️ Priority Levels'],
-      badge: 'Professional'
-    }
-  ];
-
-  const handleOptionClick = (option) => {
-    navigate(option.path);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -66,169 +17,89 @@ const SupportHub = () => {
         <div className="absolute -bottom-8 left-40 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{animationDelay: '4s'}}></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Premium Header */}
-        <motion.div 
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex items-center justify-center min-h-screen">
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          className="text-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-12 shadow-2xl"
         >
+          {/* Premium Badge */}
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-2 mb-8">
             <FiStar className="w-5 h-5 text-yellow-400" />
             <span className="text-white/90 font-medium">Premium Support Experience</span>
           </div>
-          
-          <h1 className="text-6xl md:text-7xl font-bold bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent mb-6 leading-tight">
-            How can we
-            <br />
-            <span className="bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">help you?</span>
-          </h1>
-          
-          <p className="text-xl text-white/70 max-w-3xl mx-auto leading-relaxed">
-            Choose your preferred support channel and experience our world-class assistance.
-            <br className="hidden sm:block" />
-            Our team is ready to help you succeed.
-          </p>
-        </motion.div>
 
-        {/* Premium Support Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-20">
-          {supportOptions.map((option, index) => (
+          {/* Icon */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center"
+          >
+            <FiSettings className="w-12 h-12 text-white animate-spin" style={{ animationDuration: '3s' }} />
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent mb-6"
+          >
+            Coming Soon
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-xl text-white/70 mb-8 leading-relaxed max-w-2xl mx-auto"
+          >
+            We're crafting an exceptional support experience for you. Our new premium support hub will be available soon with advanced features and 24/7 assistance.
+          </motion.p>
+
+          {/* Features */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10"
+          >
+            <div className="flex items-center justify-center space-x-3 text-white/80 bg-white/5 rounded-xl p-4">
+              <FiClock className="w-5 h-5 text-cyan-400" />
+              <span>24/7 Premium Support</span>
+            </div>
+            <div className="flex items-center justify-center space-x-3 text-white/80 bg-white/5 rounded-xl p-4">
+              <FiHeadphones className="w-5 h-5 text-purple-400" />
+              <span>Live Expert Assistance</span>
+            </div>
+          </motion.div>
+
+          {/* Progress Bar */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="w-full bg-white/10 rounded-full h-3 mb-4"
+          >
             <motion.div
-              key={option.id}
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ 
-                duration: 0.6, 
-                delay: index * 0.2,
-                type: "spring",
-                stiffness: 100
-              }}
-              whileHover={{ 
-                y: -12, 
-                scale: 1.05,
-                transition: { duration: 0.3 }
-              }}
-              whileTap={{ scale: 0.98 }}
-              className="group cursor-pointer"
-              onClick={() => handleOptionClick(option)}
-            >
-              <div className="relative h-full">
-                {/* Badge */}
-                <div className="absolute -top-3 left-6 z-20">
-                  <div className={`bg-gradient-to-r ${option.gradient} text-white text-xs font-bold px-4 py-1 rounded-full shadow-lg`}>
-                    {option.badge}
-                  </div>
-                </div>
+              initial={{ width: 0 }}
+              animate={{ width: "80%" }}
+              transition={{ delay: 1.2, duration: 1.5 }}
+              className="bg-gradient-to-r from-purple-500 to-cyan-500 h-3 rounded-full"
+            />
+          </motion.div>
 
-                {/* Main Card */}
-                <div className="relative h-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 overflow-hidden group-hover:bg-white/15 transition-all duration-500">
-                  {/* Glow Effect */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-2xl`}></div>
-                  
-                  {/* Animated Border Glow */}
-                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-30 blur-sm transition-all duration-500 -z-10`}></div>
-                  
-                  {/* Content */}
-                  <div className="relative z-10">
-                    {/* Icon Container */}
-                    <div className="mb-6">
-                      <div className={`w-20 h-20 bg-gradient-to-br ${option.gradient} rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300`}>
-                        <div className="text-white group-hover:scale-110 transition-transform duration-300">
-                          {option.icon}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Title & Subtitle */}
-                    <div className="mb-4">
-                      <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-white transition-colors">
-                        {option.title}
-                      </h3>
-                      <p className="text-purple-300 font-medium text-sm">
-                        {option.subtitle}
-                      </p>
-                    </div>
-                    
-                    {/* Description */}
-                    <p className="text-white/70 mb-6 leading-relaxed group-hover:text-white/80 transition-colors">
-                      {option.description}
-                    </p>
-                    
-                    {/* Features */}
-                    <div className="space-y-3 mb-8">
-                      {option.features.map((feature, featureIndex) => (
-                        <motion.div 
-                          key={featureIndex}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.2 + featureIndex * 0.1 }}
-                          className="flex items-center text-white/80 group-hover:text-white transition-colors"
-                        >
-                          <div className={`w-2 h-2 bg-gradient-to-r ${option.gradient} rounded-full mr-3 group-hover:scale-125 transition-transform`}></div>
-                          <span className="text-sm font-medium">{feature}</span>
-                        </motion.div>
-                      ))}
-                    </div>
-                    
-                    {/* Action Button */}
-                    <div className={`bg-gradient-to-r ${option.gradient} rounded-xl p-4 group-hover:shadow-xl transition-all duration-300`}>
-                      <div className="flex items-center justify-between text-white">
-                        <span className="font-bold text-lg">Get Started</span>
-                        <FiArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        
-        {/* Premium Footer Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-center"
-        >
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-4xl mx-auto">
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <FiShield className="w-6 h-6 text-emerald-400" />
-              <h2 className="text-2xl font-bold text-white">
-                Enterprise-Grade Support
-              </h2>
-            </div>
-            
-            <p className="text-white/70 mb-8 text-lg leading-relaxed">
-              Our dedicated support team is available around the clock to ensure your success.
-              <br className="hidden sm:block" />
-              Experience the difference of premium support.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-xl p-6 backdrop-blur-sm">
-                <div className="flex items-center gap-3 mb-3">
-                  <FiZap className="w-6 h-6 text-red-400" />
-                  <h3 className="font-bold text-white text-lg">Priority Support</h3>
-                </div>
-                <p className="text-white/70 text-sm leading-relaxed">
-                  Critical issues get immediate attention with our priority escalation system
-                </p>
-              </div>
-              
-              <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 rounded-xl p-6 backdrop-blur-sm">
-                <div className="flex items-center gap-3 mb-3">
-                  <FiStar className="w-6 h-6 text-blue-400" />
-                  <h3 className="font-bold text-white text-lg">Expert Guidance</h3>
-                </div>
-                <p className="text-white/70 text-sm leading-relaxed">
-                  Get personalized assistance from our certified support specialists
-                </p>
-              </div>
-            </div>
-          </div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4 }}
+            className="text-white/60"
+          >
+            80% Complete - Almost Ready!
+          </motion.p>
         </motion.div>
       </div>
     </div>

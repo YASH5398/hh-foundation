@@ -12,8 +12,18 @@ service firebase.storage {
       allow read, write: if request.auth != null;
     }
     
-    // Allow authenticated users to upload and read epin screenshots
+    // Allow authenticated users to upload payment screenshots (flat structure)
+    match /payment-screenshots/{fileName} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to upload and read epin screenshots (nested structure)
     match /epin-screenshots/{userId}/{fileName} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to upload epin screenshots (flat structure)
+    match /epin-screenshots/{fileName} {
       allow read, write: if request.auth != null;
     }
     
