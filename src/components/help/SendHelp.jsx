@@ -82,8 +82,8 @@ const ReceiverCard = ({ receiver, onNext }) => {
         )}
       </div>
 
-      {/* Chat Button */}
-      <div className="mb-6">
+      {/* TEMPORARILY DISABLED - Chat Button */}
+      {/* <div className="mb-6">
         <button
           onClick={() => setShowChat(true)}
           className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -91,7 +91,7 @@ const ReceiverCard = ({ receiver, onNext }) => {
           <FiMessageCircle className="w-5 h-5" />
           <span className="font-semibold">Start Chat</span>
         </button>
-      </div>
+      </div> */}
 
       {/* Payment Details */}
       <div className="mt-4">

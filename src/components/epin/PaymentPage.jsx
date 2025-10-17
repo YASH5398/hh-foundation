@@ -7,6 +7,7 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import notificationService from '../../services/notificationService';
+import storageService from '../../services/storageService';
 
 const PaymentPage = () => {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ const PaymentPage = () => {
   const [utrNumber, setUtrNumber] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const pricePerEpin = 60;
   
@@ -57,83 +59,74 @@ const PaymentPage = () => {
     }
     
     setLoading(true);
+    setUploadProgress(0);
     
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-        // inside reader.onload
-const base64Screenshot = reader.result;
+      // Upload screenshot to Firebase Storage
+      const screenshotUrl = await storageService.uploadEpinScreenshot(
+        screenshot,
+        (progress) => setUploadProgress(progress)
+      );
 
-// fallback for packageName
-const packageName = selectedPackage?.name || "Unknown Package";
+      // fallback for packageName
+      const packageName = selectedPackage?.name || "Unknown Package";
 
-const epinRequestDoc = await addDoc(collection(db, 'epinRequests'), {
-   userId: user.uid,
-   userEmail: user.email,
-   packageDetails: selectedPackage,
-   totalAmount: totalPrice,
-   utrNumber: utrNumber.trim(),
-   screenshot: base64Screenshot,
-   status: 'pending',
-   createdAt: serverTimestamp(),
-   updatedAt: serverTimestamp()
-});
+      const epinRequestDoc = await addDoc(collection(db, 'epinRequests'), {
+        userId: user.uid,
+        userEmail: user.email,
+        packageDetails: selectedPackage,
+        totalAmount: totalPrice,
+        utrNumber: utrNumber.trim(),
+        screenshotUrl: screenshotUrl, // Store Firebase Storage URL instead of base64
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
 
-// Create notification for E-PIN request
-await notificationService.createNotification({
-  uid: user.uid,
-  userId: user.userId || user.uid,
-  title: 'E-PIN Request Submitted',
-  message: `Your E-PIN request for ${packageName} package (₹${totalPrice}) has been submitted successfully. UTR: ${utrNumber.trim()}`,
-  type: 'success',
-  category: 'epin_request',
-  data: {
-    requestId: epinRequestDoc.id,
-    packageName: packageName,
-    amount: totalPrice,
-    utrNumber: utrNumber.trim()
-  }
-});
-           
-           toast.success('E-PIN request submitted successfully!');
-          
-          // Reset form
-          setUtrNumber('');
-          setScreenshot(null);
-          setShowPaymentForm(false);
-          setLoading(false);
-          
-          // Navigate back to request page after a short delay
-          setTimeout(() => {
-            navigate('/dashboard/epins/request');
-          }, 1500);
-        } catch (error) {
-          console.error('Error submitting request:', error);
-          toast.error('Failed to submit request. Please try again.');
-          setLoading(false);
+      // Create notification for E-PIN request
+      await notificationService.createNotification({
+        uid: user.uid,
+        userId: user.userId || user.uid,
+        title: 'E-PIN Request Submitted',
+        message: `Your E-PIN request for ${packageName} package (₹${totalPrice}) has been submitted successfully. UTR: ${utrNumber.trim()}`,
+        type: 'success',
+        category: 'epin_request',
+        data: {
+          requestId: epinRequestDoc.id,
+          packageName: packageName,
+          amount: totalPrice,
+          utrNumber: utrNumber.trim()
         }
-      };
+      });
+           
+      toast.success('E-PIN request submitted successfully!');
       
-      reader.onerror = () => {
-        toast.error('Failed to process screenshot. Please try again.');
-        setLoading(false);
-      };
+      // Reset form
+      setUtrNumber('');
+      setScreenshot(null);
+      setShowPaymentForm(false);
+      setLoading(false);
+      setUploadProgress(0);
       
-      reader.readAsDataURL(screenshot);
+      // Navigate back to request page after a short delay
+      setTimeout(() => {
+        navigate('/dashboard/epins/request');
+      }, 1500);
     } catch (error) {
       console.error('Error submitting request:', error);
-      toast.error('Failed to submit request. Please try again.');
+      toast.error(`Failed to submit request: ${error.message}`);
       setLoading(false);
+      setUploadProgress(0);
     }
   };
   
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast.error('File size should be less than 5MB');
+      // Validate file using storage service
+      const validation = storageService.validateImageFile(file);
+      if (!validation.isValid) {
+        toast.error(validation.error);
         return;
       }
       setScreenshot(file);
@@ -316,7 +309,12 @@ await notificationService.createNotification({
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                      <span>Submitting...</span>
+                      <span>
+                        {uploadProgress > 0 && uploadProgress < 100 
+                          ? `Uploading... ${uploadProgress}%` 
+                          : 'Submitting...'
+                        }
+                      </span>
                     </>
                   ) : (
                     <>

@@ -15,6 +15,10 @@ const ChatBadge = ({
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // TEMPORARILY DISABLE CHAT FEATURE
+  // Return null to hide all chat buttons
+  return null;
+
   useEffect(() => {
     if (!transactionId || !transactionType || !user?.uid) return;
 

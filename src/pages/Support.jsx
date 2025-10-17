@@ -1,288 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { getAuth } from 'firebase/auth';
-import { motion, AnimatePresence } from 'framer-motion';
-import FloatingChatbot from '../components/common/FloatingChatbot';
-
-const initialState = {
-  userName: '',
-  userEmail: '',
-  userPhone: '',
-  platform: '',
-  category: '',
-  priority: '',
-  title: '',
-  message: '',
-  attachments: [],
-};
-
-const platformOptions = [
-  { value: '', label: 'Select Platform', icon: '📱' },
-  { value: 'Web', label: 'Web', icon: '💻' },
-  { value: 'Android', label: 'Android', icon: '🤖' },
-  { value: 'iOS', label: 'iOS', icon: '🍏' },
-];
-const categoryOptions = [
-  { value: '', label: 'Select Category', icon: '📂' },
-  { value: 'Payment', label: 'Payment', icon: '💳' },
-  { value: 'Login', label: 'Login', icon: '🔑' },
-  { value: 'Referral', label: 'Referral', icon: '👥' },
-  { value: 'E-PIN', label: 'E-PIN', icon: '🔢' },
-  { value: 'Other', label: 'Other', icon: '❓' },
-];
-const priorityOptions = [
-  { value: 'Low', label: 'Low', icon: '🟢' },
-  { value: 'Medium', label: 'Medium', icon: '🟡' },
-  { value: 'High', label: 'High', icon: '🟠' },
-];
-
-const stepTitles = [
-  'Contact Information',
-  'Issue Details',
-  'Ticket Details',
-];
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Clock, Star, Zap, Shield } from 'lucide-react';
 
 const Support = () => {
-  const [form, setForm] = useState(initialState);
-  const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-  const [ticketId, setTicketId] = useState('');
-
-  // Autofill from user context if available
-  useEffect(() => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (user) {
-      setForm(f => ({
-        ...f,
-        userName: f.userName || user.displayName || '',
-        userEmail: f.userEmail || user.email || '',
-      }));
-    }
-  }, []);
-
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleFileChange = e => {
-    setForm({ ...form, attachments: Array.from(e.target.files) });
-  };
-
-  const handleNext = () => setStep(s => Math.min(s + 1, 2));
-  const handleBack = () => setStep(s => Math.max(s - 1, 0));
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-      const userId = user && user.uid ? user.uid : '';
-      // For now, attachments are not uploaded, just file names are stored. You can add upload logic later.
-      const docRef = await addDoc(collection(db, 'supportTickets'), {
-        ticketId: '', // Firestore auto-id, will update after creation
-        userName: form.userName,
-        userEmail: form.userEmail,
-        userPhone: form.userPhone,
-        platform: form.platform,
-        category: form.category,
-        priority: form.priority,
-        title: form.title,
-        message: form.message,
-        attachments: form.attachments.map(f => f.name),
-        status: 'pending',
-        agentId: null,
-        adminReply: '',
-        adminReplyHistory: [],
-        adminStatusNote: '',
-        feedback: '',
-        resolution: '',
-        userId: userId, // Always include userId for Firestore rules
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
-      });
-      setTicketId(docRef.id);
-      setSuccess('Thank you! Your ticket has been submitted.');
-      setForm(initialState);
-      setStep(0);
-
-      // Update user profile only if logged in
-      if (user && user.uid) {
-        await setDoc(doc(db, "users", user.uid), {
-          lastTicketId: docRef.id,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-        // Check user profile
-        const userDoc = await getDoc(doc(db, "users", userId));
-      }
-      // else do nothing (user not logged in)
-
-      // Add notification
-      await addDoc(collection(db, 'notifications'), {
-        ...form,
-        userId: auth.currentUser.uid, // REQUIRED
-      });
-
-      await addDoc(collection(db, 'epinRequests'), {
-        ...form,
-        requestedBy: auth.currentUser.uid, // REQUIRED
-      });
-    } catch (err) {
-      setError('Error submitting ticket.');
-    }
-    setLoading(false);
-  };
-
-  // Step content
-  const stepContent = [
-    // Step 1: Contact Info
-    <motion.div key={0} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
-      <div>
-        <label className="block font-semibold mb-1 text-black">Full Name</label>
-        <input name="userName" value={form.userName} onChange={handleChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" required />
-      </div>
-      <div>
-        <label className="block font-semibold mb-1 text-black">Email</label>
-        <input name="userEmail" value={form.userEmail} onChange={handleChange} type="email" className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" required />
-      </div>
-      <div>
-        <label className="block font-semibold mb-1 text-black">Phone Number</label>
-        <input name="userPhone" value={form.userPhone} onChange={handleChange} type="tel" className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" required />
-      </div>
-    </motion.div>,
-    // Step 2: Issue Details
-    <motion.div key={1} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
-      <div>
-        <label className="block font-semibold mb-1 text-black">Platform</label>
-        <select name="platform" value={form.platform} onChange={handleChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 bg-white shadow-sm text-black" required>
-          {platformOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>)}
-        </select>
-      </div>
-      {form.platform && (
-        <div>
-          <label className="block font-semibold mb-1 text-black">Category</label>
-          <select name="category" value={form.category} onChange={handleChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 bg-white shadow-sm text-black" required>
-            {categoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>)}
-          </select>
-        </div>
-      )}
-      <div>
-        <label className="block font-semibold mb-1 text-black">Priority</label>
-        <div className="flex gap-4">
-          {priorityOptions.map(opt => (
-            <label key={opt.value} className={`flex items-center gap-1 cursor-pointer px-3 py-2 rounded-lg border border-gray-200 shadow-sm ${form.priority === opt.value ? 'bg-blue-100 border-blue-400' : 'bg-white'} text-black`}>
-              <input
-                type="radio"
-                name="priority"
-                value={opt.value}
-                checked={form.priority === opt.value}
-                onChange={handleChange}
-                className="hidden"
-              />
-              <span className="text-lg">{opt.icon}</span>
-              <span className="font-medium text-black">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    </motion.div>,
-    // Step 3: Ticket Details
-    <motion.div key={2} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
-      <div>
-        <label className="block font-semibold mb-1 text-black">Title</label>
-        <input name="title" value={form.title} onChange={handleChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" required />
-      </div>
-      <div>
-        <label className="block font-semibold mb-1 text-black">Message</label>
-        <textarea name="message" value={form.message} onChange={handleChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" rows={4} required />
-      </div>
-      <div>
-        <label className="block font-semibold mb-1 text-black">Attachments (optional)</label>
-        <input name="attachments" type="file" multiple accept="image/*" onChange={handleFileChange} className="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 p-2 text-black" />
-        {form.attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {form.attachments.map((file, idx) => (
-              <span key={idx} className="bg-gray-100 px-2 py-1 rounded text-xs text-black">{file.name}</span>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white animate-gradient-slow py-8 px-2">
-      <div className="bg-white/30 backdrop-blur-md shadow-md rounded-xl p-6 w-full max-w-2xl mx-auto mt-8">
-        <div className="mb-6">
-          <div className="text-sm font-semibold text-black mb-2">Step {step + 1} of 3 • {stepTitles[step]}</div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">🛟</span>
-            <h2 className="text-xl font-extrabold text-black">Support / Raise Ticket</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4 py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="max-w-2xl w-full text-center"
+      >
+        {/* Main Coming Soon Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-white/20">
+          {/* Animated Icon */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center"
+          >
+            <Clock className="w-10 h-10 text-white" />
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4"
+          >
+            Coming Soon
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-xl text-gray-600 mb-8"
+          >
+            Our enhanced support system is under development
+          </motion.p>
+
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="flex justify-between text-sm text-gray-500 mb-2">
+              <span>Progress</span>
+              <span>75%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: "75%" }}
+                transition={{ duration: 2, delay: 0.6 }}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full"
+              />
+            </div>
           </div>
-        </div>
-        {success && (
-          <motion.div
-            className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <span className="text-xl">✅</span>
-            <span>{success} Ticket ID: <b>{ticketId}</b></span>
-          </motion.div>
-        )}
-        {error && (
-          <motion.div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <span className="text-xl">❌</span>
-            <span>{error}</span>
-          </motion.div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <AnimatePresence mode="wait">
-            {stepContent[step]}
-          </AnimatePresence>
-          <div className="flex justify-between mt-6">
-            {step > 0 && (
-              <button type="button" onClick={handleBack} className="px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Back</button>
-            )}
-            {step < 2 && (
-              <button type="button" onClick={handleNext} className="ml-auto px-6 py-2 rounded-full font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition">Next</button>
-            )}
-            {step === 2 && (
-            <button
-              type="submit"
-                className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-semibold shadow-sm transition"
-              disabled={loading}
+
+          {/* Feature Highlights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="flex flex-col items-center p-4 bg-blue-50 rounded-xl"
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting...
-                </span>
-                ) : (
-                  'Submit Ticket'
-                )}
-            </button>
-            )}
+              <Star className="w-8 h-8 text-blue-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700">24/7 Support</span>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0 }}
+              className="flex flex-col items-center p-4 bg-purple-50 rounded-xl"
+            >
+              <Zap className="w-8 h-8 text-purple-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700">Instant Response</span>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+              className="flex flex-col items-center p-4 bg-green-50 rounded-xl"
+            >
+              <Shield className="w-8 h-8 text-green-500 mb-2" />
+              <span className="text-sm font-medium text-gray-700">Secure & Private</span>
+            </motion.div>
           </div>
-        </form>
-      </div>
-      
-      {/* Floating Chatbot */}
-      <FloatingChatbot fullScreen={true} />
+
+          {/* Call to Action */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4 }}
+            className="text-gray-500 text-sm"
+          >
+            We're working hard to bring you the best support experience. 
+            <br />
+            Thank you for your patience!
+          </motion.p>
+        </div>
+
+        {/* Background Elements */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+          <div className="absolute top-3/4 right-1/4 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
+      </motion.div>
     </div>
   );
 };
