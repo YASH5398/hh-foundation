@@ -3,7 +3,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, increment, writeBatch, limit } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
-import { Phone, MessageCircle, DollarSign, Send, Eye, X, Clock, CheckCircle, ExternalLink, User, AlertCircle } from 'lucide-react';
+import { 
+  Phone, 
+  MessageCircle, 
+  DollarSign, 
+  Send, 
+  Eye, 
+  X, 
+  Clock, 
+  CheckCircle, 
+  ExternalLink, 
+  User, 
+  AlertCircle,
+  Filter,
+  ChevronDown,
+  Check,
+  Loader,
+  TrendingUp,
+  Users,
+  Calendar,
+  Star,
+  Heart,
+  Zap,
+  Shield,
+  Gift
+} from 'lucide-react';
 import ChatBadge from '../chat/ChatBadge';
 import { toast } from 'react-hot-toast';
 import defaultImage from '../../assets/default-avatar.png';
@@ -477,49 +501,112 @@ export default function ReceiveHelp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Mobile-First Header */}
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+        <div className="px-4 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Incoming Help</h1>
+            <p className="text-sm text-gray-600">Manage your help requests</p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Mobile Stats Cards */}
+      <div className="px-4 py-6">
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="grid grid-cols-2 gap-4 mb-6"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Receive Help</h1>
-          <p className="text-gray-600">Manage your incoming help requests</p>
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm">Total Received</p>
+                <p className="text-2xl font-bold">₹{user?.totalReceived || 0}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-blue-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Help Count</p>
+                <p className="text-2xl font-bold">{user?.helpReceived || 0}</p>
+              </div>
+              <Users className="w-8 h-8 text-green-200" />
+            </div>
+          </div>
         </motion.div>
 
-        {/* Empty State */}
+        {/* Mobile Status Filter */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6"
+        >
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {[
+              { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700' },
+              { value: 'pending', label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
+              { value: 'paid', label: 'Paid', icon: CheckCircle, color: 'bg-blue-100 text-blue-700' },
+              { value: 'confirmed', label: 'Done', icon: CheckCircle, color: 'bg-green-100 text-green-700' }
+            ].map((filter) => {
+              const Icon = filter.icon;
+              return (
+                <button
+                  key={filter.value}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${filter.color} hover:scale-105`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{filter.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Mobile Empty State */}
         {receiveHelps.length === 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-16 px-4"
+            className="text-center py-12"
           >
-            <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <DollarSign className="w-12 h-12 text-blue-500" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">No Help Requests Yet</h3>
-              <p className="text-gray-600 mb-6">
-                When someone sends you a help request, it will appear here. Share your profile to start receiving help!
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 mx-4 border border-gray-200/50">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
+              >
+                <Gift className="w-10 h-10 text-white" />
+              </motion.div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-3">No Help Requests Yet</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                When someone sends you help, it will appear here. Share your profile to start receiving!
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-700">
-                  💡 <strong>Tip:</strong> Make sure your profile is complete and share your HH ID with friends and family.
-                </p>
+              
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center gap-2 text-purple-700 text-sm">
+                  <Heart className="w-4 h-4" />
+                  <span className="font-medium">Share your HH ID with friends!</span>
+                </div>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Help Cards - Responsive Grid Layout */}
+        {/* Mobile Help Cards */}
         {receiveHelps.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
+          <div className="space-y-4 pb-20">
             <AnimatePresence mode="popLayout">
               {receiveHelps.map((help, index) => (
                 <motion.div
@@ -533,79 +620,80 @@ export default function ReceiveHelp() {
                     delay: index * 0.1,
                     layout: { duration: 0.3 }
                   }}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                  className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border border-gray-100"
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200/50 overflow-hidden"
                 >
-                  {/* Profile Section */}
-                  <div className="flex items-center space-x-3 mb-4">
-                    {getProfileImage(help) ? (
-                      <img
-                        src={getProfileImage(help)}
-                        alt={help.senderName || help.fullName || 'Sender'}
-                        className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 shadow-md"
-                        onError={(e) => {
-                          e.target.src = defaultImage;
-                        }}
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-gray-200 shadow-md">
-                        <span className="text-white font-bold text-xl">
-                          {getFirstLetter(help.senderName || help.fullName || 'Unknown User')}
-                        </span>
+                  {/* Mobile Card Header */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getProfileImage(help) ? (
+                          <img
+                            src={getProfileImage(help)}
+                            alt={help.senderName || help.fullName || 'Sender'}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                            onError={(e) => {
+                              e.target.src = defaultImage;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white shadow-md">
+                            <span className="text-white font-bold text-lg">
+                              {getFirstLetter(help.senderName || help.fullName || 'Unknown User')}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-gray-900 truncate text-base">{help.senderName || help.fullName || 'Unknown User'}</h3>
+                          <p className="text-xs text-gray-600 truncate flex items-center space-x-1">
+                            <User className="w-3 h-3" />
+                            <span>ID: {help.senderId || help.userId || 'N/A'}</span>
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 truncate text-lg">{help.senderName || help.fullName || 'Unknown User'}</h3>
-                      <p className="text-sm text-gray-600 truncate flex items-center space-x-1">
-                        <User className="w-3 h-3" />
-                        <span>ID: {help.senderId || help.userId || 'N/A'}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Contact Details */}
-                  <div className="space-y-3 mb-4">
-                    {/* Mobile Number */}
-                    {(help.senderMobile || help.senderPhone || help.phone) && (
-                      <div className="flex items-center space-x-2 text-sm bg-blue-50 p-2 rounded-lg">
-                        <Phone className="w-4 h-4 text-blue-600" />
-                        <span className="text-gray-700 font-medium">Mobile: {help.senderMobile || help.senderPhone || help.phone}</span>
-                      </div>
-                    )}
-                    
-                    {/* WhatsApp with Click-to-Chat */}
-                    {(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone) && (
-                      <div className="flex items-center space-x-2 text-sm bg-green-50 p-2 rounded-lg">
-                        <MessageCircle className="w-4 h-4 text-green-600" />
-                        <a
-                          href={`https://wa.me/${(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone)?.replace(/[^0-9]/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-600 hover:text-green-700 flex items-center space-x-1 hover:underline font-medium flex-1"
-                        >
-                          <span>WhatsApp: {help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone}</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Payment Amount */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <DollarSign className="w-5 h-5 text-green-600" />
-                      <span className="text-sm font-medium text-gray-700">💰 Amount:</span>
-                    </div>
-                    <p className="text-2xl font-bold text-green-600">₹{help.amount || 300}</p>
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-sm">📌 Status:</span>
                       {getStatusBadge(help.status)}
                     </div>
                   </div>
+
+                  {/* Mobile Card Content */}
+                  <div className="p-4 space-y-4">
+
+                    {/* Mobile Contact & Amount Row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Amount Card */}
+                      <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl p-3 text-white">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <DollarSign className="w-4 h-4" />
+                          <span className="text-xs font-medium">Amount</span>
+                        </div>
+                        <p className="text-xl font-bold">₹{help.amount || 300}</p>
+                      </div>
+                      
+                      {/* Contact Card */}
+                      <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 text-white">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Phone className="w-4 h-4" />
+                          <span className="text-xs font-medium">Contact</span>
+                        </div>
+                        <p className="text-sm font-medium truncate">
+                          {help.senderMobile || help.senderPhone || help.phone || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp Button */}
+                    {(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone) && (
+                      <a
+                        href={`https://wa.me/${(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone)?.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Chat on WhatsApp</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
 
                   {/* UTR Number - Show when paymentDetails.utrNumber exists */}
                   {(help.paymentDetails?.utrNumber || help.utrNumber || help.utr) && (
@@ -618,110 +706,104 @@ export default function ReceiveHelp() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="space-y-3">
-                    {/* Request Payment - Only show when paymentDetails.utrNumber and paymentDetails.screenshotUrl don't exist */}
-                    {isPendingStatus(help.status) && !(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && (
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleRequestPayment(help)}
-                        disabled={isInCooldown(help.id)}
-                        className={`w-full py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 text-sm ${
-                          isInCooldown(help.id) 
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
-                        }`}
-                      >
-                        <Send className="w-4 h-4" />
-                        <span>
-                          {isInCooldown(help.id) 
-                            ? `Wait ${formatRemainingTime(help.id)}` 
-                            : 'Request Payment'
-                          }
-                        </span>
-                      </motion.button>
-                    )}
-                    
-                    {/* Approve Payment - Show when paymentDetails.utrNumber and paymentDetails.screenshotUrl exist and status is not confirmed */}
-                    {(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && !isConfirmedStatus(help.status) && (
-                      <div className="space-y-2">
+                    {/* Mobile Action Buttons */}
+                    <div className="space-y-3">
+                      {/* Request Payment */}
+                      {isPendingStatus(help.status) && !(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleRequestPayment(help)}
+                          disabled={isInCooldown(help.id)}
+                          className={`w-full py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm ${
+                            isInCooldown(help.id) 
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                              : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
+                          }`}
+                        >
+                          <Send className="w-5 h-5" />
+                          <span>
+                            {isInCooldown(help.id) 
+                              ? `Wait ${formatRemainingTime(help.id)}` 
+                              : 'Request Payment'
+                            }
+                          </span>
+                        </motion.button>
+                      )}
+                      
+                      {/* Approve Payment */}
+                      {(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && !isConfirmedStatus(help.status) && (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handlePaymentAccept(help.id)}
                           disabled={confirmingId === help.id}
-                          className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 disabled:opacity-50 text-sm shadow-md hover:shadow-lg"
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 disabled:opacity-50 text-sm shadow-lg"
                         >
                           {confirmingId === help.id ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           ) : (
                             <>
-                              <CheckCircle className="w-4 h-4" />
-                              <span>✅ Approve Payment</span>
+                              <CheckCircle className="w-5 h-5" />
+                              <span>Approve Payment</span>
                             </>
                           )}
                         </motion.button>
-                        {/* Green check icon indicator */}
-                        <div className="flex items-center justify-center space-x-2 text-green-600 text-sm font-medium">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Proof submitted - Ready for approval</span>
+                      )}
+                      
+                      {/* Confirmed Status */}
+                      {isConfirmedStatus(help.status) && (
+                        <div className="w-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 py-4 px-4 rounded-xl font-semibold text-center flex items-center justify-center space-x-2 text-sm border border-green-200">
+                          <CheckCircle className="w-5 h-5" />
+                          <span>Payment Confirmed</span>
                         </div>
-                      </div>
-                    )}
-                    
-                    {/* Confirmed Status Display */}
-                    {isConfirmedStatus(help.status) && (
-                      <div className="w-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 py-3 px-4 rounded-lg font-semibold text-center flex items-center justify-center space-x-2 text-sm border border-green-200">
-                        <CheckCircle className="w-5 h-5" />
-                        <span>✅ Payment Confirmed</span>
-                      </div>
-                    )}
+                      )}
 
-                    {/* View Proof Button - Available when paymentDetails.screenshotUrl exists */}
-                    {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && (
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleViewProof(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot)}
-                        className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-md hover:shadow-lg"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>🔍 View Proof</span>
-                      </motion.button>
-                    )}
+                      {/* View Proof Button */}
+                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleViewProof(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot)}
+                          className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-lg"
+                        >
+                          <Eye className="w-5 h-5" />
+                          <span>View Proof</span>
+                        </motion.button>
+                      )}
 
-                    {/* Chat Button - Available for all transactions */}
-                    <ChatBadge
-                      transactionType="receiveHelp"
-                      transactionId={help.id}
-                      onClick={() => {
-                        setSelectedChatHelp(help);
-                        setShowChat(true);
-                      }}
-                      showText={true}
-                      size="default"
-                      className="w-full"
-                    />
+                      {/* Chat Button */}
+                      <ChatBadge
+                        transactionType="receiveHelp"
+                        transactionId={help.id}
+                        onClick={() => {
+                          setSelectedChatHelp(help);
+                          setShowChat(true);
+                        }}
+                        showText={true}
+                        size="default"
+                        className="w-full"
+                      />
 
-                    {/* Cancel Payment Button - Available when proof is submitted but payment not confirmed */}
-                    {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && 
-                     normalizeStatus(help.status) !== 'confirmed' && (
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleCancelPayment(help)}
-                        className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-md hover:shadow-lg"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>❌ Cancel Payment</span>
-                      </motion.button>
-                    )}
+                      {/* Cancel Payment Button */}
+                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && 
+                       normalizeStatus(help.status) !== 'confirmed' && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleCancelPayment(help)}
+                          className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-lg"
+                        >
+                          <X className="w-5 h-5" />
+                          <span>Cancel Payment</span>
+                        </motion.button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
-          </motion.div>
+          </div>
         )}
       </div>
       

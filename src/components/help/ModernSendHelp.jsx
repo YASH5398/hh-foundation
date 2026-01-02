@@ -1,32 +1,25 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  Upload, 
-  Eye, 
-  Filter,
-  Wallet,
-  CreditCard,
-  Smartphone,
-  Building2,
-  X,
-  ChevronDown,
-  Check,
-  Loader,
-  User,
-  Phone,
-  MessageCircle,
-  DollarSign,
-  Send,
-  ExternalLink
-} from 'lucide-react';
+  FiUser, 
+  FiClock, 
+  FiCheckCircle, 
+  FiAlertCircle, 
+  FiUpload, 
+  FiEye, 
+  FiFilter,
+  FiSearch,
+  FiWallet,
+  FiCreditCard,
+  FiSmartphone,
+  FiBank,
+  FiX,
+  FiChevronDown,
+  FiCheck,
+  FiLoader
+} from 'react-icons/fi';
 import { useSendHelp } from '../../context/SendHelpContext';
-import { useAuth } from "../../context/AuthContext";
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../config/firebase";
+import { useAuth } from '../../context/AuthContext';
 
 // Status constants
 const STATUS = {
@@ -38,10 +31,10 @@ const STATUS = {
 
 // Payment methods
 const PAYMENT_METHODS = {
-  UPI: { icon: Smartphone, color: 'text-purple-600', bg: 'bg-purple-50' },
-  PHONEPE: { icon: Smartphone, color: 'text-blue-600', bg: 'bg-blue-50' },
-  GPAY: { icon: Smartphone, color: 'text-green-600', bg: 'bg-green-50' },
-  BANK: { icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' }
+  UPI: { icon: FiSmartphone, color: 'text-purple-600', bg: 'bg-purple-50' },
+  PHONEPE: { icon: FiSmartphone, color: 'text-blue-600', bg: 'bg-blue-50' },
+  GPAY: { icon: FiSmartphone, color: 'text-green-600', bg: 'bg-green-50' },
+  BANK: { icon: FiBank, color: 'text-indigo-600', bg: 'bg-indigo-50' }
 };
 
 // Floating elements component
@@ -85,11 +78,11 @@ const StatusFilter = ({ currentFilter, onFilterChange }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl hover:bg-white/90 transition-all duration-200"
       >
-        <Filter className="w-4 h-4" />
+        <FiFilter className="w-4 h-4" />
         <span className="text-sm font-medium">
           {filters.find(f => f.value === currentFilter)?.label || 'All'}
         </span>
-        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <FiChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
       <AnimatePresence>
@@ -111,7 +104,7 @@ const StatusFilter = ({ currentFilter, onFilterChange }) => {
               >
                 <span className="text-sm font-medium">{filter.label}</span>
                 {currentFilter === filter.value && (
-                  <Check className="w-4 h-4 text-blue-600" />
+                  <FiCheck className="w-4 h-4 text-blue-600" />
                 )}
               </button>
             ))}
@@ -149,7 +142,7 @@ const PaymentDetailsModal = ({ isOpen, onClose, paymentData }) => {
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5" />
+                <FiX className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -206,11 +199,11 @@ const NoReceiverState = () => (
       className="relative z-10"
     >
       <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center">
-        <Search className="w-10 h-10 text-white" />
+        <FiSearch className="w-10 h-10 text-white" />
       </div>
       
       <h2 className="text-2xl font-bold text-gray-800 mb-3">
-        No receiver available yet
+        No receiver available right now
       </h2>
       
       <p className="text-gray-600 mb-6 max-w-md mx-auto">
@@ -222,7 +215,7 @@ const NoReceiverState = () => (
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         className="w-8 h-8 mx-auto"
       >
-        <Loader className="w-8 h-8 text-blue-500" />
+        <FiLoader className="w-8 h-8 text-blue-500" />
       </motion.div>
     </motion.div>
   </motion.div>
@@ -260,7 +253,7 @@ const ReceiverCard = ({ receiver, status, onMakePayment, onUploadScreenshot, onV
           actions: (
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-                <Clock className="w-4 h-4" />
+                <FiClock className="w-4 h-4" />
                 <span>Payment submitted at {paymentData?.timestamp ? new Date(paymentData.timestamp).toLocaleTimeString() : 'recently'}</span>
               </div>
               <div className="w-full bg-blue-200 rounded-full h-2">
@@ -335,7 +328,7 @@ const ReceiverCard = ({ receiver, status, onMakePayment, onUploadScreenshot, onV
               transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
               className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center"
             >
-              <Check className="w-4 h-4 text-white" />
+              <FiCheck className="w-4 h-4 text-white" />
             </motion.div>
           )}
         </div>
@@ -423,7 +416,7 @@ const PaymentUploadModal = ({ isOpen, onClose, onUpload, receiver }) => {
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5" />
+                <FiX className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -443,7 +436,7 @@ const PaymentUploadModal = ({ isOpen, onClose, onUpload, receiver }) => {
                   />
                 ) : (
                   <div className="space-y-2">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto" />
+                    <FiUpload className="w-8 h-8 text-gray-400 mx-auto" />
                     <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
                   </div>
                 )}
@@ -486,8 +479,8 @@ const PaymentUploadModal = ({ isOpen, onClose, onUpload, receiver }) => {
   );
 };
 
-// Main SendHelp Component
-const SendHelp = () => {
+// Main Modern Send Help Component
+const ModernSendHelp = () => {
   const { selectedReceiver, isLoading } = useSendHelp();
   const { user } = useAuth();
   
@@ -673,4 +666,4 @@ const SendHelp = () => {
   );
 };
 
-export default SendHelp;
+export default ModernSendHelp;

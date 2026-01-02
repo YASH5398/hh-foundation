@@ -112,7 +112,6 @@ self.addEventListener('notificationclick', (event) => {
     }
   }
 });
-
 // Handle notification close events
 self.addEventListener('notificationclose', (event) => {
   console.log('🔕 Notification closed:', event);
