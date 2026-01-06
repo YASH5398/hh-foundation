@@ -281,7 +281,7 @@ const AgentChat = () => {
       {/* WhatsApp-style Header */}
       <div className="bg-green-600 text-white px-4 py-3 flex items-center gap-3 shadow-lg">
         <button
-          onClick={() => navigate('/support')}
+          onClick={() => navigate('/dashboard/support')}
           className="p-2 hover:bg-green-700 rounded-full transition-colors"
         >
           <FiArrowLeft className="w-5 h-5" />

@@ -28,11 +28,11 @@ import {
   Shield,
   Gift
 } from 'lucide-react';
-import ChatBadge from '../chat/ChatBadge';
 import { toast } from 'react-hot-toast';
 import defaultImage from '../../assets/default-avatar.png';
 import TransactionChat from '../chat/TransactionChat';
 import { getProfileImageUrl } from '../../utils/profileUtils';
+import { isIncomeBlocked, getRequiredPaymentForUnblock, getTotalHelpsByLevel, getAmountByLevel } from '../../shared/mlmCore';
 
 export default function ReceiveHelp() {
   const { user } = useAuth();
@@ -269,14 +269,6 @@ export default function ReceiveHelp() {
           updateData.isActivated = true;
         }
         
-        // Check for level upgrade requirement after completing 3 helps (₹900)
-        const newHelpReceived = currentHelpReceived + 1;
-        if (newHelpReceived === 3 && user.totalReceived >= 900) {
-          updateData.levelUpgradeRequired = true;
-          updateData.levelUpgradeAmount = 600;
-          updateData.isReceivingHeld = true;
-          updateData.isOnHold = true;
-        }
         
         batch.update(userRef, updateData);
       }
@@ -302,7 +294,7 @@ export default function ReceiveHelp() {
             message: `Your payment has been confirmed by ${user.displayName || user.email}`,
             type: 'success',
             priority: 'high',
-            actionLink: '/user/send-help',
+            actionLink: '/dashboard/send-help',
             targetUserId: helpData.senderUid
           });
         }
@@ -410,10 +402,10 @@ export default function ReceiveHelp() {
       displayText = 'Pending';
     } else if (isPaymentDoneStatus(status)) {
       config = { bg: 'bg-blue-100', text: 'text-blue-800', icon: Send };
-      displayText = 'Payment Done';
+      displayText = 'Paid';
     } else if (isConfirmedStatus(status)) {
       config = { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle };
-      displayText = 'Confirmed';
+      displayText = 'Done';
     } else {
       config = { bg: 'bg-gray-100', text: 'text-gray-800', icon: Clock };
       displayText = status || 'Unknown';
@@ -544,6 +536,71 @@ export default function ReceiveHelp() {
           </div>
         </motion.div>
 
+        {/* Income Blocking Status */}
+        {isIncomeBlocked(user) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">
+                    Income Temporarily Blocked
+                  </h3>
+                  <p className="text-red-700 mb-4">
+                    Your income has been blocked at {user?.helpReceived || 0} helps received in {user?.level || 'STAR'} level.
+                    Complete the required payment below to resume receiving payments.
+                  </p>
+
+                  {(() => {
+                    const requiredPayment = getRequiredPaymentForUnblock(user);
+                    if (!requiredPayment) return null;
+
+                    return (
+                      <div className="bg-white rounded-xl p-4 border border-red-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-800">
+                            {requiredPayment.type === 'upgrade' ? 'Upgrade Payment Required' : 'Sponsor Payment Required'}
+                          </span>
+                          <span className="text-2xl font-bold text-red-600">
+                            ₹{requiredPayment.amount?.toLocaleString() || 'N/A'}
+                          </span>
+                        </div>
+
+                        {requiredPayment.type === 'sponsor' && (
+                          <p className="text-sm text-gray-600 mb-3">
+                            Pay this amount to your sponsor/upline to unlock your remaining payments.
+                          </p>
+                        )}
+
+                        {requiredPayment.type === 'upgrade' && (
+                          <p className="text-sm text-gray-600 mb-3">
+                            Pay this amount to upgrade to the next level and unlock your remaining payments.
+                          </p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <button className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                            Make Payment
+                          </button>
+                          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Mobile Status Filter */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -615,99 +672,133 @@ export default function ReceiveHelp() {
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ 
-                    duration: 0.4, 
+                  transition={{
+                    duration: 0.4,
                     delay: index * 0.1,
                     layout: { duration: 0.3 }
                   }}
                   whileHover={{ y: -4, scale: 1.01 }}
-                  className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200/50 overflow-hidden"
+                  className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden"
                 >
-                  {/* Mobile Card Header */}
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                  {/* Sender + Status Header */}
+                  <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
                         {getProfileImage(help) ? (
                           <img
                             src={getProfileImage(help)}
                             alt={help.senderName || help.fullName || 'Sender'}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                            className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-lg flex-shrink-0"
                             onError={(e) => {
                               e.target.src = defaultImage;
                             }}
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white shadow-md">
-                            <span className="text-white font-bold text-lg">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white shadow-lg flex-shrink-0">
+                            <span className="text-white font-bold text-xl">
                               {getFirstLetter(help.senderName || help.fullName || 'Unknown User')}
                             </span>
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 truncate text-base">{help.senderName || help.fullName || 'Unknown User'}</h3>
-                          <p className="text-xs text-gray-600 truncate flex items-center space-x-1">
-                            <User className="w-3 h-3" />
-                            <span>ID: {help.senderId || help.userId || 'N/A'}</span>
-                          </p>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-1.5">
+                            <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">
+                              {help.senderName || help.fullName || 'Unknown User'}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <User className="w-4 h-4 flex-shrink-0" />
+                              <span className="truncate font-medium">ID: {help.senderId || help.userId || 'N/A'}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      {getStatusBadge(help.status)}
+
+                      <div className="flex-shrink-0">
+                        {getStatusBadge(help.status)}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Mobile Card Content */}
-                  <div className="p-4 space-y-4">
+                  {/* Card Content */}
+                  <div className="p-5 space-y-5">
 
-                    {/* Mobile Contact & Amount Row */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Amount Card */}
-                      <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl p-3 text-white">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <DollarSign className="w-4 h-4" />
-                          <span className="text-xs font-medium">Amount</span>
-                        </div>
-                        <p className="text-xl font-bold">₹{help.amount || 300}</p>
+                    {/* Amount Section */}
+                    <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 shadow-sm">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-600 mb-1 uppercase tracking-wide">Amount</div>
+                        <div className="text-2xl font-bold text-gray-900 leading-tight">₹{help.amount || 300}</div>
                       </div>
-                      
-                      {/* Contact Card */}
-                      <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 text-white">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Phone className="w-4 h-4" />
-                          <span className="text-xs font-medium">Contact</span>
+                      <div className="flex-shrink-0 rounded-xl bg-emerald-100 px-4 py-2 text-emerald-800 text-sm font-bold border border-emerald-300 shadow-sm">
+                        Payment Request
+                      </div>
+                    </div>
+
+                    {/* Contact Buttons */}
+                    {(() => {
+                      const rawPhone = help.senderMobile || help.senderPhone || help.phone;
+                      const rawWhatsApp = help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone;
+                      const phoneDigits = rawPhone ? String(rawPhone).replace(/[^0-9]/g, '') : '';
+                      const waDigits = rawWhatsApp ? String(rawWhatsApp).replace(/[^0-9]/g, '') : '';
+
+                      return (
+                        <div className="grid grid-cols-3 gap-2">
+                          <a
+                            href={phoneDigits ? `tel:+91${phoneDigits}` : undefined}
+                            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold border transition-all duration-200 min-h-[44px] ${
+                              phoneDigits
+                                ? 'bg-white hover:bg-gray-50 text-gray-900 border-gray-200 active:bg-gray-100'
+                                : 'bg-gray-100 text-gray-400 border-gray-200 pointer-events-none'
+                            }`}
+                          >
+                            <Phone className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate">Call</span>
+                          </a>
+
+                          <a
+                            href={waDigits ? `https://wa.me/91${waDigits}` : undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold border transition-all duration-200 min-h-[44px] ${
+                              waDigits
+                                ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white border-emerald-700'
+                                : 'bg-gray-100 text-gray-400 border-gray-200 pointer-events-none'
+                            }`}
+                          >
+                            <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate">WhatsApp</span>
+                            {waDigits && <ExternalLink className="w-4 h-4 flex-shrink-0" />}
+                          </a>
+
+                          {/* Chat Icon Button */}
+                          <button
+                            onClick={() => {
+                              setSelectedChatHelp(help);
+                              setShowChat(true);
+                            }}
+                            className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl"
+                          >
+                            <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                          </button>
                         </div>
-                        <p className="text-sm font-medium truncate">
-                          {help.senderMobile || help.senderPhone || help.phone || 'N/A'}
+                      );
+                    })()}
+
+                    {/* UTR Number - Show when paymentDetails.utrNumber exists */}
+                    {(help.paymentDetails?.utrNumber || help.utrNumber || help.utr) && (
+                      <div className="rounded-2xl p-5 border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 shadow-sm">
+                        <div className="flex items-center gap-3 mb-3">
+                          <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                          <span className="text-sm font-bold text-purple-800 uppercase tracking-wide">UTR Number</span>
+                        </div>
+                        <p className="font-mono text-lg font-bold text-purple-900 bg-white px-4 py-3 rounded-xl border border-purple-200 break-all shadow-sm">
+                          {help.paymentDetails?.utrNumber || help.utrNumber || help.utr}
                         </p>
                       </div>
-                    </div>
-
-                    {/* WhatsApp Button */}
-                    {(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone) && (
-                      <a
-                        href={`https://wa.me/${(help.senderWhatsApp || help.whatsapp || help.senderMobile || help.senderPhone || help.phone)?.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Chat on WhatsApp</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
                     )}
 
-                  {/* UTR Number - Show when paymentDetails.utrNumber exists */}
-                  {(help.paymentDetails?.utrNumber || help.utrNumber || help.utr) && (
-                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 mb-4 border border-purple-200">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <AlertCircle className="w-4 h-4 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-700">📌 UTR Number:</span>
-                      </div>
-                      <p className="font-mono text-sm font-bold text-purple-900 bg-white px-2 py-1 rounded border">{help.paymentDetails?.utrNumber || help.utrNumber || help.utr}</p>
-                    </div>
-                  )}
-
-                    {/* Mobile Action Buttons */}
-                    <div className="space-y-3">
+                    {/* Action Buttons */}
+                    <div className="space-y-4">
                       {/* Request Payment */}
                       {isPendingStatus(help.status) && !(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && (
                         <motion.button
@@ -715,46 +806,55 @@ export default function ReceiveHelp() {
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleRequestPayment(help)}
                           disabled={isInCooldown(help.id)}
-                          className={`w-full py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm ${
-                            isInCooldown(help.id) 
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
+                          className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] ${
+                            isInCooldown(help.id)
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 active:from-orange-700 active:to-red-700 text-white shadow-lg'
                           }`}
                         >
-                          <Send className="w-5 h-5" />
-                          <span>
-                            {isInCooldown(help.id) 
-                              ? `Wait ${formatRemainingTime(help.id)}` 
+                          <Send className="w-5 h-5 flex-shrink-0" />
+                          <span className="truncate">
+                            {isInCooldown(help.id)
+                              ? `Wait ${formatRemainingTime(help.id)}`
                               : 'Request Payment'
                             }
                           </span>
                         </motion.button>
                       )}
-                      
+
                       {/* Approve Payment */}
                       {(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && !isConfirmedStatus(help.status) && (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handlePaymentAccept(help.id)}
-                          disabled={confirmingId === help.id}
-                          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 disabled:opacity-50 text-sm shadow-lg"
+                          disabled={confirmingId === help.id || isIncomeBlocked(user)}
+                          className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 text-sm min-h-[44px] shadow-lg ${
+                            isIncomeBlocked(user)
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 active:from-green-700 active:to-emerald-700 text-white'
+                          }`}
                         >
                           {confirmingId === help.id ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                          ) : isIncomeBlocked(user) ? (
+                            <>
+                              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                              <span>Income Blocked</span>
+                            </>
                           ) : (
                             <>
-                              <CheckCircle className="w-5 h-5" />
+                              <CheckCircle className="w-5 h-5 flex-shrink-0" />
                               <span>Approve Payment</span>
                             </>
                           )}
                         </motion.button>
                       )}
-                      
+
                       {/* Confirmed Status */}
                       {isConfirmedStatus(help.status) && (
-                        <div className="w-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 py-4 px-4 rounded-xl font-semibold text-center flex items-center justify-center space-x-2 text-sm border border-green-200">
-                          <CheckCircle className="w-5 h-5" />
+                        <div className="w-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 py-3.5 px-4 rounded-xl font-semibold text-center flex items-center justify-center gap-2 text-sm border border-green-200 min-h-[44px]">
+                          <CheckCircle className="w-5 h-5 flex-shrink-0" />
                           <span>Payment Confirmed</span>
                         </div>
                       )}
@@ -765,36 +865,23 @@ export default function ReceiveHelp() {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleViewProof(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot)}
-                          className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-lg"
+                          className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 active:from-purple-700 active:to-indigo-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] shadow-lg"
                         >
-                          <Eye className="w-5 h-5" />
+                          <Eye className="w-5 h-5 flex-shrink-0" />
                           <span>View Proof</span>
                         </motion.button>
                       )}
 
-                      {/* Chat Button */}
-                      <ChatBadge
-                        transactionType="receiveHelp"
-                        transactionId={help.id}
-                        onClick={() => {
-                          setSelectedChatHelp(help);
-                          setShowChat(true);
-                        }}
-                        showText={true}
-                        size="default"
-                        className="w-full"
-                      />
-
                       {/* Cancel Payment Button */}
-                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && 
+                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) &&
                        normalizeStatus(help.status) !== 'confirmed' && (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleCancelPayment(help)}
-                          className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-4 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 text-sm shadow-lg"
+                          className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 active:from-red-700 active:to-pink-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] shadow-lg"
                         >
-                          <X className="w-5 h-5" />
+                          <X className="w-5 h-5 flex-shrink-0" />
                           <span>Cancel Payment</span>
                         </motion.button>
                       )}

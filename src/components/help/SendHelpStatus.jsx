@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, orderBy, limit } from "firebase/fire
 import { db } from "../../config/firebase"; // Corrected path
 import { useAuth } from "../../context/AuthContext"; // Corrected path
 import TransactionChat from "../chat/TransactionChat";
+import { FiMessageCircle } from 'react-icons/fi';
 
 const SendHelpStatus = () => {
   const { user } = useAuth(); // 'user' is the key in your context
@@ -61,31 +62,30 @@ const SendHelpStatus = () => {
             <p className="text-yellow-600 font-medium">⏳ Status: Pending (Waiting for receiver to confirm)</p>
           )}
         </div>
-        {/* TEMPORARILY DISABLED - Chat Button Below Status */}
-        {/* {transactionId && (
+        {/* Chat Button */}
+        {transactionId && (
           <button
             onClick={openChat}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm mt-2 w-full"
+            className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl mt-4"
             type="button"
           >
-            💬 Chat with Receiver
+            <FiMessageCircle className="w-4 h-4 flex-shrink-0" />
           </button>
-        )} */}
+        )}
       </div>
-      {/* TEMPORARILY DISABLED - Transaction Chat */}
-      {/* <TransactionChat
-        transactionType="sendHelp"
-        transactionId={transactionId}
-        otherUser={{
-          name: sendHelpData?.receiverName,
-          profileImage: sendHelpData?.receiverProfileImage
-        }}
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        chatId={chatInfo?.chatId}
-        currentUser={user}
-        otherUser={chatInfo?.otherUser}
-      /> */}
+      {/* Chat Modal */}
+      {transactionId && (
+        <TransactionChat
+          transactionType="sendHelp"
+          transactionId={transactionId}
+          otherUser={{
+            name: sendHelpData?.receiverName,
+            profileImage: sendHelpData?.receiverProfileImage
+          }}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </>
   );
 };

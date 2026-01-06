@@ -7,14 +7,14 @@ import { useAuth } from '../../context/AuthContext';
 
 const menuLinks = [
   { label: 'Dashboard', icon: FiHome, to: '/dashboard' },
-  { label: 'Send Help', icon: FiSend, to: '/send-help' },
-  { label: 'Upcoming Payment', icon: FiCalendar, to: '/upcoming-payment' },
-  { label: 'Receive Help', icon: FiDownload, to: '/receive-help' },
-  { label: 'Leaderboard', icon: FiBarChart2, to: '/leaderboard' },
-  { label: 'Direct Referrals', icon: FiUsers, to: '/direct-referral' },
-  { label: 'E-PIN Management', icon: FiKey, to: '/epin-management' },
-  { label: 'Support', icon: FiHelpCircle, to: '/support' },
-  { label: 'Profile Settings', icon: FiUser, to: '/profile-settings' },
+  { label: 'Send Help', icon: FiSend, to: '/dashboard/send-help' },
+  { label: 'Upcoming Payment', icon: FiCalendar, to: '/dashboard/upcoming-payment' },
+  { label: 'Receive Help', icon: FiDownload, to: '/dashboard/receive-help' },
+  { label: 'Leaderboard', icon: FiBarChart2, to: '/dashboard/leaderboard' },
+  { label: 'Direct Referrals', icon: FiUsers, to: '/dashboard/direct-referral' },
+  { label: 'E-PIN Management', icon: FiKey, to: '/dashboard/epins/request' },
+  { label: 'Support', icon: FiHelpCircle, to: '/dashboard/support' },
+  { label: 'Profile Settings', icon: FiUser, to: '/dashboard/profile-settings' },
 ];
 
 const Layout = () => {

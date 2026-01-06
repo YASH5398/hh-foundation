@@ -619,7 +619,7 @@ const Dashboard = () => {
       {user && user.referralCount === 0 && (
         <div className="w-full max-w-xl mx-auto bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center mb-6">
           <div className="text-blue-700 font-semibold text-lg mb-1">🚀 Boost Your Priority!</div>
-          <div className="text-gray-700 text-sm mb-2">Complete social tasks to increase your chance of receiving help. <Link to="/tasks" className="text-blue-600 underline font-medium">Go to Tasks</Link></div>
+          <div className="text-gray-700 text-sm mb-2">Complete social tasks to increase your chance of receiving help. <Link to="/dashboard/tasks" className="text-blue-600 underline font-medium">Go to Tasks</Link></div>
           <div className="text-blue-600 font-bold">Task Score: {tasks?.taskScore || 0} / 3</div>
         </div>
       )}

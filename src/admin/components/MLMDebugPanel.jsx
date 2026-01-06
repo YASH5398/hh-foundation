@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useMLMActivation } from '../../hooks/useMLMActivation';
-import { debugAllPendingAssignments } from '../../services/sendHelpService';
 
 export default function MLMDebugPanel() {
   const { debugCurrentUser, debugAllAssignments, loading, error } = useMLMActivation();

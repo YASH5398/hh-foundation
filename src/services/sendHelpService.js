@@ -1,304 +1,336 @@
-import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, serverTimestamp, writeBatch, increment, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, serverTimestamp, writeBatch, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-
-const levelAmount = {
-  Star: 300,
-  Silver: 600,
-  Gold: 2000,
-  Platinum: 20000,
-  Diamond: 200000
-};
-
-const LEVEL_HELP_LIMIT = { Star: 3, Silver: 9, Gold: 27, Platinum: 81, Diamond: 243 };
-
-const getMaxHelpsForLevel = (level) => LEVEL_HELP_LIMIT[level] || 3;
-
-const getReceiverAssignedHelpCount = async (receiverId, level) => {
-  const receiveHelpRef = collection(db, 'receiveHelp');
-  const q = query(
-    receiveHelpRef,
-    where('receiverId', '==', receiverId),
-    where('level', '==', level),
-    where('status', 'in', ['Pending', 'Confirmed'])
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.size;
-};
+import { getAmountByLevel, getTotalHelpsByLevel, isIncomeBlocked } from '../shared/mlmCore';
 
 const SYSTEM_USER_IDS = ['HHF123456', 'HHF000001', 'HHF999999'];
 
+// Check sender eligibility for sending help
+export async function checkSenderEligibility(currentUser) {
+  if (!currentUser) return { eligible: false, reason: 'Not authenticated' };
+
+  const userRef = doc(db, 'users', currentUser.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) return { eligible: false, reason: 'User not found' };
+
+  const userData = userSnap.data();
+
+  // Check activation and block status
+  if (!userData.isActivated || userData.isBlocked) {
+    return { eligible: false, reason: 'User not activated or blocked' };
+  }
+
+  // Check if user is income blocked
+  if (isIncomeBlocked(userData)) {
+    return { eligible: false, reason: 'User income is blocked' };
+  }
+
+  // Check if user already has a pending sendHelp
+  const q = query(
+    collection(db, 'sendHelp'),
+    where('senderUid', '==', currentUser.uid),
+    where('status', 'in', ['Pending', 'Payment Done'])
+  );
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    return { eligible: false, reason: 'Already has a pending sendHelp' };
+  }
+
+  return { eligible: true, userData };
+}
+
+// Get eligible receiver for send help assignment
 export async function getEligibleReceiver(senderUid, senderLevel) {
   const usersRef = collection(db, 'users');
   const usersSnapshot = await getDocs(query(
     usersRef,
     where('isActivated', '==', true),
-    where('helpVisibility', '==', true),
-    where('isOnHold', '==', false),
     where('isReceivingHeld', '==', false),
+    where('isOnHold', '==', false),
     where('isBlocked', '==', false),
-    orderBy('referralCount', 'desc')
+    where('level', '==', senderLevel)
   ));
 
   const allReceivers = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-  console.log('📊 Query snapshot docs:', allReceivers.map(user => ({
-    uid: user.uid,
-    userId: user.userId,
-    isActivated: user.isActivated,
-    helpVisibility: user.helpVisibility,
-    isOnHold: user.isOnHold,
-    isReceivingHeld: user.isReceivingHeld,
-    isBlocked: user.isBlocked
-  })));
 
-  // Filter only eligible receivers
+  // Filter eligible receivers
   const filteredReceivers = allReceivers.filter(receiver =>
     receiver.isActivated === true &&
-    receiver.helpVisibility === true &&
-    receiver.isOnHold !== true &&
     receiver.isReceivingHeld !== true &&
+    receiver.isOnHold !== true &&
     receiver.isBlocked !== true &&
     receiver.uid !== senderUid &&
-    !SYSTEM_USER_IDS.includes(receiver.userId)
+    !SYSTEM_USER_IDS.includes(receiver.userId) &&
+    (receiver.helpReceived || 0) < getTotalHelpsByLevel(receiver.level)
   );
 
-  console.log('📊 Filtered eligible receivers:', filteredReceivers.length);
+  if (filteredReceivers.length === 0) return null;
 
-  for (const receiver of filteredReceivers) {
-    // Log each considered receiver
-    console.log('Checking receiver:', receiver.userId);
-
-    // Check if receiver is already assigned to this sender
-    const checkSendHelp = await db
-      .collection('sendHelp')
-      .where('senderUid', '==', senderUid)
-      .where('receiverUid', '==', receiver.uid)
-      .limit(1)
-      .get();
-
-    if (checkSendHelp.empty) {
-      console.log('Selected receiver:', receiver.userId);
-      return receiver; // ✅ Found eligible receiver
-    }
-  }
-
-  console.log('No eligible receiver found, trying fallback to first active user');
-  
-  // Fallback: Pick the first active user from users collection
-  const fallbackUser = allReceivers.find(user => 
-    user.isActivated && 
-    user.userId && 
-    user.userId.trim() !== '' && 
-    user.uid !== senderUid &&
-    !SYSTEM_USER_IDS.includes(user.userId)
-  );
-  
-  if (fallbackUser) {
-    console.log('Found fallback user:', fallbackUser.userId);
-    return fallbackUser;
-  }
-  
-  console.log('No fallback user found either');
-  return null; // ❌ No eligible receiver found
+  // Sort by referral count and return best receiver
+  filteredReceivers.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
+  return filteredReceivers[0];
 }
 
-function getRequiredHelpCount(level) {
-  if (level === 1) return 3; // Star
-  if (level === 2) return 9; // Silver
-  if (level === 3) return 27; // Gold
-  if (level === 4) return 81; // Platinum
-  if (level === 5) return 243; // Diamond
-  return 3;
-}
+// Main orchestrator for Send Help assignment
+export async function assignSendHelp(currentUser) {
+  if (!currentUser) throw new Error('Not authenticated');
 
-// 1. Sender Eligibility Check
-export async function checkSenderEligibility(currentUser) {
-  if (!currentUser) return { eligible: false, reason: 'Not authenticated' };
   const userRef = doc(db, 'users', currentUser.uid);
   const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) return { eligible: false, reason: 'User not found' };
-  const userData = userSnap.data();
-  if (!userData.isActivated || userData.isBlocked) {
-    return { eligible: false, reason: 'User not eligible' };
+  if (!userSnap.exists()) throw new Error('User not found');
+
+  const sender = { uid: userSnap.id, ...userSnap.data() };
+  if (!sender.userId) throw new Error('Sender userId is missing');
+
+  // Check sender eligibility
+  const eligibility = await checkSenderEligibility(currentUser);
+  if (!eligibility.eligible) {
+    throw new Error(eligibility.reason);
   }
-  // Block only if any sendHelp with status 'Pending' exists for this sender and level
-  const q = query(
+
+  // Check if already has pending send help
+  const existingQ = query(
     collection(db, 'sendHelp'),
-    where('senderId', '==', userData.userId),
-    where('status', '==', 'Pending'),
-    where('level', '==', userData.levelStatus)
+    where('senderUid', '==', sender.uid),
+    where('status', 'in', ['Pending', 'Payment Done'])
   );
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    return { eligible: false, reason: 'Already has a pending sendHelp in this level' };
+  const existingSnap = await getDocs(existingQ);
+  if (!existingSnap.empty) {
+    throw new Error('Already has a pending sendHelp');
   }
-  return { eligible: true, userData };
-}
 
-// 2. Receiver Selection Logic
-export async function selectReceiver(userData) {
-  let levelsToTry = [userData.levelStatus];
-  if (userData.levelStatus === 'Star') levelsToTry.push('Silver');
-  for (const level of levelsToTry) {
-    const q = query(
-      collection(db, 'users'),
-      where('isActivated', '==', true),
-      where('isReceivingHeld', '==', false),
-      where('isOnHold', '==', false),
-      where('isBlocked', '==', false),
-      where('isSystemAccount', '==', false),
-      where('helpReceived', '<', 3),
-      where('levelStatus', '==', level)
-    );
-    const snap = await getDocs(q);
-    const allReceivers = snap.docs.map(doc => ({ ...doc.data(), uid: doc.id }));
-    const eligible = [];
-    for (const u of allReceivers) {
-      if (!u.userId || u.userId === userData.userId) continue;
-      // Count confirmed helps for this user at this level
-      const helpsSnapshot = await getDocs(query(
-        collection(db, 'receiveHelp'),
-        where('receiverId', '==', u.userId),
-        where('confirmedByReceiver', '==', true),
-        where('level', '==', u.levelStatus)
-      ));
-      const confirmedCount = helpsSnapshot.size;
-      const LEVEL_HELP_LIMIT = { Star: 3, Silver: 9, Gold: 27, Platinum: 81, Diamond: 243 };
-      const requiredHelps = LEVEL_HELP_LIMIT[u.levelStatus] || 3;
-      if (confirmedCount >= requiredHelps) continue;
-      eligible.push(u);
-    }
-    if (eligible.length > 0) {
-      eligible.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
-      return eligible[0];
-    }
+  // Get eligible receiver
+  const receiver = await getEligibleReceiver(sender.uid, sender.level);
+  if (!receiver) {
+    throw new Error('No eligible receiver found');
   }
-  console.warn('No eligible receiver found. Check isActivated, isReceivingHeld, isOnHold, isBlocked, helpReceived, isSystemAccount filters.');
-  return null;
-}
 
-// 3. Create Send Help + Receive Help Docs
-export async function createSendAndReceiveHelp(userData, receiver) {
+  // Generate docId and create documents
   const timestamp = Date.now();
-  const docId = `${receiver.userId}_${userData.userId}_${timestamp}`;
-  const sendHelpData = {
-    receiverId: receiver.userId,
-    receiverUid: receiver.uid,
-    receiverName: receiver.fullName,
-    receiverPhone: receiver.phone,
-    receiverWhatsapp: receiver.whatsapp,
-    receiverEmail: receiver.email,
-    senderId: userData.userId,
-    senderUid: userData.uid,
-    senderName: userData.fullName,
-    senderPhone: userData.phone,
-    senderWhatsapp: userData.whatsapp,
-    senderEmail: userData.email,
+  const docId = `${receiver.userId}_${sender.userId}_${timestamp}`;
+
+  const helpData = {
     amount: 300,
     status: 'Pending',
     confirmedByReceiver: false,
-    confirmationTime: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     timestamp,
+    senderUid: sender.uid,
+    senderId: sender.userId,
+    senderName: sender.fullName,
+    senderPhone: sender.phone || '',
+    senderWhatsapp: sender.whatsapp || '',
+    senderEmail: sender.email || '',
+    receiverUid: receiver.uid,
+    receiverId: receiver.userId,
+    receiverName: receiver.fullName,
+    receiverPhone: receiver.phone || '',
+    receiverWhatsapp: receiver.whatsapp || '',
+    receiverEmail: receiver.email || '',
     paymentDetails: {
-      bank: {
-        name: userData.bank?.name || '',
-        accountNumber: userData.bank?.accountNumber || '',
-        bankName: userData.bank?.bankName || '',
-        ifscCode: userData.bank?.ifscCode || '',
-        method: 'Bank'
-      },
-      upi: {
-        upi: userData.paymentMethod?.upi || '',
-        gpay: userData.paymentMethod?.gpay || '',
-        phonePe: userData.paymentMethod?.phonePe || ''
-      },
+      bank: receiver.bank || {},
+      upi: receiver.paymentMethod || {},
       screenshotUrl: '',
       utrNumber: ''
-    }
+    },
+    level: sender.level
   };
-  const receiveHelpData = {
-    ...sendHelpData
+
+  // Atomic Firestore writes
+  await Promise.all([
+    setDoc(doc(db, 'sendHelp', docId), helpData),
+    setDoc(doc(db, 'receiveHelp', docId), helpData)
+  ]);
+
+  return {
+    sendHelpId: docId,
+    sendHelp: helpData,
+    receiveHelp: helpData,
+    receiver
   };
-  await setDoc(doc(db, 'sendHelp', docId), sendHelpData);
-  await setDoc(doc(db, 'receiveHelp', docId), receiveHelpData);
-  return docId;
 }
 
-// 4. Payment Form (UI) & Update Logic
+// Update payment proof for send help
 export async function submitPaymentProof(docId, method, utrNumber, screenshotUrl) {
-  await updateDoc(doc(db, 'sendHelp', docId), {
-    status: 'Paid',
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'sendHelp', docId), {
+    status: 'Payment Done',
     paymentDetails: {
       method,
       utrNumber,
       screenshotUrl
-    }
+    },
+    updatedAt: serverTimestamp()
   });
+
+  batch.update(doc(db, 'receiveHelp', docId), {
+    status: 'Payment Done',
+    paymentDetails: {
+      method,
+      utrNumber,
+      screenshotUrl
+    },
+    updatedAt: serverTimestamp()
+  });
+
+  await batch.commit();
 }
 
-// Utility to update helpReceived count for a receiver
-export const updateHelpReceivedCount = async (receiverId) => {
-  const receiveHelpRef = collection(db, "receiveHelp");
-  const q = query(receiveHelpRef, where("receiverId", "==", receiverId), where("confirmedByReceiver", "==", true));
-  const snapshot = await getDocs(q);
-  const confirmedCount = snapshot.size;
-
-  const usersRef = collection(db, "users");
-  const userQ = query(usersRef, where("userId", "==", receiverId));
-  const userSnap = await getDocs(userQ);
-
-  if (!userSnap.empty) {
-    const userDoc = userSnap.docs[0];
-    await updateDoc(doc(db, "users", userDoc.id), {
-      helpReceived: confirmedCount,
-    });
-  }
-};
-
-// Utility to increment helpReceived and set hold flags if needed
-export const incrementHelpReceivedAndSetHold = async (userUid, currentHelpReceived) => {
-  if ((currentHelpReceived || 0) + 1 >= 3) {
-    await updateDoc(doc(db, 'users', userUid), {
-      helpReceived: increment(1),
-      isReceivingHeld: true,
-      isOnHold: true,
-    });
-  } else {
-    await updateDoc(doc(db, 'users', userUid), {
-      helpReceived: increment(1),
-    });
-  }
-};
-
+// Confirm payment received - only update document status
 export async function confirmHelpReceived(docId) {
-  await updateDoc(doc(db, 'sendHelp', docId), {
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'sendHelp', docId), {
     status: 'Confirmed',
-    confirmedByReceiver: true
-  });
-  await updateDoc(doc(db, 'receiveHelp', docId), {
-    status: 'Confirmed',
-    confirmedByReceiver: true
+    confirmedByReceiver: true,
+    confirmationTime: serverTimestamp()
   });
 
-  // After confirmation, update helpReceived count for the receiver
-  const receiveHelpSnap = await getDoc(doc(db, 'receiveHelp', docId));
-  if (receiveHelpSnap.exists()) {
-    const data = receiveHelpSnap.data();
-    const receiverUserId = data.receiverId; // Use userId, not uid
-    if (receiverUserId) {
-      // Get user doc by userId
-      const usersQuery = query(collection(db, 'users'), where('userId', '==', receiverUserId));
-      const usersSnap = await getDocs(usersQuery);
-      if (!usersSnap.empty) {
-        const userDoc = usersSnap.docs[0];
-        const userUid = userDoc.id;
-        const userData = userDoc.data();
-        await incrementHelpReceivedAndSetHold(userUid, userData.helpReceived);
-      }
-    }
-  }
+  batch.update(doc(db, 'receiveHelp', docId), {
+    status: 'Confirmed',
+    confirmedByReceiver: true,
+    confirmationTime: serverTimestamp()
+  });
+
+  await batch.commit();
 }
+
+// Send help assignment on activation
+export async function assignHelpOnActivation(senderUid) {
+  const userRef = doc(db, 'users', senderUid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return false;
+
+  const sender = { uid: userSnap.id, ...userSnap.data() };
+
+  // Check sender eligibility
+  if (!sender.isActivated || sender.isBlocked || isIncomeBlocked(sender)) {
+    return false;
+  }
+
+  // Check if already has pending send help
+  const existingQ = query(
+    collection(db, 'sendHelp'),
+    where('senderUid', '==', sender.uid),
+    where('status', 'in', ['Pending', 'Payment Done'])
+  );
+  const existingSnap = await getDocs(existingQ);
+  if (!existingSnap.empty) return false;
+
+  // Get eligible receivers at same level
+  const receiversQ = query(
+    collection(db, 'users'),
+    where('level', '==', sender.level),
+    where('isActivated', '==', true),
+    where('isBlocked', '==', false),
+    where('isReceivingHeld', '==', false),
+    where('isOnHold', '==', false)
+  );
+
+  const receiversSnap = await getDocs(receiversQ);
+  const eligibleReceivers = receiversSnap.docs
+    .map(doc => ({ uid: doc.id, ...doc.data() }))
+    .filter(user =>
+      user.uid !== sender.uid &&
+      !SYSTEM_USER_IDS.includes(user.userId) &&
+      (user.helpReceived || 0) < getTotalHelpsByLevel(user.level)
+    )
+    .sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
+
+  if (eligibleReceivers.length === 0) return false;
+
+  const receiver = eligibleReceivers[0];
+  const timestamp = Date.now();
+  const docId = `${receiver.userId}_${sender.userId}_${timestamp}`;
+
+  const helpData = {
+    amount: 300,
+    status: 'Pending',
+    confirmedByReceiver: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    timestamp,
+    senderUid: sender.uid,
+    senderId: sender.userId,
+    senderName: sender.fullName,
+    senderPhone: sender.phone || '',
+    senderWhatsapp: sender.whatsapp || '',
+    senderEmail: sender.email || '',
+    receiverUid: receiver.uid,
+    receiverId: receiver.userId,
+    receiverName: receiver.fullName,
+    receiverPhone: receiver.phone || '',
+    receiverWhatsapp: receiver.whatsapp || '',
+    receiverEmail: receiver.email || '',
+    paymentDetails: {
+      bank: receiver.bank || {},
+      upi: receiver.paymentMethod || {},
+      screenshotUrl: '',
+      utrNumber: ''
+    },
+    level: sender.level
+  };
+
+  await Promise.all([
+    setDoc(doc(db, 'sendHelp', docId), helpData),
+    setDoc(doc(db, 'receiveHelp', docId), helpData)
+  ]);
+
+  return true;
+}
+
+// Real-time listeners for send help documents
+export function listenToSendHelps(userUid, callback) {
+  const q = query(
+    collection(db, 'sendHelp'),
+    where('senderUid', '==', userUid)
+  );
+  return onSnapshot(q, (snapshot) => {
+    const sendHelps = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(sendHelps);
+  });
+}
+
+// Real-time listeners for receive help documents
+export function listenToReceiveHelps(userUid, callback) {
+  const q = query(
+    collection(db, 'receiveHelp'),
+    where('receiverUid', '==', userUid)
+  );
+  return onSnapshot(q, (snapshot) => {
+    const receiveHelps = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(receiveHelps);
+  });
+}
+
+// Admin functions for managing help requests
+export function getSendHelpRequests(callback) {
+  const q = query(collection(db, 'sendHelp'));
+  return onSnapshot(q, (snapshot) => {
+    const requests = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(requests);
+  });
+}
+
+export async function updateSendHelpRequest(id, requestData) {
+  await updateDoc(doc(db, 'sendHelp', id), requestData);
+}
+
+export async function deleteSendHelpRequest(id) {
+  await deleteDoc(doc(db, 'sendHelp', id));
+}
+
 
 // Utility: Get eligible receivers for Send Help assignment
 export async function getStrictlyEligibleReceivers(senderUserId, senderLevel) {
@@ -393,7 +425,7 @@ export async function assignSendHelp(currentUser) {
 
   // 6. Create sendHelp and receiveHelp docs with correct paymentDetails structure
   const sendHelpData = {
-    amount: 300,
+    amount: 300, // Entry amount is always ₹300
     status: 'Pending',
     confirmedByReceiver: false,
     createdAt: serverTimestamp(),
@@ -452,104 +484,88 @@ export async function assignSendHelp(currentUser) {
   };
 }
 
+// Simplified send help assignment on activation
 export async function assignHelpOnActivation(senderUid) {
   const userRef = doc(db, 'users', senderUid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return false;
+
   const sender = { uid: userSnap.id, ...userSnap.data() };
-  if (!sender.isActivated || sender.isBlocked || sender.isReceivingHeld) return false;
-  const senderLevel = sender.levelStatus || sender.level;
-  // Check if already has a sendHelp doc (pending or confirmed)
-  const existingSendHelpQ = query(
+
+  // Check sender eligibility
+  if (!sender.isActivated || sender.isBlocked || isIncomeBlocked(sender)) {
+    return false;
+  }
+
+  // Check if already has pending send help
+  const existingQ = query(
     collection(db, 'sendHelp'),
     where('senderUid', '==', sender.uid),
-    where('status', 'in', ['pending', 'confirmed'])
+    where('status', 'in', ['Pending', 'Payment Done'])
   );
-  const existingSendHelpSnap = await getDocs(existingSendHelpQ);
-  if (!existingSendHelpSnap.empty) return false;
-  // Find eligible receivers
-  const q = query(
+  const existingSnap = await getDocs(existingQ);
+  if (!existingSnap.empty) return false;
+
+  // Get eligible receivers at same level
+  const receiversQ = query(
     collection(db, 'users'),
-    where('levelStatus', '==', senderLevel)
+    where('level', '==', sender.level),
+    where('isActivated', '==', true),
+    where('isBlocked', '==', false),
+    where('isReceivingHeld', '==', false),
+    where('isOnHold', '==', false)
   );
-  const usersSnapshot = await getDocs(q);
-  const allReceivers = usersSnapshot.docs.map(docSnap => ({ ...docSnap.data(), uid: docSnap.id }));
-  for (const user of allReceivers) {
-    if (user.isSystemAccount === true && (user.helpReceived || 0) >= 3) {
-      await updateDoc(doc(db, "users", user.uid), { helpReceived: 3, isReceivingHeld: true, isOnHold: true });
-      continue;
-    }
-    if (user.isReceivingHeld || user.isOnHold) return;
-  }
-  const filteredReceivers = allReceivers.filter(user =>
-    user.isActivated &&
-    !user.isReceivingHeld &&
-    !user.isBlocked &&
-    user.userId !== sender.userId &&
-    !SYSTEM_USER_IDS.includes(user.userId)
-  );
-  let eligibleReceivers = [];
-  for (const user of filteredReceivers) {
-    if (user.isSystemAccount === true && (user.helpReceived || 0) >= 3) {
-      await updateDoc(doc(db, "users", user.uid), { helpReceived: 3, isReceivingHeld: true, isOnHold: true });
-      continue;
-    }
-    const assignedCount = await getReceiverAssignedHelpCount(user.userId, user.levelStatus);
-    const maxHelpsAllowed = getMaxHelpsForLevel(user.levelStatus);
-    if (assignedCount >= maxHelpsAllowed) {
-      await updateDoc(doc(db, 'users', user.uid), { isReceivingHeld: true });
-      continue;
-    }
-    eligibleReceivers.push({ ...user, assignedCount });
-  }
-  eligibleReceivers.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
-  console.log('Eligible receivers:', eligibleReceivers.map(u => ({ userId: u.userId, referralCount: u.referralCount, assignedCount: u.assignedCount })));
-  eligibleReceivers.forEach(u => console.log('filteredReceiver.userId:', u.userId));
+
+  const receiversSnap = await getDocs(receiversQ);
+  const eligibleReceivers = receiversSnap.docs
+    .map(doc => ({ uid: doc.id, ...doc.data() }))
+    .filter(user =>
+      user.uid !== sender.uid &&
+      !SYSTEM_USER_IDS.includes(user.userId) &&
+      (user.helpReceived || 0) < getTotalHelpsByLevel(user.level)
+    )
+    .sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
+
+  if (eligibleReceivers.length === 0) return false;
+
   const receiver = eligibleReceivers[0];
-  if (!receiver) return false;
-  console.log('Selected receiver:', receiver.userId);
-  if (SYSTEM_USER_IDS.includes(receiver.userId)) throw new Error('System user selected as receiver, which should never happen!');
-  // Create sendHelp and receiveHelp docs
   const timestamp = Date.now();
   const docId = `${receiver.userId}_${sender.userId}_${timestamp}`;
-  const amount = 300; // or use levelAmount[senderLevel] if needed
+
   const helpData = {
-    amount,
-    confirmedByReceiver: false,
+    amount: 300,
     status: 'Pending',
-    timestamp,
+    confirmedByReceiver: false,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    timestamp,
     senderUid: sender.uid,
     senderId: sender.userId,
     senderName: sender.fullName,
-    senderPhone: sender.phone,
-    senderWhatsapp: sender.whatsapp,
-    senderEmail: sender.email,
+    senderPhone: sender.phone || '',
+    senderWhatsapp: sender.whatsapp || '',
+    senderEmail: sender.email || '',
     receiverUid: receiver.uid,
     receiverId: receiver.userId,
     receiverName: receiver.fullName,
-    receiverPhone: receiver.phone,
-    receiverWhatsapp: receiver.whatsapp,
-    receiverEmail: receiver.email,
-    paymentDetails: receiver.paymentMethod || {},
-    level: senderLevel
+    receiverPhone: receiver.phone || '',
+    receiverWhatsapp: receiver.whatsapp || '',
+    receiverEmail: receiver.email || '',
+    paymentDetails: {
+      bank: receiver.bank || {},
+      upi: receiver.paymentMethod || {},
+      screenshotUrl: '',
+      utrNumber: ''
+    },
+    level: sender.level
   };
-  await setDoc(doc(db, 'sendHelp', docId), helpData);
-  await setDoc(doc(db, 'receiveHelp', docId), helpData);
-  // After assignment, check if receiver should be held
-  const newAssignedCount = await getReceiverAssignedHelpCount(receiver.userId, receiver.levelStatus);
-  const maxHelpsAllowed = getMaxHelpsForLevel(receiver.levelStatus);
-  if (newAssignedCount >= maxHelpsAllowed) {
-    await updateDoc(doc(db, 'users', receiver.uid), { isReceivingHeld: true });
-  }
-  await holdSystemAccountIfLimitReached(receiver);
+
+  await Promise.all([
+    setDoc(doc(db, 'sendHelp', docId), helpData),
+    setDoc(doc(db, 'receiveHelp', docId), helpData)
+  ]);
+
   return true;
 }
 
-// Add these exports at the end of the file
-export { LEVEL_HELP_LIMIT, getMaxHelpsForLevel };
-
-// Remove the CommonJS export and keep only ES6 exports
-// Remove: module.exports = { assignReceiverOnActivation, assignHelpForActiveUsers };
-// Add:
-export { assignReceiverOnActivation, assignHelpForActiveUsers };
+// Core exports for send help functionality

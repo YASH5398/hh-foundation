@@ -1,8 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../../context/NotificationContext';
-import { FiBell, FiX, FiTrash2, FiClock, FiUser, FiSettings, FiInbox } from 'react-icons/fi';
+import {
+  FiBell, FiX, FiTrash2, FiClock, FiUser, FiSettings, FiInbox,
+  FiCheck, FiAlertTriangle, FiDollarSign, FiTrendingUp,
+  FiUsers, FiStar, FiShield, FiMessageSquare, FiFilter
+} from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
+import NotificationSettings from './NotificationSettings';
 
 const NotificationDropdown = () => {
   const {
@@ -15,8 +20,11 @@ const NotificationDropdown = () => {
     toggleDropdown,
     closeDropdown
   } = useNotifications();
-  
+
   const dropdownRef = useRef(null);
+  const [filter, setFilter] = useState('all'); // all, unread, payment, system, admin
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -35,29 +43,149 @@ const NotificationDropdown = () => {
     };
   }, [isDropdownOpen, closeDropdown]);
 
-  const getNotificationIcon = (type) => {
+  const getNotificationIcon = (type, title = '', category = '') => {
+    // Enhanced icon selection based on type, title, and category
+    if (title.includes('Payment') || title.includes('₹') || category === 'payment') {
+      return <FiDollarSign className="w-4 h-4 text-green-500" />;
+    }
+    if (title.includes('Level') || title.includes('Upgrade') || category === 'upgrade') {
+      return <FiTrendingUp className="w-4 h-4 text-purple-500" />;
+    }
+    if (title.includes('Referral') || title.includes('Join') || category === 'referral') {
+      return <FiUsers className="w-4 h-4 text-blue-500" />;
+    }
+    if (title.includes('Help') || title.includes('Assignment') || category === 'help') {
+      return <FiCheck className="w-4 h-4 text-emerald-500" />;
+    }
+    if (title.includes('E-PIN') || title.includes('Testimonial') || category === 'epin') {
+      return <FiStar className="w-4 h-4 text-yellow-500" />;
+    }
+    if (title.includes('Support') || title.includes('Ticket') || category === 'support') {
+      return <FiMessageSquare className="w-4 h-4 text-orange-500" />;
+    }
+    if (title.includes('Blocked') || title.includes('Security') || category === 'security') {
+      return <FiShield className="w-4 h-4 text-red-500" />;
+    }
+    if (title.includes('Alert') || title.includes('Warning') || category === 'warning') {
+      return <FiAlertTriangle className="w-4 h-4 text-yellow-500" />;
+    }
+
     switch (type) {
       case 'admin':
         return <FiUser className="w-4 h-4 text-blue-500" />;
       case 'system':
-        return <FiSettings className="w-4 h-4 text-green-500" />;
+        return <FiSettings className="w-4 h-4 text-indigo-500" />;
+      case 'activity':
+        return <FiTrendingUp className="w-4 h-4 text-emerald-500" />;
       default:
         return <FiBell className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getNotificationBgColor = (type, isRead) => {
+  const getNotificationStyling = (type, title, isRead, priority = 'medium') => {
+    // Priority-based styling
+    const priorityStyles = {
+      high: {
+        border: 'border-l-4 border-l-red-500',
+        shadow: 'shadow-red-100',
+        glow: 'hover:shadow-red-200'
+      },
+      medium: {
+        border: 'border-l-4 border-l-blue-500',
+        shadow: 'shadow-blue-100',
+        glow: 'hover:shadow-blue-200'
+      },
+      low: {
+        border: '',
+        shadow: 'shadow-gray-100',
+        glow: 'hover:shadow-gray-200'
+      }
+    };
+
+    const priorityStyle = priorityStyles[priority] || priorityStyles.medium;
+
     if (isRead) {
-      return 'bg-gray-50 border-gray-200';
+      return {
+        bg: 'bg-gray-50/80',
+        border: 'border-gray-200/60',
+        shadow: priorityStyle.shadow,
+        glow: priorityStyle.glow,
+        opacity: 'opacity-75'
+      };
     }
-    
+
+    // Category-based styling
+    if (title.includes('Payment') || title.includes('₹')) {
+      return {
+        bg: 'bg-gradient-to-r from-green-50 to-emerald-50',
+        border: 'border-green-200',
+        shadow: 'shadow-green-100',
+        glow: 'hover:shadow-green-200'
+      };
+    }
+    if (title.includes('Level') || title.includes('Upgrade')) {
+      return {
+        bg: 'bg-gradient-to-r from-purple-50 to-violet-50',
+        border: 'border-purple-200',
+        shadow: 'shadow-purple-100',
+        glow: 'hover:shadow-purple-200'
+      };
+    }
+    if (title.includes('Referral') || title.includes('Join')) {
+      return {
+        bg: 'bg-gradient-to-r from-blue-50 to-cyan-50',
+        border: 'border-blue-200',
+        shadow: 'shadow-blue-100',
+        glow: 'hover:shadow-blue-200'
+      };
+    }
+    if (title.includes('E-PIN') || title.includes('Testimonial')) {
+      return {
+        bg: 'bg-gradient-to-r from-yellow-50 to-amber-50',
+        border: 'border-yellow-200',
+        shadow: 'shadow-yellow-100',
+        glow: 'hover:shadow-yellow-200'
+      };
+    }
+    if (title.includes('Alert') || title.includes('Warning')) {
+      return {
+        bg: 'bg-gradient-to-r from-red-50 to-pink-50',
+        border: 'border-red-200',
+        shadow: 'shadow-red-100',
+        glow: 'hover:shadow-red-200'
+      };
+    }
+
+    // Type-based fallback
     switch (type) {
       case 'admin':
-        return 'bg-blue-50 border-blue-200';
+        return {
+          bg: 'bg-gradient-to-r from-blue-50 to-indigo-50',
+          border: 'border-blue-200',
+          shadow: 'shadow-blue-100',
+          glow: 'hover:shadow-blue-200'
+        };
       case 'system':
-        return 'bg-green-50 border-green-200';
+        return {
+          bg: 'bg-gradient-to-r from-indigo-50 to-purple-50',
+          border: 'border-indigo-200',
+          shadow: 'shadow-indigo-100',
+          glow: 'hover:shadow-indigo-200'
+        };
+      case 'activity':
+        return {
+          bg: 'bg-gradient-to-r from-emerald-50 to-teal-50',
+          border: 'border-emerald-200',
+          shadow: 'shadow-emerald-100',
+          glow: 'hover:shadow-emerald-200'
+        };
       default:
-        return 'bg-white border-gray-200';
+        return {
+          bg: 'bg-white',
+          border: 'border-gray-200',
+          shadow: 'shadow-gray-100',
+          glow: 'hover:shadow-gray-200'
+        };
     }
   };
 
@@ -71,6 +199,34 @@ const NotificationDropdown = () => {
     e.stopPropagation();
     await deleteNotification(notificationId);
   };
+
+  // Filter notifications based on current filter
+  const getFilteredNotifications = () => {
+    let filtered = notifications;
+
+    // Apply type filter
+    if (filter === 'unread') {
+      filtered = filtered.filter(n => !n.isRead);
+    } else if (filter === 'payment') {
+      filtered = filtered.filter(n => n.title?.includes('Payment') || n.title?.includes('₹') || n.category === 'payment');
+    } else if (filter === 'system') {
+      filtered = filtered.filter(n => n.type === 'system' || n.type === 'activity');
+    } else if (filter === 'admin') {
+      filtered = filtered.filter(n => n.type === 'admin');
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(n =>
+        n.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        n.message?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredNotifications = getFilteredNotifications();
 
 
 
@@ -100,136 +256,288 @@ const NotificationDropdown = () => {
         {isDropdownOpen && (
           <motion.div
         ref={dropdownRef}
-        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+        initial={{ opacity: 0, y: -20, scale: 0.9, transformOrigin: 'top right' }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="absolute top-full right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] z-50"
-        style={{ transform: 'translateX(calc(-100% + 100%))' }}
+        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+          duration: 0.4
+        }}
+        className="absolute top-full right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] z-50"
       >
-        {/* Glassmorphism Container */}
-        <div className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200/50 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FiBell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Notifications</h3>
-                {notifications.length > 0 && (
-                  <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-                    {notifications.length}
-                  </span>
-                )}
+        {/* Enhanced Glassmorphism Container */}
+        <div className="bg-white/98 backdrop-blur-2xl border border-white/40 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-black/5">
+          {/* Enhanced Header with Search */}
+          <div className="px-6 py-5 border-b border-gray-200/60 bg-gradient-to-r from-blue-50/60 via-white to-purple-50/60">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <FiBell className="w-5 h-5 text-gray-700" />
+                  {unreadCount > 0 && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
+                    />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Notifications</h3>
+                  <p className="text-xs text-gray-500">
+                    {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={closeDropdown}
-                className="p-1 hover:bg-gray-200/50 rounded-lg transition-colors"
-              >
-                <FiX className="w-4 h-4 text-gray-500" />
-              </button>
+              <div className="flex items-center space-x-1">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowSettings(true)}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                  title="Notification Settings"
+                >
+                  <FiSettings className="w-4 h-4 text-gray-500" />
+                </motion.button>
+                <button
+                  onClick={closeDropdown}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
+                >
+                  <FiX className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search and Filter Bar */}
+            <div className="space-y-3">
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search notifications..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-white/70 border border-gray-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all duration-200"
+                />
+                <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex space-x-1 p-1 bg-gray-100/60 rounded-xl">
+                {[
+                  { key: 'all', label: 'All', count: notifications.length },
+                  { key: 'unread', label: 'Unread', count: unreadCount },
+                  { key: 'payment', label: '💰 Payments', count: notifications.filter(n => n.title?.includes('Payment') || n.title?.includes('₹')).length },
+                  { key: 'system', label: '🔧 System', count: notifications.filter(n => n.type === 'system' || n.type === 'activity').length },
+                  { key: 'admin', label: '👤 Admin', count: notifications.filter(n => n.type === 'admin').length }
+                ].map(({ key, label, count }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                      filter === key
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
+                    }`}
+                  >
+                    {label} {count > 0 && `(${count})`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Notifications List */}
-          <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          {/* Enhanced Notifications List */}
+          <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent hover:scrollbar-thumb-gray-400/60">
             {loading ? (
-              <div className="p-4 sm:p-6 text-center">
-                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="text-gray-500 mt-2 text-sm">Loading notifications...</p>
+              <div className="p-8 text-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
+                />
+                <p className="text-gray-500 text-sm">Loading notifications...</p>
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-4 sm:p-6 text-center">
-                <FiInbox className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm sm:text-base">All caught up!</p>
-                <p className="text-xs sm:text-sm text-gray-400 mt-1">No new notifications</p>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="p-8 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                >
+                  <FiInbox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-gray-500 font-medium mb-1">
+                    {searchTerm ? 'No matching notifications' : 'All caught up!'}
+                  </h4>
+                  <p className="text-xs text-gray-400">
+                    {searchTerm ? 'Try adjusting your search or filters' : 'No new notifications'}
+                  </p>
+                </motion.div>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200/50">
-                {notifications.slice(0, 10).map((notification, index) => (
-                  <motion.div
-                    key={notification.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50/50 transition-colors relative group ${
-                      getNotificationBgColor(notification.type, notification.isRead)
-                    }`}
-                  >
-                    <div className="flex items-start space-x-2 sm:space-x-3">
-                      {/* Notification Icon */}
-                      <div className="flex-shrink-0 mt-0.5 sm:mt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 pr-2">
-                            <h4 className={`text-xs sm:text-sm font-medium leading-tight ${
-                              notification.isRead ? 'text-gray-700' : 'text-gray-900'
-                            }`}>
-                              {notification.title}
-                            </h4>
-                            <p className={`text-xs sm:text-sm mt-1 leading-relaxed ${
-                              notification.isRead ? 'text-gray-500' : 'text-gray-600'
-                            }`}>
-                              {notification.message.length > 80 ? `${notification.message.substring(0, 80)}...` : notification.message}
-                            </p>
-                            
-                            {/* Timestamp and Type */}
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center space-x-1 text-xs text-gray-400">
-                                <FiClock className="w-3 h-3" />
-                                <span className="text-xs">
-                                  {notification.createdAt ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true }) : 'Just now'}
-                                </span>
-                              </div>
-                              <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full ${
-                                notification.type === 'admin' 
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-green-100 text-green-700'
-                              }`}>
-                                {notification.type}
-                              </span>
+              <div className="divide-y divide-gray-100/60">
+                <AnimatePresence>
+                  {filteredNotifications.slice(0, 15).map((notification, index) => {
+                    const styling = getNotificationStyling(
+                      notification.type,
+                      notification.title,
+                      notification.isRead,
+                      notification.priority || 'medium'
+                    );
+
+                    return (
+                      <motion.div
+                        key={notification.id}
+                        layout
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                        transition={{
+                          delay: index * 0.03,
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 30
+                        }}
+                        onClick={() => handleNotificationClick(notification)}
+                        className={`
+                          p-4 cursor-pointer transition-all duration-300 relative group
+                          ${styling.bg} ${styling.border} ${styling.shadow} ${styling.opacity}
+                          hover:${styling.glow} hover:shadow-lg
+                          border-r-0 border-l-0 border-t-0 border-b-1
+                        `}
+                      >
+                        <div className="flex items-start space-x-4">
+                          {/* Enhanced Notification Icon */}
+                          <div className="flex-shrink-0 mt-1">
+                            <div className={`
+                              p-2 rounded-xl transition-all duration-200
+                              ${notification.isRead ? 'bg-gray-100' : 'bg-white shadow-sm'}
+                            `}>
+                              {getNotificationIcon(notification.type, notification.title, notification.category)}
                             </div>
                           </div>
-                          
-                          {/* Delete Button */}
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={(e) => handleDeleteNotification(e, notification.id)}
-                            className="opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:bg-red-100 rounded-lg transition-all duration-200 ml-1"
-                          >
-                            <FiTrash2 className="w-3 h-3 text-red-500" />
-                          </motion.button>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 pr-3">
+                                <h4 className={`
+                                  text-sm font-semibold leading-tight mb-1 line-clamp-2
+                                  ${notification.isRead ? 'text-gray-700' : 'text-gray-900'}
+                                `}>
+                                  {notification.title}
+                                </h4>
+                                <p className={`
+                                  text-sm leading-relaxed line-clamp-2 mb-3
+                                  ${notification.isRead ? 'text-gray-500' : 'text-gray-600'}
+                                `}>
+                                  {notification.message}
+                                </p>
+
+                                {/* Enhanced Metadata */}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3 text-xs text-gray-400">
+                                    <div className="flex items-center space-x-1">
+                                      <FiClock className="w-3 h-3" />
+                                      <span>
+                                        {notification.timestamp ?
+                                          formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true }) :
+                                          'Just now'
+                                        }
+                                      </span>
+                                    </div>
+                                    {notification.category && (
+                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">
+                                        {notification.category}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Priority Indicator */}
+                                  {notification.priority === 'high' && !notification.isRead && (
+                                    <motion.div
+                                      animate={{ scale: [1, 1.2, 1] }}
+                                      transition={{ duration: 2, repeat: Infinity }}
+                                      className="w-2 h-2 bg-red-500 rounded-full"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Enhanced Delete Button */}
+                              <motion.button
+                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={(e) => handleDeleteNotification(e, notification.id)}
+                                className="
+                                  opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50
+                                  rounded-xl transition-all duration-200 text-red-400 hover:text-red-600
+                                "
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </motion.button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    {/* Unread Indicator */}
-                    {!notification.isRead && (
-                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
-                    )}
-                  </motion.div>
-                ))}
+
+                        {/* Enhanced Unread Indicator */}
+                        {!notification.isRead && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute left-4 top-6 w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-sm"
+                          />
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-200/50">
-              <p className="text-xs text-gray-500 text-center">
-                {notifications.length} notification{notifications.length !== 1 ? 's' : ''} total
-              </p>
+          {/* Enhanced Footer */}
+          {filteredNotifications.length > 0 && (
+            <div className="px-6 py-4 bg-gradient-to-r from-gray-50/60 to-blue-50/60 border-t border-gray-200/60">
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-500">
+                  Showing {filteredNotifications.length} of {notifications.length} notifications
+                </div>
+                <div className="flex space-x-2">
+                  {unreadCount > 0 && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={async () => {
+                        // Mark all as read functionality would go here
+                        // This would need to be added to the NotificationContext
+                      }}
+                      className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors duration-200"
+                    >
+                      Mark all read
+                    </motion.button>
+                  )}
+                  <button
+                    onClick={closeDropdown}
+                    className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Settings Modal */}
+      <NotificationSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 };

@@ -6,6 +6,51 @@ admin.initializeApp();
 const db = admin.firestore();
 const messaging = admin.messaging();
 
+// Import MLM core logic - SINGLE SOURCE OF TRUTH
+const {
+  LEVEL_CONFIG,
+  LEVEL_ORDER,
+  isIncomeBlocked,
+  getCurrentBlockPoint,
+  getRequiredPaymentForUnblock,
+  getTotalHelpsByLevel,
+  getAmountByLevel,
+  getNextLevel,
+  getBlockPointsByLevel,
+  getUpgradeAmount,
+  getSponsorPaymentAmount,
+  getLevelIndex,
+  isMaxLevel,
+  validateLevelUpgrade,
+  validateSponsorPayment,
+  validateUpgradePayment
+} = require('../src/shared/mlmCore');
+
+
+// Helper functions for level management
+const unblockUserIncome = async (userId, level) => {
+  const userRef = db.collection('users').doc(userId);
+  await userRef.update({
+    isReceivingHeld: false,
+    isOnHold: false,
+    lastUnblockTime: admin.firestore.FieldValue.serverTimestamp()
+  });
+  console.log(`[unblockUserIncome] Unblocked income for user ${userId} at level ${level}`);
+};
+
+const upgradeUserLevel = async (userId, newLevel) => {
+  const userRef = db.collection('users').doc(userId);
+  await userRef.update({
+    level: newLevel,
+    helpReceived: 0, // Reset help counter for new level
+    isReceivingHeld: false,
+    isOnHold: false,
+    levelStatus: 'active',
+    lastUpgradeTime: admin.firestore.FieldValue.serverTimestamp()
+  });
+  console.log(`[upgradeUserLevel] Upgraded user ${userId} to level ${newLevel}`);
+};
+
 // Helper functions for creating standardized notification data
 const createNotificationData = (params) => {
   const {
@@ -96,16 +141,26 @@ exports.onReceiveHelpConfirmed = functions.firestore
       const userRef = usersSnap.docs[0].ref;
       await db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
-        let helpReceived = userDoc.get('helpReceived') || 0;
-        helpReceived += 1;
+        const userData = userDoc.data();
+        let helpReceived = userData.helpReceived || 0;
+        helpReceived += 1; // Idempotent increment - only happens once per confirmation
         console.log(`[onReceiveHelpConfirmed] Incrementing helpReceived to: ${helpReceived}`);
+
         const updateData = { helpReceived };
-        if (helpReceived === 3) {
+
+        // Use MLM core logic to check if income should be blocked
+        if (isIncomeBlocked({ ...userData, helpReceived })) {
           updateData.isReceivingHeld = true;
           updateData.isOnHold = true;
-          updateData.levelStatus = 'completed';
-          console.log(`[onReceiveHelpConfirmed] helpReceived reached 3. Setting isReceivingHeld, isOnHold, levelStatus.`);
+          console.log(`[onReceiveHelpConfirmed] helpReceived reached ${helpReceived} for level ${userData.level}. Income BLOCKED.`);
         }
+
+        // Check if level is completed (hard stop)
+        if (helpReceived >= getTotalHelpsByLevel(userData.level)) {
+          updateData.levelStatus = 'completed';
+          console.log(`[onReceiveHelpConfirmed] Level ${userData.level} completed with ${helpReceived} helps.`);
+        }
+
         transaction.update(userRef, updateData);
       });
       console.log(`[onReceiveHelpConfirmed] Transaction complete for receiverId: ${receiverId}`);
@@ -953,101 +1008,146 @@ exports.onPaymentConfirm = functions.firestore
     return null;
   });
 
-exports.onReceiveHelpConfirmedByUid = functions.firestore
-  .document('receiveHelp/{docId}')
+
+
+// Cloud Function: Level payment confirmation (upgrade or sponsor payment)
+exports.onLevelPaymentConfirmed = functions.firestore
+  .document('levelPayments/{paymentId}')
   .onUpdate(async (change, context) => {
-    if (!change.before.data().confirmedByReceiver && change.after.data().confirmedByReceiver) {
-      const receiverUid = change.after.data().receiverUid;
-      if (!receiverUid) {
-        console.log('[onReceiveHelpConfirmedByUid] No receiverUid found in receiveHelp doc.');
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Only process if status changed to confirmed
+    if (before.status !== 'confirmed' && after.status === 'confirmed') {
+      const { userId, paymentType, amount } = after;
+
+      if (!userId || !paymentType) {
+        console.log('[onLevelPaymentConfirmed] Missing userId or paymentType');
         return null;
       }
-      const userRef = db.collection('users').doc(receiverUid);
-      await db.runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-          console.log(`[onReceiveHelpConfirmedByUid] User doc not found for uid: ${receiverUid}`);
-          return;
-        }
-        let helpReceived = userDoc.get('helpReceived') || 0;
-        helpReceived += 1;
-        console.log(`[onReceiveHelpConfirmedByUid] Incrementing helpReceived for uid ${receiverUid} to: ${helpReceived}`);
-        const updateData = { helpReceived };
-        if (helpReceived === 3) {
-          updateData.isReceivingHeld = true;
-          updateData.isOnHold = true;
-          updateData.levelStatus = 'completed';
-          console.log(`[onReceiveHelpConfirmedByUid] helpReceived reached 3 for uid ${receiverUid}. Setting isReceivingHeld, isOnHold, levelStatus.`);
-        }
-        transaction.update(userRef, updateData);
-      });
-      console.log(`[onReceiveHelpConfirmedByUid] Transaction complete for receiverUid: ${receiverUid}`);
-    } else {
-      console.log('[onReceiveHelpConfirmedByUid] No confirmation change detected.');
-    }
-    return null;
-  });
 
-exports.autoHoldUserOnThreeConfirmed = functions.firestore
-  .document('receiveHelp/{docId}')
-  .onUpdate(async (change, context) => {
-    const after = change.after.data();
-    const before = change.before.data();
-    // Only run if status just became 'confirmed' and confirmedByReceiver is true
-    if (
-      after.status === 'confirmed' &&
-      after.confirmedByReceiver === true &&
-      (before.status !== 'confirmed' || before.confirmedByReceiver !== true)
-    ) {
-      const receiverId = after.receiverId;
-      const receiverUid = after.receiverUid;
-      if (!receiverId || !receiverUid) return null;
-      // Query all confirmed receiveHelp docs for this user
-      const confirmedSnap = await admin.firestore()
-        .collection('receiveHelp')
-        .where('receiverId', '==', receiverId)
-        .where('status', '==', 'confirmed')
-        .where('confirmedByReceiver', '==', true)
-        .get();
-      if (confirmedSnap.size === 3) {
-        const userRef = admin.firestore().collection('users').doc(receiverUid);
-        const userSnap = await userRef.get();
-        const userData = userSnap.exists ? userSnap.data() : null;
-        // Only update if not already on hold and helpReceived < 3
-        if (userData && (!userData.isReceivingHeld || !userData.isOnHold || (userData.helpReceived || 0) < 3)) {
-          await userRef.update({
-            helpReceived: 3,
-            isReceivingHeld: true,
-            isOnHold: true,
-          });
-          console.log(`[autoHoldUserOnThreeConfirmed] User ${receiverUid} set to hold after 3 confirmed helps.`);
-          
-          // Send level completion notification
+      console.log(`[onLevelPaymentConfirmed] Processing ${paymentType} payment of ₹${amount} for user: ${userId}`);
+
+      const userRef = db.collection('users').doc(userId);
+
+      try {
+        await db.runTransaction(async (transaction) => {
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) {
+            throw new Error(`User ${userId} not found`);
+          }
+
+          const userData = userDoc.data();
+          const updateData = {};
+
+          if (paymentType === 'upgrade') {
+            // UPGRADE PAYMENT: Upgrade level and reset counters
+            const nextLevel = getNextLevel(userData.level);
+            if (!nextLevel) {
+              throw new Error(`No next level available for ${userData.level}`);
+            }
+
+            // Validate upgrade payment
+            const upgradeValidation = validateUpgradePayment(userData);
+            if (!upgradeValidation.valid) {
+              throw new Error(`Invalid upgrade payment: ${upgradeValidation.reason}`);
+            }
+
+            if (upgradeValidation.amount !== amount) {
+              throw new Error(`Upgrade amount mismatch: expected ₹${upgradeValidation.amount}, got ₹${amount}`);
+            }
+
+            updateData.level = nextLevel;
+            updateData.helpReceived = 0; // Reset counter for new level
+            updateData.isReceivingHeld = false;
+            updateData.isOnHold = false;
+            updateData.levelStatus = 'active';
+            updateData.lastUpgradeTime = admin.firestore.FieldValue.serverTimestamp();
+
+            console.log(`[onLevelPaymentConfirmed] Upgraded user ${userId} from ${userData.level} to ${nextLevel}`);
+
+          } else if (paymentType === 'sponsor') {
+            // SPONSOR PAYMENT: Only unblock income, NEVER upgrade
+            const sponsorValidation = validateSponsorPayment(userData, after.sponsorId);
+            if (!sponsorValidation.valid) {
+              throw new Error(`Invalid sponsor payment: ${sponsorValidation.reason}`);
+            }
+
+            if (sponsorValidation.amount !== amount) {
+              throw new Error(`Sponsor amount mismatch: expected ₹${sponsorValidation.amount}, got ₹${amount}`);
+            }
+
+            // Only unblock - no level change
+            updateData.isReceivingHeld = false;
+            updateData.isOnHold = false;
+            updateData.lastUnblockTime = admin.firestore.FieldValue.serverTimestamp();
+
+            console.log(`[onLevelPaymentConfirmed] Unblocked income for user ${userId} after sponsor payment`);
+
+          } else {
+            throw new Error(`Unknown payment type: ${paymentType}`);
+          }
+
+          transaction.update(userRef, updateData);
+
+          // Send appropriate notification
+          const notificationTitle = paymentType === 'upgrade'
+            ? `🎉 Level Upgraded to ${updateData.level || userData.level}!`
+            : '✅ Income Unblocked!';
+
+          const notificationMessage = paymentType === 'upgrade'
+            ? `Congratulations! Your level has been upgraded. You can now continue receiving help.`
+            : `Your income has been unblocked. You can now continue receiving help.`;
+
           try {
-            const levelCompletionNotification = createActivityNotificationData({
-              title: '🎉 Level Completed!',
-              message: 'Congratulations! You have completed your current level with 3 confirmed helps. Check if upgrade is required.',
-              uid: receiverUid,
-              userId: receiverUid,
+            const paymentNotification = createActivityNotificationData({
+              title: notificationTitle,
+              message: notificationMessage,
+              uid: userId,
+              userId: userId,
               priority: 'high',
               actionLink: '/dashboard',
               category: 'level',
-              relatedAction: 'level_completion',
+              relatedAction: paymentType === 'upgrade' ? 'level_upgrade' : 'income_unblock',
               senderName: 'Level System'
             });
-            
-            await createNotification(receiverUid, levelCompletionNotification);
-            await sendPushNotification(receiverUid, levelCompletionNotification);
-            
-            console.log(`Level completion notification sent to user: ${receiverUid}`);
+
+            await createNotification(userId, paymentNotification);
+            await sendPushNotification(userId, paymentNotification);
           } catch (notificationError) {
-            console.error('Error sending level completion notification:', notificationError);
+            console.error('Error sending level payment notification:', notificationError);
           }
-        } else {
-          console.log(`[autoHoldUserOnThreeConfirmed] User ${receiverUid} already on hold or has 3 helps.`);
+        });
+
+        console.log(`[onLevelPaymentConfirmed] Successfully processed ${paymentType} payment for user: ${userId}`);
+
+      } catch (error) {
+        console.error(`[onLevelPaymentConfirmed] Error processing ${paymentType} payment:`, error);
+
+        // Send error notification
+        try {
+          const errorNotification = createActivityNotificationData({
+            title: '❌ Payment Processing Error',
+            message: `There was an error processing your ${paymentType} payment. Please contact support.`,
+            uid: userId,
+            userId: userId,
+            priority: 'high',
+            actionLink: '/dashboard/support',
+            category: 'error',
+            relatedAction: 'payment_error',
+            senderName: 'System'
+          });
+
+          await createNotification(userId, errorNotification);
+          await sendPushNotification(userId, errorNotification);
+        } catch (notificationError) {
+          console.error('Error sending error notification:', notificationError);
         }
+
+        throw error; // Re-throw to fail the function
       }
     }
+
     return null;
   });
 

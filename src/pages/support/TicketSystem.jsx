@@ -148,7 +148,7 @@ const TicketSystem = () => {
         >
           <div className="flex items-center justify-between mb-6">
             <motion.button
-              onClick={() => navigate('/support')}
+              onClick={() => navigate('/dashboard/support')}
               whileHover={{ scale: 1.05, x: -5 }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-white hover:bg-white/20 transition-all duration-300"

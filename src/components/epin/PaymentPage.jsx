@@ -25,7 +25,7 @@ const PaymentPage = () => {
   
   // Redirect if no package selected
   if (!selectedPackage) {
-    navigate('/epin/request');
+    navigate('/dashboard/epins/request');
     return null;
   }
   
@@ -139,7 +139,7 @@ const PaymentPage = () => {
         {/* Header with Back Button */}
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/epin/request')}
+            onClick={() => navigate('/dashboard/epins/request')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
             <FiArrowLeft className="text-lg" />

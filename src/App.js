@@ -2,7 +2,6 @@ import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 // Layouts & Protected Routes
-import Layout from './components/layout/Layout';
 import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './admin/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
