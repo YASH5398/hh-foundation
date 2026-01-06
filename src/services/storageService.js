@@ -22,10 +22,10 @@ class StorageService {
           return;
         }
 
-        // Check file size (5MB limit)
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        // Check file size (3MB limit)
+        const maxSize = 3 * 1024 * 1024; // 3MB
         if (file.size > maxSize) {
-          reject(new Error('File size exceeds 5MB limit'));
+          reject(new Error('File size exceeds 3MB limit'));
           return;
         }
 
@@ -136,7 +136,7 @@ class StorageService {
    * @returns {Promise<string>} - Returns the download URL of the uploaded screenshot
    */
   async uploadEpinScreenshot(file, onProgress = null) {
-    return this.uploadImage(file, 'epin-screenshots', onProgress);
+    return this.uploadImage(file, 'epinScreenshots', onProgress);
   }
 
   /**
@@ -149,10 +149,10 @@ class StorageService {
       return { isValid: false, error: 'No file selected' };
     }
 
-    // Check file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Check file size (3MB limit)
+    const maxSize = 3 * 1024 * 1024; // 3MB
     if (file.size > maxSize) {
-      return { isValid: false, error: 'File size should be less than 5MB' };
+      return { isValid: false, error: 'File size should be less than 3MB' };
     }
 
     // Check file type

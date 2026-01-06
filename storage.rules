@@ -1,55 +1,25 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload and read payment proofs for any user
-    // This is needed for the SendHelp payment verification process
-    match /paymentProofs/{userId}/{fileName} {
+
+    // E-PIN screenshots - allow authenticated users
+    match /epinScreenshots/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-    
-    // Allow authenticated users to upload payment proofs (flat structure)
-    match /payment-proofs/{fileName} {
+
+    // Payment screenshots - allow authenticated users
+    match /payment-screenshots/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-    
-    // Allow authenticated users to upload payment screenshots (flat structure)
-    match /payment-screenshots/{fileName} {
+
+    // General uploads folder - allow authenticated users
+    match /uploads/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-    
-    // Allow authenticated users to upload and read epin screenshots (nested structure)
-    match /epin-screenshots/{userId}/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow authenticated users to upload epin screenshots (flat structure)
-    match /epin-screenshots/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow authenticated users to upload and read profile images
-    match /profileImages/{userId}/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow authenticated users to upload and read profile pictures
-    match /profilePics/{userId}/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow authenticated users to upload and read upline payment proofs
-    match /upline-payment-proofs/{userId}/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow public read access to QR codes
-    match /qr-codes/{fileName} {
-      allow read: if true;
-    }
-    
-    // Admin can access all files
+
+    // Deny all other paths by default
     match /{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.token.admin == true;
+      allow read, write: if false;
     }
   }
 }

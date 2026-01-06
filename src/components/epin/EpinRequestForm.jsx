@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, storage } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { createDirectImageUrl } from '../../utils/firebaseStorageUtils';
@@ -63,7 +63,7 @@ const EpinRequestForm = () => {
       if (paymentScreenshot) {
         const timestamp = Date.now();
         const fileName = `${timestamp}-${paymentScreenshot.name}`;
-        const path = `epin-screenshots/${user.uid}/${fileName}`;
+        const path = `epinScreenshots/${user.uid}/${fileName}`;
         paymentScreenshotUrl = await uploadImage(paymentScreenshot, path);
       }
 
