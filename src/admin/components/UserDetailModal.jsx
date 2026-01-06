@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 import { getAllEpinsForUser } from '../../services/epin/epinService';
 import { getUserByUserId } from '../../services/userService';
-import { listenToSendHelps, listenToReceiveHelps } from '../../services/helpService';
+import { listenToSendHelps, listenToReceiveHelps } from '../../services/sendHelpService';
 import defaultAvatar from '../../assets/default-avatar.png';
 
 const UserDetailModal = ({ user, onClose }) => {

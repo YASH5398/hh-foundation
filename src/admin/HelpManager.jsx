@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaCheckCircle, FaTrash, FaEye } from 'react-icons/fa';
-import { getSendHelpRequests as getHelpRequests, updateSendHelpRequest as updateHelpRequest, deleteSendHelpRequest as deleteHelpRequest } from '../services/helpService';
+import { getSendHelpRequests as getHelpRequests, updateSendHelpRequest as updateHelpRequest, deleteSendHelpRequest as deleteHelpRequest } from '../services/sendHelpService';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';

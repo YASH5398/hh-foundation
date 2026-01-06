@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard } from 'react-icons/fi';
-import ChatBadge from '../chat/ChatBadge';
 import { useAuth } from '../../context/AuthContext';
 import { db, storage } from '../../config/firebase';
 import { 
@@ -82,16 +81,15 @@ const ReceiverCard = ({ receiver, onNext }) => {
         )}
       </div>
 
-      {/* TEMPORARILY DISABLED - Chat Button */}
-      {/* <div className="mb-6">
+      {/* Chat Icon Button */}
+      <div className="mb-6">
         <button
           onClick={() => setShowChat(true)}
-          className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl"
         >
-          <FiMessageCircle className="w-5 h-5" />
-          <span className="font-semibold">Start Chat</span>
+          <FiMessageCircle className="w-4 h-4 flex-shrink-0" />
         </button>
-      </div> */}
+      </div>
 
       {/* Payment Details */}
       <div className="mt-4">
@@ -153,17 +151,16 @@ const ReceiverCard = ({ receiver, onNext }) => {
         Activate Account – Send ₹300
       </button>
 
-      {/* Chat Window */}
-      <ChatWindow
+      {/* Chat Modal */}
+      <TransactionChat
+        transactionType="sendHelp"
+        transactionId={receiver?.userId + '_' + user?.uid}
+        otherUser={{
+          name: receiver?.name,
+          profileImage: receiver?.profileImage
+        }}
         isOpen={showChat}
         onClose={() => setShowChat(false)}
-        receiverId={receiver.userId}
-        senderId={user?.uid}
-        receiverName={receiver.name}
-        senderName={user?.name || user?.displayName}
-        receiverAvatar={receiver.profileImage}
-        receiverPhone={receiver.phone}
-        receiverWhatsapp={receiver.whatsapp}
       />
     </motion.div>
   );
@@ -553,14 +550,12 @@ const WaitingState = ({ receiver, status, showChat, setShowChat, transactionId }
           </div>
           
           {/* Chat Button */}
-          <ChatBadge
-            transactionType="sendHelp"
-            transactionId={transactionId}
+          <button
             onClick={() => setShowChat(true)}
-            showText={true}
-            size="default"
-            className="w-full"
-          />
+            className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl"
+          >
+            <FiMessageCircle className="w-4 h-4 flex-shrink-0" />
+          </button>
         </div>
       )}
       

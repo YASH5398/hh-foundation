@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import notificationService from '../services/notificationService';
+import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
 
 const NotificationContext = createContext();
@@ -19,6 +20,7 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled);
 
   // Real-time listener for user notifications
   useEffect(() => {
@@ -35,16 +37,33 @@ export const NotificationProvider = ({ children }) => {
     console.log('NotificationContext: Starting notification subscription for user:', user.uid);
     setLoading(true);
     
+    // Track previous notification count to detect new notifications
+    let previousUnreadCount = 0;
+
     const unsubscribe = notificationService.subscribeToUserNotifications(
       user.uid,
       (notificationsList) => {
         console.log('NotificationContext: Received notifications update:', notificationsList.length);
-        console.log('NotificationContext: Notifications data:', notificationsList);
-        
+
+        // Check for new unread notifications and play sounds
+        const currentUnreadCount = notificationsList.filter(n => !n.isRead).length;
+        if (currentUnreadCount > previousUnreadCount && previousUnreadCount > 0) {
+          // Find new unread notifications
+          const newUnreadNotifications = notificationsList
+            .filter(n => !n.isRead)
+            .slice(0, currentUnreadCount - previousUnreadCount);
+
+          // Play sound for the most recent new notification
+          if (newUnreadNotifications.length > 0) {
+            const latestNotification = newUnreadNotifications[0];
+            soundService.playSoundForNotification(latestNotification);
+          }
+        }
+        previousUnreadCount = currentUnreadCount;
+
         setNotifications(notificationsList);
-        const unread = notificationsList.filter(n => !n.isRead).length;
-        console.log('NotificationContext: Unread count:', unread);
-        setUnreadCount(unread);
+        console.log('NotificationContext: Unread count:', currentUnreadCount);
+        setUnreadCount(currentUnreadCount);
         setLoading(false);
       },
       (error) => {
@@ -103,6 +122,17 @@ export const NotificationProvider = ({ children }) => {
 
   const closeDropdown = () => {
     setIsDropdownOpen(false);
+  };
+
+  // Sound settings
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    soundService.setEnabled(newState);
+  };
+
+  const testSound = async (type = 'default', priority = 'medium') => {
+    return await soundService.testSound(type, priority);
   };
 
   // Send notification (admin only)
@@ -207,7 +237,12 @@ export const NotificationProvider = ({ children }) => {
     toggleDropdown,
     closeDropdown,
     sendNotification,
-    sendActivityNotification
+    sendActivityNotification,
+    // Sound settings
+    soundEnabled,
+    toggleSound,
+    testSound,
+    availableSoundTypes: soundService.getAvailableSoundTypes()
   };
 
   return (
