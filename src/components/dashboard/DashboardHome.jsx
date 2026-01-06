@@ -23,7 +23,6 @@ import NewsTicker from '../common/NewsTicker';
 import PersonalizedTicker from '../common/PersonalizedTicker';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { auth } from '../../config/firebase';
-import DashboardSendHelp from '../dashboard/SendHelp';
 import SkeletonBox from '../common/SkeletonBox';
 import { Send, Twitter, Facebook, Instagram } from 'lucide-react';
 import CountUp from 'react-countup';
