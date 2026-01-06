@@ -29,7 +29,7 @@ const firebaseConfig = {
   authDomain: "hh-foundation.firebaseapp.com",
   databaseURL: "https://hh-foundation-default-rtdb.firebaseio.com",
   projectId: "hh-foundation",
-  storageBucket: "hh-foundation.firebasestorage.app",  // Updated to use the correct bucket
+  storageBucket: "hh-foundation.appspot.com",
   messagingSenderId: "310213307250",
   appId: "1:310213307250:web:bcd588790c923ddbdb0beb",
   measurementId: "G-H1J3X51DF0"

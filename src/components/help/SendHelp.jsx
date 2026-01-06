@@ -186,8 +186,8 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
         lastModified: file.lastModified
       });
       
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast.error('File size should be less than 5MB');
+      if (file.size > 3 * 1024 * 1024) { // 3MB limit
+        toast.error('File size should be less than 3MB');
         return;
       }
       
@@ -392,7 +392,16 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
                 <FiCamera className="w-12 h-12 text-gray-400 mx-auto" />
                 <div>
                   <p className="text-gray-600 font-medium mb-1">Upload payment screenshot</p>
-                  <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
+                  <p className="text-sm text-gray-500">PNG, JPG up to 3MB</p>
+                </div>
+                {/* Example Screenshot */}
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-2 text-center">Example:</p>
+                  <img
+                    src="https://res.cloudinary.com/dq6hzrfxc/image/upload/v1767681301/Screenshot_2026-01-06-12-03-30-81_944a2809ea1b4cda6ef12d1db9048ed3_wdcjbj.jpg"
+                    alt="Payment screenshot example"
+                    className="max-h-32 mx-auto rounded-lg border border-gray-200 shadow-sm"
+                  />
                 </div>
                 <label
                   htmlFor="screenshot-upload"
