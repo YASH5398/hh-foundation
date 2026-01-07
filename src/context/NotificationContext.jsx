@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import notificationService from '../services/notificationService';
 import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
@@ -21,6 +23,16 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled);
+  const [notificationSettings, setNotificationSettings] = useState({
+    playSound: true,
+    sounds: {
+      default: 'default',
+      payment: 'payment',
+      success: 'success',
+      warning: 'warning',
+      admin: 'admin'
+    }
+  });
 
   // Real-time listener for user notifications
   useEffect(() => {
@@ -54,9 +66,26 @@ export const NotificationProvider = ({ children }) => {
             .slice(0, currentUnreadCount - previousUnreadCount);
 
           // Play sound for the most recent new notification
-          if (newUnreadNotifications.length > 0) {
+          if (newUnreadNotifications.length > 0 && notificationSettings.playSound) {
             const latestNotification = newUnreadNotifications[0];
-            soundService.playSoundForNotification(latestNotification);
+            // Use the configured sound type for this notification
+            let soundType = 'default';
+            const title = latestNotification.title || '';
+            const category = latestNotification.category || latestNotification.type;
+
+            if (title.includes('Payment') || title.includes('₹') || category === 'payment') {
+              soundType = notificationSettings.sounds?.payment || 'payment';
+            } else if (title.includes('Success') || title.includes('Completed') || title.includes('✅') || category === 'success') {
+              soundType = notificationSettings.sounds?.success || 'success';
+            } else if (title.includes('Alert') || title.includes('Error') || title.includes('Failed') || category === 'warning') {
+              soundType = notificationSettings.sounds?.warning || 'warning';
+            } else if (category === 'admin' || latestNotification.type === 'admin') {
+              soundType = notificationSettings.sounds?.admin || 'admin';
+            } else {
+              soundType = notificationSettings.sounds?.default || 'default';
+            }
+
+            soundService.playNotificationSound(soundType, latestNotification.priority || 'medium');
           }
         }
         previousUnreadCount = currentUnreadCount;
@@ -76,6 +105,24 @@ export const NotificationProvider = ({ children }) => {
       console.log('NotificationContext: Cleaning up notification listener for user:', user.uid);
       unsubscribe();
     };
+  }, [user?.uid]);
+
+  // Listen for notification settings changes
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const settingsRef = doc(db, 'notificationSettings', user.uid);
+    const unsubscribeSettings = onSnapshot(settingsRef, (doc) => {
+      if (doc.exists()) {
+        const settings = doc.data();
+        setNotificationSettings(settings);
+        // Sync sound service with Firestore settings
+        soundService.setEnabled(settings.playSound ?? true);
+        setSoundEnabled(settings.playSound ?? true);
+      }
+    });
+
+    return () => unsubscribeSettings();
   }, [user?.uid]);
 
   // Mark notification as read
@@ -242,7 +289,8 @@ export const NotificationProvider = ({ children }) => {
     soundEnabled,
     toggleSound,
     testSound,
-    availableSoundTypes: soundService.getAvailableSoundTypes()
+    availableSoundTypes: soundService.getAvailableSoundTypes(),
+    notificationSettings
   };
 
   return (

@@ -33,75 +33,70 @@ class FCMService {
 
   async init() {
     try {
-      // Check if messaging is supported (browser environment only)
+      // SAFE GUARD: Check if messaging is supported (browser environment only)
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator && messaging) {
         this.isSupported = true;
-        console.log('FCM environment check passed - browser with service worker support');
+        console.log('FCM: Environment check passed');
         // Don't request permission or get token during init - wait for user authentication
         this.setupMessageListener();
       } else {
-        console.log('FCM not supported: missing window, serviceWorker, or messaging');
+        console.log('FCM: Not supported in this environment');
+        this.isSupported = false;
       }
     } catch (error) {
-      console.error('FCM initialization failed:', error);
+      // SAFE GUARD: Never let FCM init errors propagate
+      console.log('FCM: Initialization skipped due to error');
       this.isSupported = false;
     }
   }
 
-  // Initialize FCM for authenticated user
+  // Initialize FCM for authenticated user - SAFE, NON-BLOCKING
   async initializeForUser(userId) {
+    // SAFE GUARD: Wrap entire function in try/catch - NEVER throw errors
     try {
+      // SAFE GUARD: Skip if FCM not supported
       if (!this.isSupported) {
-        console.log('❌ FCM not supported in this environment');
+        console.log('FCM skipped: not supported in this environment');
         return false;
       }
 
+      // SAFE GUARD: Skip if no user ID
       if (!userId) {
-        console.log('❌ No user ID provided for FCM initialization');
+        console.log('FCM skipped: no user ID provided');
         return false;
       }
 
-      console.log('🔄 Initializing FCM for user:', userId);
+      // SAFE GUARD: Skip if VAPID key is missing or invalid
+      if (!VAPID_KEY || VAPID_KEY.includes('placeholder') || VAPID_KEY.length < 80) {
+        console.log('FCM skipped: VAPID key not configured');
+        return false;
+      }
 
-      // Check current permission status first
+      // SAFE GUARD: Check notification permission - don't block if not granted
       const currentPermission = this.getPermissionStatus();
       
-      if (currentPermission === 'granted') {
-        console.log('✅ Notification permission already granted');
-        const token = await this.getRegistrationToken();
-        if (token) {
-          console.log('🔄 Saving FCM token to Firestore...');
-          await this.saveTokenToFirestore(userId, token);
-          console.log('✅ FCM initialization completed successfully');
-          return true;
-        } else {
-          console.log('❌ Failed to get FCM token');
-        }
-      } else if (currentPermission === 'denied') {
-        console.log('🚫 Notification permission previously denied. Use "Enable Notifications" button to request again.');
+      if (currentPermission !== 'granted') {
+        console.log('FCM skipped: notification permission not granted (status:', currentPermission, ')');
         return false;
-      } else {
-        // Permission is 'default' - hasn't been asked yet
-        console.log('🔄 Requesting notification permission...');
-        const permission = await this.requestPermission();
-        if (permission === 'granted') {
-          console.log('✅ Notification permission granted');
-          const token = await this.getRegistrationToken();
-          if (token) {
-            console.log('🔄 Saving FCM token to Firestore...');
-            await this.saveTokenToFirestore(userId, token);
-            console.log('✅ FCM initialization completed successfully');
-            return true;
-          } else {
-            console.log('❌ Failed to get FCM token');
-          }
-        } else {
-          console.log('🚫 Notification permission denied by user');
-        }
       }
-      return false;
+
+      console.log('FCM: Initializing for user:', userId);
+
+      // Get token safely - this will return null on any error
+      const token = await this.getRegistrationToken();
+      
+      if (token) {
+        // Save token to Firestore (also wrapped in try/catch internally)
+        await this.saveTokenToFirestore(userId, token);
+        console.log('FCM: Initialization completed successfully');
+        return true;
+      } else {
+        console.log('FCM: Token not available, skipping');
+        return false;
+      }
     } catch (error) {
-      console.error('❌ Error initializing FCM for user:', error);
+      // SAFE GUARD: Catch ALL errors - FCM should NEVER block app functionality
+      console.log('FCM initialization skipped due to error:', error?.message || error);
       return false;
     }
   }
@@ -146,30 +141,50 @@ class FCMService {
 
   async getRegistrationToken() {
     try {
+      // SAFE GUARD: Return null immediately if FCM is not supported
       if (!this.isSupported) {
         console.log('FCM is not supported in this environment');
         return null;
       }
 
-      // Check if we're in a secure context (HTTPS or localhost)
-      if (!window.isSecureContext) {
-        console.error('FCM requires a secure context (HTTPS or localhost)');
+      // SAFE GUARD: Check if messaging object exists
+      if (!messaging) {
+        console.log('FCM messaging not initialized');
         return null;
       }
 
-      // Wait for service worker to be ready
+      // SAFE GUARD: Check if we're in a secure context (HTTPS or localhost)
+      if (typeof window === 'undefined' || !window.isSecureContext) {
+        console.log('FCM requires a secure context (HTTPS or localhost)');
+        return null;
+      }
+
+      // SAFE GUARD: Check notification permission first
+      if (!('Notification' in window) || Notification.permission !== 'granted') {
+        console.log('FCM skipped: Notification permission not granted');
+        return null;
+      }
+
+      // SAFE GUARD: Check if VAPID key is properly configured
+      if (!VAPID_KEY || VAPID_KEY.includes('placeholder') || VAPID_KEY.length < 80) {
+        console.log('FCM skipped: VAPID key not properly configured');
+        return null;
+      }
+
+      // Wait for service worker to be ready (with timeout)
       if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.ready;
+        try {
+          await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker timeout')), 5000))
+          ]);
+        } catch (swError) {
+          console.log('FCM skipped: Service worker not ready');
+          return null;
+        }
       }
 
       console.log('Attempting to get FCM registration token...');
-      
-      // Check if VAPID key is properly configured
-      if (!VAPID_KEY || VAPID_KEY.includes('placeholder') || VAPID_KEY.length < 80) {
-        console.error('❌ VAPID key is not properly configured. Please update VAPID_KEY in fcmService.js');
-        console.error('Go to Firebase Console > Cloud Messaging > Web Push certificates to get the correct key');
-        return null;
-      }
       
       const currentToken = await getToken(messaging, {
         vapidKey: VAPID_KEY
@@ -177,29 +192,15 @@ class FCMService {
 
       if (currentToken) {
         console.log('✅ FCM registration token obtained successfully');
-        console.log('Token:', currentToken.substring(0, 20) + '...');
         this.token = currentToken;
         return currentToken;
       } else {
-        console.log('❌ No registration token available. User may have denied permission.');
+        console.log('FCM: No registration token available');
         return null;
       }
     } catch (error) {
-      console.error('❌ Error occurred while retrieving FCM token:', error);
-      
-      // Handle specific error types
-      if (error.code === 'messaging/permission-blocked') {
-        console.error('Push messaging is blocked by the user.');
-      } else if (error.code === 'messaging/vapid-key-required') {
-        console.error('VAPID key is required for FCM.');
-      } else if (error.code === 'messaging/registration-token-not-registered-yet') {
-        console.error('Registration token not registered yet. Try again later.');
-      } else if (error.code === 'messaging/token-subscribe-failed') {
-        console.error('❌ FCM Token subscription failed - likely due to invalid VAPID key');
-        console.error('Please check your VAPID key configuration in Firebase Console');
-        console.error('Go to: https://console.firebase.google.com/project/hh-foundation/settings/cloudmessaging/web');
-      }
-      
+      // SAFE GUARD: Catch ALL errors and return null - never throw
+      console.log('FCM token retrieval skipped due to error:', error?.message || error);
       return null;
     }
   }

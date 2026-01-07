@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../../config/firebase";
+import { db } from "../config/firebase";
 import { collection, getDocs, updateDoc, doc, query, where, orderBy } from "firebase/firestore";
 import { FaCheckCircle, FaTimesCircle, FaCheck, FaTimes, FaExternalLinkAlt } from "react-icons/fa";
 

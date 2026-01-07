@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAgentAuth } from '../../context/AgentAuthContext';
+import { RecaptchaVerifier } from 'firebase/auth';
+import { auth } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { FiMail, FiLock, FiPhone, FiEye, FiEyeOff, FiShield } from 'react-icons/fi';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -20,7 +22,11 @@ const AgentLogin = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  const { loginWithEmail, sendOTP, verifyOTP, currentUser, isAgent } = useAgentAuth();
+  // reCAPTCHA state management
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const recaptchaVerifierRef = useRef(null);
+
+  const { loginWithEmail, sendOTP, verifyOTP, currentUser, isAgent, checkFirebaseConfig } = useAgentAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,6 +40,80 @@ const AgentLogin = () => {
     }
     return () => clearTimeout(timer);
   }, [countdown]);
+
+  // Initialize reCAPTCHA - Firebase v9+ syntax
+  useEffect(() => {
+    // Guard against double execution
+    if (recaptchaVerifierRef.current) {
+      console.log('reCAPTCHA already initialized');
+      return;
+    }
+
+    const initializeRecaptcha = () => {
+      try {
+        // Check if container exists (should exist since component is mounted)
+        const container = document.getElementById('recaptcha-container');
+        if (!container) {
+          console.error('reCAPTCHA container not found');
+          return;
+        }
+
+        // Debug: Check auth object
+        console.log('Auth object check:', {
+          auth: !!auth,
+          authType: typeof auth,
+          authApp: auth?.app?.name,
+          authConfig: auth?.app?.options?.projectId
+        });
+
+        // Firebase v10 RecaptchaVerifier - pass auth as first parameter
+        // This is the correct v10 syntax
+        recaptchaVerifierRef.current = new RecaptchaVerifier(
+          auth, // auth as first parameter in v10
+          "recaptcha-container",
+          {
+            size: "invisible",
+            callback: (response) => {
+              console.log('reCAPTCHA verified successfully');
+            },
+            'expired-callback': () => {
+              console.log('reCAPTCHA expired');
+            },
+            'error-callback': (error) => {
+              console.error('reCAPTCHA error:', error);
+            }
+          }
+        );
+
+        console.log('reCAPTCHA initialized successfully');
+        setRecaptchaReady(true);
+
+      } catch (error) {
+        console.error('Failed to initialize reCAPTCHA:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+    };
+
+    // Initialize immediately since component is mounted and container exists
+    initializeRecaptcha();
+
+    // Cleanup on unmount
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {
+          console.log('Error cleaning up reCAPTCHA:', e);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+      setRecaptchaReady(false);
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -81,30 +161,36 @@ const AgentLogin = () => {
       return;
     }
 
-    // Validate and format phone number
-    let phoneNumber = formData.phoneNumber.trim().replace(/\s+/g, '');
-    
-    // Remove leading zeros and non-digit characters except +
-    phoneNumber = phoneNumber.replace(/[^\d+]/g, '');
-    
-    // Add country code if not present
-    if (!phoneNumber.startsWith('+')) {
-      // Remove leading zeros
-      phoneNumber = phoneNumber.replace(/^0+/, '');
-      // Add +91 for India (default)
-      phoneNumber = '+91' + phoneNumber;
-    }
-    
-    // Validate phone number format
-    const phoneRegex = /^\+91[6-9]\d{9}$/; // Indian mobile number format
-    if (!phoneRegex.test(phoneNumber)) {
-      toast.error('Please enter a valid 10-digit Indian mobile number');
+    // Check if reCAPTCHA is ready
+    if (!recaptchaReady) {
+      toast.error('Please wait for reCAPTCHA to load, then try again');
       return;
     }
 
+    // Format phone number to E.164 format (+91XXXXXXXXXX)
+    let phoneNumber = formData.phoneNumber.trim().replace(/\s+/g, '');
+
+    // Remove all non-digit characters
+    phoneNumber = phoneNumber.replace(/\D/g, '');
+
+    // Validate it's exactly 10 digits
+    if (phoneNumber.length !== 10) {
+      toast.error('Please enter exactly 10 digits for mobile number');
+      return;
+    }
+
+    // Validate starts with valid Indian mobile prefix (6-9)
+    if (!phoneNumber.match(/^[6-9]/)) {
+      toast.error('Please enter a valid Indian mobile number starting with 6-9');
+      return;
+    }
+
+    // Add +91 prefix for E.164 format
+    phoneNumber = '+91' + phoneNumber;
+
     setLoading(true);
     try {
-      const result = await sendOTP(phoneNumber);
+      const result = await sendOTP(phoneNumber, recaptchaVerifierRef.current);
       setConfirmationResult(result);
       setOtpSent(true);
       setCountdown(60);
@@ -113,13 +199,7 @@ const AgentLogin = () => {
       toast.success('OTP sent to your phone number');
     } catch (error) {
       console.error('OTP send error:', error);
-      if (error.code === 'auth/invalid-phone-number') {
-        toast.error('Invalid phone number format');
-      } else if (error.code === 'auth/too-many-requests') {
-        toast.error('Too many requests. Please try again later.');
-      } else {
-        toast.error(error.message || 'Failed to send OTP');
-      }
+      toast.error(error.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
     }
@@ -191,6 +271,9 @@ const AgentLogin = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      {/* reCAPTCHA container - ALWAYS mounted */}
+      <div id="recaptcha-container" className="fixed top-4 right-4 z-50"></div>
+
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -300,30 +383,45 @@ const AgentLogin = () => {
                         value={formData.phoneNumber}
                         onChange={handleInputChange}
                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Enter your 10-digit mobile number"
-                        maxLength="13"
+                        placeholder="Enter 10-digit mobile number (without +91)"
+                        maxLength="10"
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Enter your 10-digit Indian mobile number (e.g., 9876543210)
+                      Enter 10 digits only (e.g., 9876543210). Country code (+91) will be added automatically.
                     </p>
                   </div>
 
-                  <div className="flex space-x-3">
-                    <button
-                      type="button"
-                      onClick={handleBackToEmail}
-                      className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex-1 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? <LoadingSpinner size="sm" /> : 'Send OTP'}
-                    </button>
+                  <div className="space-y-3">
+                    <div className="flex space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleBackToEmail}
+                        className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading || !recaptchaReady}
+                        className="flex-1 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? <LoadingSpinner size="sm" /> :
+                         !recaptchaReady ? 'Initializing reCAPTCHA...' : 'Send OTP'}
+                      </button>
+                    </div>
+
+                    {/* Troubleshooting Tips */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                      <h4 className="text-sm font-medium text-amber-800 mb-2">Troubleshooting Tips:</h4>
+                      <ul className="text-xs text-amber-700 space-y-1">
+                        <li>• Wait for "reCAPTCHA ready" message to appear</li>
+                        <li>• Complete the reCAPTCHA challenge if prompted</li>
+                        <li>• Ensure stable internet connection</li>
+                        <li>• Disable ad blockers if reCAPTCHA fails to load</li>
+                        <li>• Try refreshing the page if issues persist</li>
+                      </ul>
+                    </div>
                   </div>
                 </form>
               ) : (
@@ -376,14 +474,35 @@ const AgentLogin = () => {
           )}
         </div>
 
-        {/* reCAPTCHA container */}
-        <div id="recaptcha-container"></div>
+        {/* reCAPTCHA status */}
+        <div className="text-center">
+          {recaptchaReady ? (
+            <div className="text-xs text-green-600 mb-2">
+              ✅ reCAPTCHA ready - you can send OTP
+            </div>
+          ) : (
+            <div className="text-xs text-blue-600 mb-2">
+              🔄 Initializing reCAPTCHA...
+            </div>
+          )}
+        </div>
 
         {/* Footer */}
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <p className="text-xs text-gray-500">
             Secure agent portal powered by Firebase Authentication
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              const config = checkFirebaseConfig();
+              console.log('Firebase Config Check:', config);
+              toast.info('Check browser console for Firebase configuration details');
+            }}
+            className="text-xs text-blue-600 hover:text-blue-500 underline"
+          >
+            Run Firebase Diagnostics
+          </button>
         </div>
       </div>
     </div>

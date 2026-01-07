@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../config/firebase";
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, updateDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, updateDoc, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { FaYoutube, FaGoogleDrive, FaWhatsapp, FaTelegramPlane, FaStar, FaCheckCircle, FaGift, FaVideo } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -48,12 +48,16 @@ const EarnFreeEPIN = () => {
   const [testimonialDocId, setTestimonialDocId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showConfirmBox, setShowConfirmBox] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [newEpins, setNewEpins] = useState([]);
+  const [userEpins, setUserEpins] = useState([]);
 
   useEffect(() => {
     if (!user) return;
-    const fetchTestimonial = async () => {
+    const fetchTestimonialRequest = async () => {
       setLoading(true);
-      const q = query(collection(db, "testimonials"), where("uid", "==", user.uid));
+      const q = query(collection(db, "testimonialRequests"), where("uid", "==", user.uid));
       const snap = await getDocs(q);
       if (!snap.empty) {
         const docData = snap.docs[0].data();
@@ -63,8 +67,92 @@ const EarnFreeEPIN = () => {
       }
       setLoading(false);
     };
-    fetchTestimonial();
+    fetchTestimonialRequest();
+
+    // Set up real-time notification listener
+    if (user) {
+      const notificationsQuery = query(
+        collection(db, "notifications"),
+        where("uid", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(10)
+      );
+
+      const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
+        const notificationData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setNotifications(notificationData);
+
+        // Check for new E-PIN reward notification
+        const newRewardNotification = snapshot.docs.find(doc => {
+          const data = doc.data();
+          return data.type === "epin_reward" && !data.isRead;
+        });
+
+        if (newRewardNotification) {
+          // Show reward modal and fetch new E-PINs
+          setShowRewardModal(true);
+          fetchNewEpins();
+          // Mark notification as read
+          updateDoc(doc(db, "notifications", newRewardNotification.id), { isRead: true });
+        }
+      });
+
+      return () => unsubscribe();
+    }
+
+    // Fetch user's available E-PINs
+    fetchUserEpins();
   }, [user]);
+
+  // Fetch newly generated E-PINs
+  const fetchNewEpins = async () => {
+    if (!user) return;
+
+    try {
+      const epinsQuery = query(
+        collection(db, "epins"),
+        where("assignedTo", "==", user.uid),
+        where("source", "==", "testimonial"),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      );
+
+      const epinsSnap = await getDocs(epinsQuery);
+      const epinsData = epinsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setNewEpins(epinsData);
+    } catch (error) {
+      console.error("Error fetching new E-PINs:", error);
+    }
+  };
+
+  // Fetch user's available E-PINs
+  const fetchUserEpins = async () => {
+    if (!user) return;
+
+    try {
+      const epinsQuery = query(
+        collection(db, "epins"),
+        where("assignedTo", "==", user.uid),
+        where("status", "==", "unused"),
+        orderBy("createdAt", "desc")
+      );
+
+      const epinsSnap = await getDocs(epinsQuery);
+      const epinsData = epinsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUserEpins(epinsData);
+    } catch (error) {
+      console.error("Error fetching user E-PINs:", error);
+    }
+  };
 
   // WhatsApp message template
   const waMessage = `Hello Helping Hands Team,%0A%0AI am – ${user?.fullName}%0AMy User ID – ${user?.userId}%0A%0AHere is my video testimonial about my experience with the Helping Plan.%0APlease review and reward me with 5 free E-PINs. 🙏😊`;
@@ -81,11 +169,12 @@ const EarnFreeEPIN = () => {
     e.preventDefault();
     if (!method || ((method === "youtube" || method === "gdrive") && !videoLink.trim()) || rating === 0) return;
     setSubmitting(true);
-    const timestamp = Date.now();
-    const docId = `testimonial_${user.userId}_${timestamp}`;
-    let status = "waiting_review";
-    if (method === "whatsapp" || method === "telegram") status = "waiting_video";
-    const testimonialData = {
+
+    // Generate unique request ID
+    const requestId = `req_${user.uid}_${Date.now()}`;
+
+    const testimonialRequestData = {
+      requestId,
       uid: user.uid,
       userId: user.userId,
       name: user.fullName,
@@ -93,32 +182,26 @@ const EarnFreeEPIN = () => {
       videoLink: (method === "youtube" || method === "gdrive") ? videoLink.trim() : "",
       rating,
       review: review.trim(),
-      status,
-      epinGiven: false,
-      submittedAt: serverTimestamp(),
-      confirmed: false,
+      status: "pending", // Always start as pending
+      createdAt: serverTimestamp(),
     };
-    await setDoc(doc(db, "testimonials", docId), testimonialData);
-    setTestimonial(testimonialData);
-    setTestimonialDocId(docId);
+
+    await setDoc(doc(db, "testimonialRequests", requestId), testimonialRequestData);
+    setTestimonial(testimonialRequestData);
+    setTestimonialDocId(requestId);
     setSubmitting(false);
     setSuccess(true);
     setShowConfirmBox(true);
-    toast.success("Submitted successfully, redirecting to WhatsApp...");
-    if (method === "whatsapp") {
-      setTimeout(() => window.open(whatsappLink, "_blank"), 800);
-    } else if (method === "telegram") {
-      setTimeout(() => window.open(`https://t.me/${TELEGRAM_HANDLE.replace('@','')}`, "_blank"), 800);
-    }
+    toast.success("Testimonial request submitted successfully! Our team will review it.");
   };
 
   const handleConfirm = async () => {
     if (!testimonialDocId) return;
     setConfirming(true);
-    await updateDoc(doc(db, "testimonials", testimonialDocId), { confirmed: true });
+    // For testimonialRequests, we don't need to confirm anything - just acknowledge
     setConfirmed(true);
     setConfirming(false);
-    toast.success("Thank you for confirming! Our team will review your video.");
+    toast.success("Thank you! Your testimonial request is being processed.");
   };
 
   if (!user) {
@@ -204,6 +287,41 @@ const EarnFreeEPIN = () => {
           </div>
         </div>
       </div>
+
+      {/* Available E-PINs Section */}
+      {userEpins.length > 0 && (
+        <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-3xl p-6 mb-8 shadow-xl border border-green-100">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-3 shadow-lg">
+              <FaCheckCircle className="text-white text-xl" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Your Available E-PINs</h3>
+            <p className="text-gray-600">You have {userEpins.length} unused E-PIN{userEpins.length !== 1 ? 's' : ''} ready to use</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userEpins.slice(0, 6).map((epin) => (
+              <div key={epin.id} className="bg-white rounded-xl p-4 shadow-md border border-green-200 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">E-PIN Code</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                    {epin.source}
+                  </span>
+                </div>
+                <div className="font-mono text-lg font-bold text-green-700 bg-green-50 p-3 rounded-lg text-center border border-green-200">
+                  {epin.epinCode}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {userEpins.length > 6 && (
+            <div className="text-center mt-4">
+              <span className="text-sm text-gray-500">And {userEpins.length - 6} more...</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Form Container */}
       <div className="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
@@ -447,6 +565,51 @@ const EarnFreeEPIN = () => {
           </form>
         )}
       </div>
+
+      {/* Reward Modal */}
+      {showRewardModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
+          >
+            <div className="mb-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-4 shadow-lg">
+                <FaGift className="text-white text-3xl" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">🎉 Congratulations!</h2>
+              <p className="text-gray-600 text-lg">You have received 5 free E-PINs for your testimonial!</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Your New E-PINs:</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {newEpins.map((epin, index) => (
+                  <div key={epin.id} className="bg-white rounded-lg p-3 border-2 border-green-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-lg font-bold text-green-700">{epin.epinCode}</span>
+                      <span className="text-sm text-green-600 font-medium">E-PIN #{index + 1}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-500 mb-6">
+              These E-PINs have been added to your account and can be used immediately.
+            </div>
+
+            <button
+              onClick={() => setShowRewardModal(false)}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Awesome! 🎉
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

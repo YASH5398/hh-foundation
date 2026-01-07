@@ -4,23 +4,23 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging } from "firebase/messaging";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  deleteDoc, 
-  addDoc, 
-  onSnapshot, 
-  orderBy, 
-  limit, 
-  writeBatch, 
-  serverTimestamp, 
-  increment 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  onSnapshot,
+  orderBy,
+  limit,
+  writeBatch,
+  serverTimestamp,
+  increment
 } from "firebase/firestore";
 
 // ✅ Firebase config for HH Foundation
@@ -35,10 +35,11 @@ const firebaseConfig = {
   measurementId: "G-H1J3X51DF0"
 };
 
-// ✅ Initialize Firebase
+// ✅ Initialize Firebase - SINGLE AUTH INSTANCE ONLY
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-const auth = getAuth(app);
+export const auth = getAuth(app);
+
 const db = getFirestore(app);
 
 // ✅ Initialize messaging (only in browser environment with proper checks)
@@ -63,10 +64,9 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 // ✅ Export services
 export const storage = getStorage(app); // use default bucket from app config
 
-export { 
-  app, 
-  analytics, 
-  auth, 
+export {
+  app,
+  analytics,
   db,
   messaging,
   collection,

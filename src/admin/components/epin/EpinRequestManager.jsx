@@ -231,237 +231,277 @@ const EpinRequestManager = () => {
   );
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Search by name or user ID..."
-          className="w-full md:w-72 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="w-full md:w-48 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400"
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-        >
-          <option value="all">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="accepted">Accepted</option>
-          <option value="rejected">Rejected</option>
-        </select>
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100 mb-2">E-PIN Request Manager</h1>
+        <p className="text-slate-400 text-sm md:text-base">Manage and process E-PIN requests from users</p>
       </div>
-      <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-4 text-left font-bold uppercase text-gray-900">User</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Count</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Type</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Payment</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">UTR</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Screenshot</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Status</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Requested</th>
-              <th className="px-4 py-4 text-center font-bold uppercase text-gray-900">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence>
-              {filtered.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={9} className="text-center py-8 text-gray-400">No E-PIN requests found.</td>
-                </tr>
-              )}
-              {filtered.map((req) => (
-                <motion.tr
-                  key={req.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 30 }}
-                  transition={{ duration: 0.4 }}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition"
-                >
-                  <td className="px-4 py-4 align-top text-gray-900">{req.fullName || req.userName}</td>
-                  <td className="px-4 py-4 text-center align-top text-gray-900">{req.requestedCount || req.quantityRequested}</td>
-                  <td className="px-4 py-4 text-center align-top text-gray-900">{req.requestType || '-'}</td>
-                  <td className="px-4 py-4 text-center align-top text-gray-900">{req.paymentMethod || '-'}</td>
-                  <td className="px-4 py-4 text-center align-top text-gray-900">{req.utrNumber || '-'}</td>
-                  <td className="px-4 py-4 text-center align-top">
-                    {req.paymentScreenshotUrl ? (
-                      <button
-                        className="focus:outline-none group"
-                        title="View Screenshot"
-                        onClick={() => setModalImg(getDirectImageUrl(req.paymentScreenshotUrl))}
-                      >
-                        <img
-                          src={getDirectImageUrl(req.paymentScreenshotUrl)}
-                          alt="Payment Screenshot"
-                          className="w-12 h-12 object-cover rounded border border-gray-200 group-hover:scale-105 transition-transform inline-block"
-                        />
-                      </button>
-                    ) : (
-                      <span className="italic text-gray-700">No proof</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-center align-top">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
-                      req.status === 'pending' ? 'bg-yellow-200 text-yellow-900' :
-                      req.status === 'accepted' ? 'bg-green-500 text-white' :
-                      req.status === 'approved' ? 'bg-green-500 text-white' :
-                      req.status === 'rejected' ? 'bg-red-500 text-white' :
-                      'bg-gray-200 text-gray-900'
-                    }`}>
-                      {req.status === 'pending' && '🟡 Pending'}
-                      {req.status === 'accepted' && '🟢 Accepted'}
-                      {req.status === 'approved' && '🟢 Approved'}
-                      {req.status === 'rejected' && '🔴 Rejected'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-center align-top text-gray-900">{formatTimestamp(req.timestamp || req.createdAt)}</td>
-                  <td className="px-4 py-4 text-center align-top">
-                    {req.status === 'pending' && (
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          className={`p-2 rounded-full shadow transition ${
-                            processingRequest === req.id 
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                              : 'bg-green-100 hover:bg-green-200 text-green-700'
-                          }`}
-                          title={processingRequest === req.id ? 'Processing...' : 'Approve'}
-                          onClick={() => handleAccept(req)}
-                          disabled={processingRequest === req.id}
-                        >
-                          {processingRequest === req.id ? (
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-700"></div>
-                          ) : (
-                          <FiCheckCircle className="w-5 h-5" />
-                          )}
-                        </button>
-                        <button
-                          className={`p-2 rounded-full shadow transition touch-manipulation ${
-                            processingRequest === req.id 
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                              : 'bg-red-100 hover:bg-red-200 text-red-700'
-                          }`}
-                          title={processingRequest === req.id ? 'Processing...' : 'Reject'}
-                          onClick={() => handleReject(req)}
-                          disabled={processingRequest === req.id}
-                        >
-                          {processingRequest === req.id ? (
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700"></div>
-                          ) : (
-                          <FiXCircle className="w-5 h-5" />
-                          )}
-                        </button>
+
+      {/* Search and Filter Controls */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search by name or user ID..."
+              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="sm:w-48">
+            <select
+              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+            >
+              <option value="all" className="bg-slate-800 text-slate-100">All Statuses</option>
+              <option value="pending" className="bg-slate-800 text-slate-100">Pending</option>
+              <option value="accepted" className="bg-slate-800 text-slate-100">Accepted</option>
+              <option value="rejected" className="bg-slate-800 text-slate-100">Rejected</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-slate-800/30 rounded-xl border border-slate-700/50 overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-slate-800/60 border-b border-slate-600">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">User</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Count</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Type</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Payment</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">UTR</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Screenshot</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Status</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Requested</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              <AnimatePresence>
+                {filtered.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <FiCheckCircle className="w-12 h-12 mb-4 opacity-50" />
+                        <p className="text-lg font-medium">No E-PIN requests found</p>
+                        <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>
                       </div>
-                    )}
-                  </td>
-                </motion.tr>
-              ))}
-            </AnimatePresence>
-          </tbody>
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((req) => (
+                  <motion.tr
+                    key={req.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="hover:bg-slate-800/20 transition-all duration-200"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="text-slate-100 font-medium">{req.fullName || req.userName}</div>
+                      <div className="text-slate-400 text-sm">{req.userId}</div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-slate-100 font-semibold">{req.requestedCount || req.quantityRequested}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-slate-300">{req.requestType || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-slate-300">{req.paymentMethod || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-slate-300 font-mono text-sm">{req.utrNumber || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {req.paymentScreenshotUrl ? (
+                        <button
+                          className="focus:outline-none group transition-transform hover:scale-105"
+                          title="View Screenshot"
+                          onClick={() => setModalImg(getDirectImageUrl(req.paymentScreenshotUrl))}
+                        >
+                          <img
+                            src={getDirectImageUrl(req.paymentScreenshotUrl)}
+                            alt="Payment Screenshot"
+                            className="w-12 h-12 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
+                          />
+                        </button>
+                      ) : (
+                        <span className="text-slate-500 italic text-sm">No proof</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                        req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                        req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                        'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                      }`}>
+                        {req.status === 'pending' && '⏳ Pending'}
+                        {(req.status === 'accepted' || req.status === 'approved') && '✅ Approved'}
+                        {req.status === 'rejected' && '❌ Rejected'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="text-slate-300 text-sm">{formatTimestamp(req.timestamp || req.createdAt)}</div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {req.status === 'pending' && (
+                        <div className="flex items-center justify-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`p-2 rounded-lg transition-all duration-200 ${
+                              processingRequest === req.id
+                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'
+                            }`}
+                            title={processingRequest === req.id ? 'Processing...' : 'Approve'}
+                            onClick={() => handleAccept(req)}
+                            disabled={processingRequest === req.id}
+                          >
+                            {processingRequest === req.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div>
+                            ) : (
+                              <FiCheckCircle className="w-5 h-5" />
+                            )}
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`p-2 rounded-lg transition-all duration-200 ${
+                              processingRequest === req.id
+                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'
+                            }`}
+                            title={processingRequest === req.id ? 'Processing...' : 'Reject'}
+                            onClick={() => handleReject(req)}
+                            disabled={processingRequest === req.id}
+                          >
+                            {processingRequest === req.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div>
+                            ) : (
+                              <FiXCircle className="w-5 h-5" />
+                            )}
+                          </motion.button>
+                        </div>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </tbody>
         </table>
+        </div>
       </div>
-      
+
       {/* Mobile Card Layout */}
-      <div className="lg:hidden space-y-4">
+      <div className="md:hidden space-y-4">
         <AnimatePresence>
           {filtered.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-400 bg-white rounded-xl shadow-lg">
-              No E-PIN requests found.
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-8 text-center">
+              <FiCheckCircle className="w-12 h-12 mx-auto mb-4 text-slate-500 opacity-50" />
+              <p className="text-slate-300 text-lg font-medium">No E-PIN requests found</p>
+              <p className="text-slate-500 text-sm mt-1">Try adjusting your search or filter criteria</p>
             </div>
           )}
           {filtered.map((req) => (
             <motion.div
               key={req.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-              transition={{ duration: 0.4 }}
-              className="bg-white rounded-xl shadow-lg p-4 border border-gray-200"
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-4 shadow-xl hover:shadow-2xl transition-all duration-200"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold text-gray-900 text-base">{req.fullName || req.userName}</h3>
-                  <p className="text-sm text-gray-500">{formatTimestamp(req.timestamp || req.createdAt)}</p>
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-slate-100 text-lg">{req.fullName || req.userName}</h3>
+                  <p className="text-slate-400 text-sm">{req.userId}</p>
+                  <p className="text-slate-500 text-xs mt-1">{formatTimestamp(req.timestamp || req.createdAt)}</p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
-                  req.status === 'pending' ? 'bg-yellow-200 text-yellow-900' :
-                  req.status === 'accepted' ? 'bg-green-500 text-white' :
-                  req.status === 'approved' ? 'bg-green-500 text-white' :
-                  req.status === 'rejected' ? 'bg-red-500 text-white' :
-                  'bg-gray-200 text-gray-900'
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                  req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                  req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                  req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                  'bg-slate-500/20 text-slate-300 border border-slate-500/30'
                 }`}>
-                  {req.status === 'pending' && '🟡 Pending'}
-                  {req.status === 'accepted' && '🟢 Accepted'}
-                  {req.status === 'approved' && '🟢 Approved'}
-                  {req.status === 'rejected' && '🔴 Rejected'}
+                  {req.status === 'pending' && '⏳ Pending'}
+                  {(req.status === 'accepted' || req.status === 'approved') && '✅ Approved'}
+                  {req.status === 'rejected' && '❌ Rejected'}
                 </span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">Count</p>
-                  <p className="text-sm font-medium text-gray-900">{req.requestedCount || req.quantityRequested}</p>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 uppercase font-medium mb-1">Count</p>
+                  <p className="text-slate-100 font-semibold">{req.requestedCount || req.quantityRequested}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">Type</p>
-                  <p className="text-sm font-medium text-gray-900">{req.requestType || '-'}</p>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 uppercase font-medium mb-1">Type</p>
+                  <p className="text-slate-300">{req.requestType || '-'}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">Payment</p>
-                  <p className="text-sm font-medium text-gray-900">{req.paymentMethod || '-'}</p>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 uppercase font-medium mb-1">Payment</p>
+                  <p className="text-slate-300">{req.paymentMethod || '-'}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">UTR</p>
-                  <p className="text-sm font-medium text-gray-900">{req.utrNumber || '-'}</p>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 uppercase font-medium mb-1">UTR</p>
+                  <p className="text-slate-300 font-mono text-sm">{req.utrNumber || '-'}</p>
                 </div>
               </div>
-              
+
               {req.paymentScreenshotUrl && (
                 <div className="mb-4">
-                  <p className="text-xs text-gray-500 uppercase font-medium mb-2">Screenshot</p>
+                  <p className="text-xs text-slate-400 uppercase font-medium mb-2">Payment Proof</p>
                   <button
-                    className="focus:outline-none group touch-manipulation"
+                    className="focus:outline-none group transition-transform hover:scale-105 touch-manipulation"
                     title="View Screenshot"
                     onClick={() => setModalImg(getDirectImageUrl(req.paymentScreenshotUrl))}
                   >
                     <img
                       src={getDirectImageUrl(req.paymentScreenshotUrl)}
                       alt="Payment Screenshot"
-                      className="w-16 h-16 object-cover rounded border border-gray-200 group-hover:scale-105 transition-transform"
+                      className="w-20 h-20 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
                     />
                   </button>
                 </div>
               )}
-              
+
               {req.status === 'pending' && (
-                <div className="flex gap-3 pt-3 border-t border-gray-200">
-                  <button
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition touch-manipulation ${
-                      processingRequest === req.id 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-green-100 hover:bg-green-200 text-green-700'
+                <div className="flex gap-3 pt-4 border-t border-slate-700/50">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
+                      processingRequest === req.id
+                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'
                     }`}
                     disabled={processingRequest === req.id}
                     onClick={() => handleAccept(req)}
                   >
                     <FiCheckCircle className="inline mr-2" size={16} />
                     {processingRequest === req.id ? 'Processing...' : 'Approve'}
-                  </button>
-                  <button
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition touch-manipulation ${
-                      processingRequest === req.id 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-red-100 hover:bg-red-200 text-red-700'
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
+                      processingRequest === req.id
+                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'
                     }`}
                     disabled={processingRequest === req.id}
                     onClick={() => handleReject(req)}
                   >
                     <FiXCircle className="inline mr-2" size={16} />
                     {processingRequest === req.id ? 'Processing...' : 'Reject'}
-                  </button>
+                  </motion.button>
                 </div>
               )}
             </motion.div>
@@ -469,19 +509,37 @@ const EpinRequestManager = () => {
         </AnimatePresence>
       </div>
       {/* Modal for image preview */}
-      {modalImg && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setModalImg(null)}>
-          <div className="relative max-w-4xl max-h-full">
-            <img src={modalImg} alt="Payment Screenshot" className="max-w-full max-h-full object-contain rounded-lg" />
-            <button
-              className="absolute top-2 right-2 bg-white text-black rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl touch-manipulation"
-              onClick={() => setModalImg(null)}
+      <AnimatePresence>
+        {modalImg && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setModalImg(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-4xl max-h-full bg-slate-800 rounded-xl border border-slate-600 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
+              <img
+                src={modalImg}
+                alt="Payment Screenshot"
+                className="max-w-full max-h-full object-contain"
+              />
+              <button
+                className="absolute top-4 right-4 bg-slate-700/80 hover:bg-slate-600 text-slate-100 rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl transition-all duration-200 touch-manipulation hover:scale-110"
+                onClick={() => setModalImg(null)}
+              >
+                ×
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

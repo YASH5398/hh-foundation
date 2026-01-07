@@ -8,7 +8,6 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import toast from "react-hot-toast";
-import fcmService from "../services/fcmService";
 
 const AuthContext = createContext();
 
@@ -29,14 +28,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
       const tokenResult = await getIdTokenResult(userCredential.user, true);
-      
-      // Initialize FCM for the logged-in user
-      try {
-        await fcmService.initializeForUser(userCredential.user.uid);
-        console.log('FCM initialized for user:', userCredential.user.uid);
-      } catch (fcmError) {
-        console.log('FCM initialization failed (non-critical):', fcmError);
-      }
       
       setAuthLoading(false);
       // Return success and claims for the UI to handle redirection
@@ -91,14 +82,6 @@ export const AuthProvider = ({ children }) => {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           if (userDoc.exists()) {
             setUser({ ...userDoc.data(), uid: firebaseUser.uid });
-            
-            // Initialize FCM for returning users (on app refresh/reload)
-            try {
-              await fcmService.initializeForUser(firebaseUser.uid);
-              console.log('FCM initialized for returning user:', firebaseUser.uid);
-            } catch (fcmError) {
-              console.log('FCM initialization failed (non-critical):', fcmError);
-            }
           } else {
             setUser(null); // Or handle as an error
           }

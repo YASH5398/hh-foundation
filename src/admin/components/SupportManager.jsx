@@ -20,7 +20,7 @@ import {
   FiSend, 
   FiEdit3 
 } from 'react-icons/fi';
-// import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const CHAT_STATUSES = {
@@ -274,62 +274,65 @@ const SupportManager = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+    <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Support Manager</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage agent chats and support tickets</p>
+        <div className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-100 mb-2">Support Manager</h1>
+          <p className="text-slate-400 text-sm md:text-base">Manage agent chats and support tickets</p>
         </div>
 
         {/* Tabs */}
-        <div className="mb-4 sm:mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
-              <button
+        <div className="mb-6">
+          <div className="border-b border-slate-700/50">
+            <nav className="-mb-px flex space-x-4 md:space-x-8 overflow-x-auto">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setActiveTab('agent-chats');
                   setChatType('agent');
                   setSelectedChat(null);
                 }}
-                className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 ${
                   activeTab === 'agent-chats'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
-                <FiMessageSquare className="inline w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Agent Chats ({chatRooms.length})</span>
-                <span className="sm:hidden">Agents ({chatRooms.length})</span>
-              </button>
-              <button
+                <FiMessageSquare className="inline w-4 h-4 mr-2" />
+                <span>Agent Chats ({chatRooms.length})</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setActiveTab('chatbot-chats');
                   setChatType('chatbot');
                   setSelectedChat(null);
                 }}
-                className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 ${
                   activeTab === 'chatbot-chats'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-green-500 text-green-400 bg-green-500/10'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
-                <FiMessageSquare className="inline w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Chatbot Chats ({chatbotChats.length})</span>
-                <span className="sm:hidden">Chatbot ({chatbotChats.length})</span>
-              </button>
-              <button
+                <FiMessageSquare className="inline w-4 h-4 mr-2" />
+                <span>Chatbot Chats ({chatbotChats.length})</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab('tickets')}
-                className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 ${
                   activeTab === 'tickets'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
-                <FiFileText className="inline w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Support Tickets ({tickets.length})</span>
-                <span className="sm:hidden">Tickets ({tickets.length})</span>
-              </button>
+                <FiFileText className="inline w-4 h-4 mr-2" />
+                <span>Support Tickets ({tickets.length})</span>
+              </motion.button>
             </nav>
           </div>
         </div>
@@ -339,49 +342,58 @@ const SupportManager = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Chat List */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="p-3 sm:p-4 border-b border-gray-200">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+              <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 shadow-xl">
+                <div className="p-4 border-b border-slate-600">
+                  <h3 className="text-lg font-semibold text-slate-100">
                     {activeTab === 'agent-chats' ? 'Agent Chat Rooms' : 'Chatbot Conversations'}
                   </h3>
                 </div>
-                <div className="max-h-64 sm:max-h-96 overflow-y-auto">
-                  {(activeTab === 'agent-chats' ? chatRooms : chatbotChats).map((chat) => (
-                    <div
-                      key={chat.id}
-                      onClick={() => setSelectedChat(chat)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        selectedChat?.id === chat.id ? 'bg-purple-50 border-purple-200' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{chat.userName}</h4>
-                        {getStatusBadge(chat.status, 'chat')}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">User ID: {chat.userId}</p>
-                      {chat.agentName && (
-                        <p className="text-sm text-blue-600">Agent: {chat.agentName}</p>
-                      )}
-                      <p className="text-xs text-gray-500">
-                        {chat.createdAt?.toDate?.()?.toLocaleString()}
-                      </p>
-                      {chat.status === 'waiting' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            assignAgent(chat.id);
-                          }}
-                          className="mt-2 w-full bg-purple-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                        >
-                          Assign Me
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div className="max-h-96 overflow-y-auto">
+                  <AnimatePresence>
+                    {(activeTab === 'agent-chats' ? chatRooms : chatbotChats).map((chat) => (
+                      <motion.div
+                        key={chat.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        onClick={() => setSelectedChat(chat)}
+                        className={`p-4 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800/40 transition-all duration-200 ${
+                          selectedChat?.id === chat.id ? 'bg-blue-500/10 border-blue-500/30' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-slate-100 truncate">{chat.userName}</h4>
+                          {getStatusBadge(chat.status, 'chat')}
+                        </div>
+                        <p className="text-sm text-slate-400 mb-2 font-mono">ID: {chat.userId}</p>
+                        {chat.agentName && (
+                          <p className="text-sm text-blue-400 mb-2">Agent: {chat.agentName}</p>
+                        )}
+                        <p className="text-xs text-slate-500">
+                          {chat.createdAt?.toDate?.()?.toLocaleString()}
+                        </p>
+                        {chat.status === 'waiting' && (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              assignAgent(chat.id);
+                            }}
+                            className="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all duration-200 touch-manipulation"
+                          >
+                            Assign Me
+                          </motion.button>
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                   {(activeTab === 'agent-chats' ? chatRooms : chatbotChats).length === 0 && (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="p-8 text-center text-slate-400">
                       <FiMessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>{activeTab === 'agent-chats' ? 'No agent chat rooms found' : 'No chatbot conversations found'}</p>
+                      <p className="text-lg font-medium">No conversations found</p>
+                      <p className="text-sm mt-1">Check back later for new messages</p>
                     </div>
                   )}
                 </div>
@@ -391,95 +403,106 @@ const SupportManager = () => {
             {/* Chat Messages */}
             <div className="lg:col-span-2">
               {selectedChat ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-96 flex flex-col">
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 h-96 flex flex-col shadow-xl">
+                  <div className="p-4 border-b border-slate-600 flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{selectedChat.userName}</h3>
-                      <p className="text-sm text-gray-600">Chat with {selectedChat.userId}</p>
+                      <h3 className="text-lg font-semibold text-slate-100">{selectedChat.userName}</h3>
+                      <p className="text-sm text-slate-400 font-mono">Chat with {selectedChat.userId}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {getStatusBadge(selectedChat.status, 'chat')}
                       {selectedChat.status === 'active' && (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => closeChat(selectedChat.id)}
-                          className="bg-red-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-red-500/25 transition-all duration-200 touch-manipulation"
                         >
                           Close Chat
-                        </button>
+                        </motion.button>
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          message.senderType === 'agent' ? 'justify-end' : 
-                          message.senderType === 'system' ? 'justify-center' : 'justify-start'
-                        }`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            message.senderType === 'agent'
-                              ? 'bg-purple-600 text-white'
-                              : message.senderType === 'system'
-                              ? 'bg-green-100 text-green-800 border border-green-200'
-                              : message.senderType === 'chatbot'
-                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                              : 'bg-gray-200 text-gray-900'
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    <AnimatePresence>
+                      {messages.map((message) => (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className={`flex ${
+                            message.senderType === 'agent' ? 'justify-end' :
+                            message.senderType === 'system' ? 'justify-center' : 'justify-start'
                           }`}
                         >
-                          {message.senderType === 'system' && (
-                            <p className="text-xs font-medium mb-1">System Message</p>
-                          )}
-                          {message.senderType === 'chatbot' && (
-                            <p className="text-xs font-medium mb-1">Chatbot</p>
-                          )}
-                          <p className="text-sm">{message.message}</p>
-                          <p className="text-xs opacity-75 mt-1">
-                            {message.timestamp?.toDate?.()?.toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg shadow-sm ${
+                              message.senderType === 'agent'
+                                ? 'bg-blue-600 text-white shadow-blue-500/20'
+                                : message.senderType === 'system'
+                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                : message.senderType === 'chatbot'
+                                ? 'bg-slate-700 text-slate-200 border border-slate-600'
+                                : 'bg-slate-700/50 text-slate-100 border border-slate-600'
+                            }`}
+                          >
+                            {message.senderType === 'system' && (
+                              <p className="text-xs font-medium mb-1 text-green-300">System Message</p>
+                            )}
+                            {message.senderType === 'chatbot' && (
+                              <p className="text-xs font-medium mb-1 text-slate-400">Chatbot</p>
+                            )}
+                            <p className="text-sm leading-relaxed">{message.message}</p>
+                            <p className="text-xs opacity-75 mt-2 text-right">
+                              {message.timestamp?.toDate?.()?.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
 
                   {/* Message Input */}
                   {selectedChat.status === 'active' && chatType === 'agent' && (
-                    <div className="p-4 border-t border-gray-200">
-                      <div className="flex gap-2">
+                    <div className="p-4 border-t border-slate-600">
+                      <div className="flex gap-3">
                         <input
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                           placeholder="Type your message..."
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="flex-1 px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         />
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={sendMessage}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-200 touch-manipulation"
                         >
-                          <FiSend className="w-4 h-4" />
-                        </button>
+                          <FiSend className="w-5 h-5" />
+                        </motion.button>
                       </div>
                     </div>
                   )}
                   {chatType === 'chatbot' && (
-                    <div className="p-4 border-t border-gray-200 bg-blue-50">
-                      <p className="text-sm text-blue-600 text-center">
-                        This is a chatbot conversation. Messages are handled automatically by AI.
+                    <div className="p-4 border-t border-slate-600 bg-slate-800/60">
+                      <p className="text-sm text-slate-300 text-center">
+                        🤖 This is a chatbot conversation. Messages are handled automatically by AI.
                       </p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-96 flex items-center justify-center">
-                  <div className="text-center text-gray-500">
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 h-96 flex items-center justify-center shadow-xl">
+                  <div className="text-center text-slate-400">
                     <FiMessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Select a chat room to view messages</p>
+                    <p className="text-lg font-medium">Select a conversation</p>
+                    <p className="text-sm mt-1">Choose a chat room to view messages</p>
                   </div>
                 </div>
               )}
@@ -491,34 +514,41 @@ const SupportManager = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Tickets List */}
             <div>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="p-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Support Tickets</h3>
+              <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 shadow-xl">
+                <div className="p-4 border-b border-slate-600">
+                  <h3 className="text-lg font-semibold text-slate-100">Support Tickets</h3>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {tickets.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      onClick={() => setSelectedTicket(ticket)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        selectedTicket?.id === ticket.id ? 'bg-purple-50 border-purple-200' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900 truncate">{ticket.subject}</h4>
-                        {getStatusBadge(ticket.status, 'ticket')}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">By: {ticket.userName}</p>
-                      <p className="text-sm text-gray-500 line-clamp-2">{ticket.description}</p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {ticket.createdAt?.toDate?.()?.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
+                <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                  <AnimatePresence>
+                    {tickets.map((ticket) => (
+                      <motion.div
+                        key={ticket.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        onClick={() => setSelectedTicket(ticket)}
+                        className={`p-4 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800/40 transition-all duration-200 ${
+                          selectedTicket?.id === ticket.id ? 'bg-purple-500/10 border-purple-500/30' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-slate-100 truncate">{ticket.subject}</h4>
+                          {getStatusBadge(ticket.status, 'ticket')}
+                        </div>
+                        <p className="text-sm text-slate-400 mb-2">By: {ticket.userName}</p>
+                        <p className="text-sm text-slate-300 line-clamp-2">{ticket.description}</p>
+                        <p className="text-xs text-slate-500 mt-2">
+                          {ticket.createdAt?.toDate?.()?.toLocaleString()}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                   {tickets.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="p-8 text-center text-slate-400">
                       <FiFileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No tickets found</p>
+                      <p className="text-lg font-medium">No tickets found</p>
+                      <p className="text-sm mt-1">Support tickets will appear here</p>
                     </div>
                   )}
                 </div>
@@ -528,89 +558,122 @@ const SupportManager = () => {
             {/* Ticket Details */}
             <div>
               {selectedTicket ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="p-4 border-b border-gray-200">
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 shadow-xl">
+                  <div className="p-4 border-b border-slate-600">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{selectedTicket.subject}</h3>
+                      <h3 className="text-lg font-semibold text-slate-100">{selectedTicket.subject}</h3>
                       {getStatusBadge(selectedTicket.status, 'ticket')}
                     </div>
-                    <p className="text-sm text-gray-600">Ticket #{selectedTicket.id.slice(-8)}</p>
+                    <p className="text-sm text-slate-400 font-mono">Ticket #{selectedTicket.id.slice(-8)}</p>
                   </div>
-                  
-                  <div className="p-4 space-y-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">User Information</h4>
-                      <p className="text-sm text-gray-600">Name: {selectedTicket.userName}</p>
-                      <p className="text-sm text-gray-600">User ID: {selectedTicket.userId}</p>
+
+                  <div className="p-4 space-y-6">
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h4 className="font-medium text-slate-200 mb-3 flex items-center">
+                        <FiMessageSquare className="w-5 h-5 mr-2 text-blue-400" />
+                        User Information
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="text-slate-400">Name:</span> <span className="text-slate-100">{selectedTicket.userName}</span></p>
+                        <p><span className="text-slate-400">User ID:</span> <span className="text-slate-100 font-mono">{selectedTicket.userId}</span></p>
+                      </div>
                     </div>
 
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h4 className="font-medium text-slate-200 mb-3 flex items-center">
+                        <FiFileText className="w-5 h-5 mr-2 text-green-400" />
+                        Description
+                      </h4>
+                      <p className="text-sm text-slate-300 bg-slate-800/60 p-3 rounded-lg border border-slate-700">
                         {selectedTicket.description}
                       </p>
                     </div>
 
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Status Management</h4>
-                      <div className="flex gap-2">
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h4 className="font-medium text-slate-200 mb-3 flex items-center">
+                        <FiEdit3 className="w-5 h-5 mr-2 text-purple-400" />
+                        Status Management
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
                         {Object.keys(TICKET_STATUSES).map((status) => (
-                          <button
+                          <motion.button
                             key={status}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => updateTicketStatus(selectedTicket.id, status)}
-                            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 touch-manipulation ${
                               selectedTicket.status === status
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                                : 'bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-600'
                             }`}
                           >
                             {TICKET_STATUSES[status].label}
-                          </button>
+                          </motion.button>
                         ))}
                       </div>
                     </div>
 
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
-                      <div className="space-y-2">
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h4 className="font-medium text-slate-200 mb-3 flex items-center">
+                        <FiSend className="w-5 h-5 mr-2 text-blue-400" />
+                        Add Comment
+                      </h4>
+                      <div className="space-y-3">
                         <textarea
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           placeholder="Add a comment for this ticket..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           rows={3}
                         />
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => addTicketComment(selectedTicket.id)}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg hover:shadow-blue-500/25 transition-all duration-200 touch-manipulation"
                         >
+                          <FiSend className="inline mr-2 w-4 h-4" />
                           Add Comment
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
 
                     {selectedTicket.comments && selectedTicket.comments.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Comments</h4>
-                        <div className="space-y-2">
-                          {selectedTicket.comments.map((comment, index) => (
-                            <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                              <p className="text-blue-800 text-sm">{comment.message}</p>
-                              <p className="text-xs text-blue-600 mt-1">
-                                {comment.adminName} • {comment.timestamp?.toDate?.()?.toLocaleString()}
-                              </p>
-                            </div>
-                          ))}
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-medium text-slate-200 mb-3 flex items-center">
+                          <FiMessageSquare className="w-5 h-5 mr-2 text-green-400" />
+                          Comments ({selectedTicket.comments.length})
+                        </h4>
+                        <div className="space-y-3">
+                          <AnimatePresence>
+                            {selectedTicket.comments.map((comment, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="bg-slate-700/50 border border-slate-600 rounded-lg p-3"
+                              >
+                                <p className="text-slate-200 text-sm leading-relaxed">{comment.message}</p>
+                                <p className="text-xs text-slate-400 mt-2 flex items-center">
+                                  <FiClock className="w-3 h-3 mr-1" />
+                                  {comment.adminName} • {comment.timestamp?.toDate?.()?.toLocaleString()}
+                                </p>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-96 flex items-center justify-center">
-                  <div className="text-center text-gray-500">
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 h-96 flex items-center justify-center shadow-xl">
+                  <div className="text-center text-slate-400">
                     <FiFileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Select a ticket to view details</p>
+                    <p className="text-lg font-medium">Select a ticket</p>
+                    <p className="text-sm mt-1">Choose a ticket to view details</p>
                   </div>
                 </div>
               )}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-import { db } from "../../config/firebase"; // Corrected path
+import { db } from "../config/firebase";
 import { useAuth } from "../../context/AuthContext"; // Corrected path
 import TransactionChat from "../chat/TransactionChat";
 import { FiMessageCircle } from 'react-icons/fi';

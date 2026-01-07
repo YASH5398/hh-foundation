@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../config/firebase';
 import { getIdTokenResult } from 'firebase/auth';
 import { getDirectImageUrl } from '../../utils/firebaseStorageUtils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, CheckCircle, XCircle, Clock, User, CreditCard, Phone, MessageCircle } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -194,190 +194,220 @@ const SendHelpManager = () => {
   }
 
   return (
-    <div className="container mx-auto p-2 sm:p-4">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 px-2 sm:px-0">Send Help Manager</h1>
-      
-      {/* Filter & Search */}
-      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 px-2 sm:px-0">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <label className="text-xs sm:text-sm text-gray-700 font-medium">Filter by Status:</label>
-          <select
-            className="border border-gray-300 rounded-lg p-2 sm:p-2 text-black bg-white text-sm w-full sm:w-auto"
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        
-        <input
-          type="text"
-          className="border border-gray-300 rounded-lg p-2 sm:p-2 text-black bg-white text-sm w-full"
-          placeholder="Search by User ID or Name"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100 mb-2">Send Help Manager</h1>
+        <p className="text-slate-400 text-sm md:text-base">Monitor and manage send help transactions between users</p>
       </div>
 
-      {/* Data Table - Desktop */}
-      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+      {/* Filter & Search Controls */}
+      <div className="mb-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label className="text-sm text-slate-300 font-medium">Filter by Status:</label>
+            <select
+              className="px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:w-auto"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all" className="bg-slate-800 text-slate-100">All Statuses</option>
+              <option value="pending" className="bg-slate-800 text-slate-100">Pending</option>
+              <option value="paid" className="bg-slate-800 text-slate-100">Paid</option>
+              <option value="confirmed" className="bg-slate-800 text-slate-100">Confirmed</option>
+              <option value="cancelled" className="bg-slate-800 text-slate-100">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="flex-1">
+            <input
+              type="text"
+              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="Search by User ID or Name"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-slate-800/30 rounded-xl border border-slate-700/50 overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <thead>
+              <tr className="bg-slate-800/60 border-b border-slate-600">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Transaction
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Sender
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Receiver
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Payment Proof
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-700/50">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    No SendHelp data found.
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <CreditCard className="w-12 h-12 mb-4 opacity-50" />
+                      <p className="text-lg font-medium">No SendHelp transactions found</p>
+                      <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredData.map((help) => (
-                  <tr key={help.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-mono text-xs">{help.id}</div>
-                      <div className="text-xs text-gray-500">
+                  <motion.tr
+                    key={help.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="hover:bg-slate-800/20 transition-all duration-200"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-mono text-xs text-slate-400 mb-1">{help.id.slice(-12)}</div>
+                      <div className="text-sm text-slate-300">
                         {help.createdAt?.toDate ? help.createdAt.toDate().toLocaleString() : 'N/A'}
                       </div>
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap">
+
+                    <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <User className="h-4 w-4 text-blue-600" />
-                          </div>
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                          <User className="h-5 w-5 text-blue-400" />
                         </div>
                         <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-slate-100">
                             {help.senderName || help.senderId || 'N/A'}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-400">
                             ID: {help.senderId}
                           </div>
                         </div>
                       </div>
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap">
+
+                    <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8">
-                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                            <User className="h-4 w-4 text-green-600" />
-                          </div>
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
+                          <User className="h-5 w-5 text-green-400" />
                         </div>
                         <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-slate-100">
                             {help.receiverName || help.receiverId || 'N/A'}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-400">
                             ID: {help.receiverId}
                           </div>
                         </div>
                       </div>
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="font-semibold text-green-600">₹{help.amount || 300}</span>
+
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-green-400 text-lg">₹{help.amount || 300}</span>
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[help.status] || 'bg-gray-100 text-gray-800'}`}>
+
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                        STATUS_COLORS[help.status]?.includes('yellow') ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                        STATUS_COLORS[help.status]?.includes('blue') ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                        STATUS_COLORS[help.status]?.includes('green') ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                        STATUS_COLORS[help.status]?.includes('red') ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                        'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                      }`}>
                         {help.status || 'pending'}
                       </span>
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+
+                    <td className="px-6 py-4">
                       {help.paymentDetails?.screenshotUrl ? (
                         <div className="flex items-center space-x-2">
-                          <img
+                          <motion.img
+                            whileHover={{ scale: 1.1 }}
                             src={getDirectImageUrl(help.paymentDetails.screenshotUrl)}
                             alt="Payment Proof"
-                            className="w-10 h-10 object-cover rounded-lg border border-gray-200 cursor-pointer hover:scale-110 transition-transform"
+                            className="w-12 h-12 object-cover rounded-lg border border-slate-600 cursor-pointer transition-all duration-200"
                             onClick={() => window.open(getDirectImageUrl(help.paymentDetails.screenshotUrl), '_blank')}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjBGM0Y2Ii8+CjxwYXRoIGQ9Ik0xMCAxM0gyNlYyNkgxMFYxM1oiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEzIDhIMjNWMTNIMTNWOFoiIGZpbGw9IiM3QzNFNUYiLz4KPC9zdmc+Cg==';
                             }}
                           />
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
                             onClick={() => window.open(getDirectImageUrl(help.paymentDetails.screenshotUrl), '_blank')}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-xs"
+                            className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 text-sm px-2 py-1 rounded hover:bg-blue-500/10 transition-all duration-200"
                           >
-                            <Eye className="w-3 h-3" />
+                            <Eye className="w-4 h-4" />
                             <span>View</span>
-                          </button>
+                          </motion.button>
                         </div>
                       ) : (
-                        <span className="text-gray-400">No proof</span>
+                        <span className="text-slate-500 italic">No proof</span>
                       )}
                     </td>
-                    
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-2">
                         {help.status === 'pending' && (
                           <>
-                            <button
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => handleStatusUpdate(help.id, 'paid')}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-xs"
+                              className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
                             >
                               Mark Paid
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => handleStatusUpdate(help.id, 'cancelled')}
-                              className="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-2 py-1 rounded text-xs"
+                              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-red-500/25 transition-all duration-200"
                             >
                               Cancel
-                            </button>
+                            </motion.button>
                           </>
                         )}
                         {help.status === 'paid' && (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => handleStatusUpdate(help.id, 'confirmed')}
-                            className="text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-xs"
+                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-green-500/25 transition-all duration-200"
                           >
                             Confirm
-                          </button>
+                          </motion.button>
                         )}
                         {help.status !== 'confirmed' && (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => handleMarkConfirmed(help.id)}
-                            className="text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-xs"
+                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-green-500/25 transition-all duration-200"
                           >
-                            Mark as Confirmed
-                          </button>
+                            Mark Confirmed
+                          </motion.button>
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
@@ -386,212 +416,277 @@ const SendHelpManager = () => {
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-3 px-2">
-        {filteredData.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-4 text-center text-gray-500">
-            No SendHelp data found.
-          </div>
-        ) : (
-          filteredData.map((help) => (
-            <div key={help.id} className="bg-white rounded-lg shadow p-4 space-y-3">
-              {/* Header */}
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="font-mono text-xs text-gray-600 mb-1">{help.id}</div>
-                  <div className="text-xs text-gray-500">
-                    {help.createdAt?.toDate ? help.createdAt.toDate().toLocaleString() : 'N/A'}
-                  </div>
-                </div>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[help.status] || 'bg-gray-100 text-gray-800'}`}>
-                  {help.status || 'pending'}
-                </span>
-              </div>
-
-              {/* Sender & Receiver */}
-              <div className="grid grid-cols-1 gap-3">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <User className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {help.senderName || help.senderId || 'N/A'}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      Sender: {help.senderId}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <User className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {help.receiverName || help.receiverId || 'N/A'}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      Receiver: {help.receiverId}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Amount & Payment Proof */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                  <CreditCard className="h-4 w-4 text-green-600" />
-                  <span className="font-semibold text-green-600">₹{help.amount || 300}</span>
-                </div>
-                
-                {help.paymentDetails?.screenshotUrl ? (
-                  <button
-                    onClick={() => window.open(getDirectImageUrl(help.paymentDetails.screenshotUrl), '_blank')}
-                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-xs bg-blue-50 px-2 py-1 rounded"
-                  >
-                    <Eye className="w-3 h-3" />
-                    <span>View Proof</span>
-                  </button>
-                ) : (
-                  <span className="text-xs text-gray-400">No proof</span>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                {help.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleStatusUpdate(help.id, 'paid')}
-                      className="flex-1 text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded text-xs font-medium"
-                    >
-                      Mark Paid
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(help.id, 'cancelled')}
-                      className="flex-1 text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-2 rounded text-xs font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                )}
-                {help.status === 'paid' && (
-                  <button
-                    onClick={() => handleStatusUpdate(help.id, 'confirmed')}
-                    className="flex-1 text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-3 py-2 rounded text-xs font-medium"
-                  >
-                    Confirm
-                  </button>
-                )}
-                {help.status !== 'confirmed' && (
-                  <button
-                    onClick={() => handleMarkConfirmed(help.id)}
-                    className="flex-1 text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-3 py-2 rounded text-xs font-medium"
-                  >
-                    Mark as Confirmed
-                  </button>
-                )}
-                <button
-                  onClick={() => setSelectedHelp(help)}
-                  className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-xs font-medium"
-                >
-                  View Details
-                </button>
-              </div>
+      <div className="md:hidden space-y-4">
+        <AnimatePresence>
+          {filteredData.length === 0 ? (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-8 text-center">
+              <CreditCard className="w-12 h-12 mx-auto mb-4 text-slate-500 opacity-50" />
+              <p className="text-slate-300 text-lg font-medium">No SendHelp transactions found</p>
+              <p className="text-slate-500 text-sm mt-1">Try adjusting your search or filter criteria</p>
             </div>
-          ))
-        )}
+          ) : (
+            filteredData.map((help) => (
+              <motion.div
+                key={help.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-4 shadow-xl hover:shadow-2xl transition-all duration-200"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <div className="font-mono text-xs text-slate-400 mb-1">{help.id.slice(-12)}</div>
+                    <div className="text-sm text-slate-300">
+                      {help.createdAt?.toDate ? help.createdAt.toDate().toLocaleString() : 'N/A'}
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
+                    STATUS_COLORS[help.status]?.includes('yellow') ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                    STATUS_COLORS[help.status]?.includes('blue') ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                    STATUS_COLORS[help.status]?.includes('green') ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                    STATUS_COLORS[help.status]?.includes('red') ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                    'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                  }`}>
+                    {help.status || 'pending'}
+                  </span>
+                </div>
+
+                {/* Sender & Receiver */}
+                <div className="grid grid-cols-1 gap-4 mb-4">
+                  <div className="flex items-center space-x-3 bg-slate-800/50 rounded-lg p-3">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                      <User className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-slate-100 truncate">
+                        {help.senderName || help.senderId || 'N/A'}
+                      </div>
+                      <div className="text-xs text-slate-400 truncate">
+                        Sender ID: {help.senderId}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3 bg-slate-800/50 rounded-lg p-3">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
+                      <User className="h-5 w-5 text-green-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-slate-100 truncate">
+                        {help.receiverName || help.receiverId || 'N/A'}
+                      </div>
+                      <div className="text-xs text-slate-400 truncate">
+                        Receiver ID: {help.receiverId}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount & Payment Proof */}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2">
+                    <CreditCard className="h-5 w-5 text-green-400" />
+                    <span className="font-semibold text-green-400 text-lg">₹{help.amount || 300}</span>
+                  </div>
+
+                  {help.paymentDetails?.screenshotUrl ? (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => window.open(getDirectImageUrl(help.paymentDetails.screenshotUrl), '_blank')}
+                      className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 text-sm bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-all duration-200 touch-manipulation"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>View Proof</span>
+                    </motion.button>
+                  ) : (
+                    <span className="text-slate-500 italic text-sm">No proof</span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-700/50">
+                  {help.status === 'pending' && (
+                    <>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleStatusUpdate(help.id, 'paid')}
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all duration-200 touch-manipulation"
+                      >
+                        Mark Paid
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleStatusUpdate(help.id, 'cancelled')}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-lg text-sm font-medium shadow-lg hover:shadow-red-500/25 transition-all duration-200 touch-manipulation"
+                      >
+                        Cancel
+                      </motion.button>
+                    </>
+                  )}
+                  {help.status === 'paid' && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleStatusUpdate(help.id, 'confirmed')}
+                      className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg text-sm font-medium shadow-lg hover:shadow-green-500/25 transition-all duration-200 touch-manipulation"
+                    >
+                      Confirm
+                    </motion.button>
+                  )}
+                  {help.status !== 'confirmed' && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleMarkConfirmed(help.id)}
+                      className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg text-sm font-medium shadow-lg hover:shadow-green-500/25 transition-all duration-200 touch-manipulation"
+                    >
+                      Mark Confirmed
+                    </motion.button>
+                  )}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedHelp(help)}
+                    className="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-slate-100 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 touch-manipulation"
+                  >
+                    View Details
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Detail Modal */}
-      {selectedHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Send Help Details</h2>
-                <button
-                  onClick={() => setSelectedHelp(null)}
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Sender Information</h3>
-                    <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Name:</span> {selectedHelp.senderName || 'N/A'}</p>
-                      <p><span className="font-medium">ID:</span> {selectedHelp.senderId}</p>
-                      <p><span className="font-medium">Phone:</span> {selectedHelp.senderPhone || 'N/A'}</p>
-                      <p><span className="font-medium">WhatsApp:</span> {selectedHelp.senderWhatsApp || 'N/A'}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Receiver Information</h3>
-                    <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Name:</span> {selectedHelp.receiverName || 'N/A'}</p>
-                      <p><span className="font-medium">ID:</span> {selectedHelp.receiverId}</p>
-                      <p><span className="font-medium">Phone:</span> {selectedHelp.receiverPhone || 'N/A'}</p>
-                      <p><span className="font-medium">WhatsApp:</span> {selectedHelp.receiverWhatsApp || 'N/A'}</p>
-                    </div>
-                    {/* Universal Chat Button Below Receiver Details */}
-                    {selectedHelp?.senderUid && selectedHelp?.receiverUid && (
-                      <button
-                        onClick={() => {
-                          // For admin view, we'll show a message that chat is available in user interface
-                          alert('Chat functionality is available in the user interface. Please ask the users to use the chat button in their Send Help or Receive Help sections.');
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs sm:text-sm mt-2 w-full touch-manipulation"
-                        type="button"
-                      >
-                        💬 Chat (User Interface)
-                      </button>
-                    )}
-                  </div>
+      <AnimatePresence>
+        {selectedHelp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedHelp(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-800 rounded-xl border border-slate-600 max-w-2xl w-full max-h-[95vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-slate-100">Send Help Details</h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setSelectedHelp(null)}
+                    className="text-slate-400 hover:text-slate-200 p-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </motion.button>
                 </div>
-                
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Payment Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Amount:</span> ₹{selectedHelp.amount || 300}</p>
-                    <p><span className="font-medium">Status:</span> 
-                      <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[selectedHelp.status] || 'bg-gray-100 text-gray-800'}`}>
-                        {selectedHelp.status || 'pending'}
-                      </span>
-                    </p>
-                    {selectedHelp.paymentDetails?.utrNumber && (
-                      <p><span className="font-medium">UTR Number:</span> {selectedHelp.paymentDetails.utrNumber}</p>
-                    )}
-                  </div>
-                </div>
-                
-                {selectedHelp.paymentDetails?.screenshotUrl && (
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2 text-sm sm:text-base">Payment Proof</h3>
-                    <div className="flex justify-center">
-                      <img
-                        src={getDirectImageUrl(selectedHelp.paymentDetails.screenshotUrl)}
-                        alt="Payment Proof"
-                        className="max-w-full h-48 sm:h-64 object-contain rounded-lg border border-gray-200 cursor-pointer"
-                        onClick={() => window.open(getDirectImageUrl(selectedHelp.paymentDetails.screenshotUrl), '_blank')}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjBGM0Y2Ii8+CjxwYXRoIGQ9Ik03NSAxMDBIMjI1VjE1MEg3NVYxMDBaIiBmaWxsPSIjOUNBM0FGIi8+CjxwYXRoIGQ9Ik0xMDAgNjVIMjAwVjEwMEgxMDBWNjVaIiBmaWxsPSIjN0MzRTVGIi8+Cjwvc3ZnPgo=';
-                        }}
-                      />
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h3 className="font-semibold text-slate-200 mb-3 flex items-center">
+                        <User className="w-5 h-5 mr-2 text-blue-400" />
+                        Sender Information
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="text-slate-400">Name:</span> <span className="text-slate-100">{selectedHelp.senderName || 'N/A'}</span></p>
+                        <p><span className="text-slate-400">ID:</span> <span className="text-slate-100 font-mono">{selectedHelp.senderId}</span></p>
+                        <p><span className="text-slate-400">Phone:</span> <span className="text-slate-100">{selectedHelp.senderPhone || 'N/A'}</span></p>
+                        <p><span className="text-slate-400">WhatsApp:</span> <span className="text-slate-100">{selectedHelp.senderWhatsApp || 'N/A'}</span></p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h3 className="font-semibold text-slate-200 mb-3 flex items-center">
+                        <User className="w-5 h-5 mr-2 text-green-400" />
+                        Receiver Information
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="text-slate-400">Name:</span> <span className="text-slate-100">{selectedHelp.receiverName || 'N/A'}</span></p>
+                        <p><span className="text-slate-400">ID:</span> <span className="text-slate-100 font-mono">{selectedHelp.receiverId}</span></p>
+                        <p><span className="text-slate-400">Phone:</span> <span className="text-slate-100">{selectedHelp.receiverPhone || 'N/A'}</span></p>
+                        <p><span className="text-slate-400">WhatsApp:</span> <span className="text-slate-100">{selectedHelp.receiverWhatsApp || 'N/A'}</span></p>
+                      </div>
+                      {/* Universal Chat Button Below Receiver Details */}
+                      {selectedHelp?.senderUid && selectedHelp?.receiverUid && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            // For admin view, we'll show a message that chat is available in user interface
+                            alert('Chat functionality is available in the user interface. Please ask the users to use the chat button in their Send Help or Receive Help sections.');
+                          }}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium mt-4 w-full shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 touch-manipulation"
+                          type="button"
+                        >
+                          <MessageCircle className="inline mr-2 w-4 h-4" />
+                          Chat (User Interface)
+                        </motion.button>
+                      )}
                     </div>
                   </div>
-                )}
+
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                    <h3 className="font-semibold text-slate-200 mb-3 flex items-center">
+                      <CreditCard className="w-5 h-5 mr-2 text-green-400" />
+                      Payment Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2 text-sm">
+                        <p><span className="text-slate-400">Amount:</span> <span className="text-green-400 font-semibold text-lg">₹{selectedHelp.amount || 300}</span></p>
+                        <p><span className="text-slate-400">Status:</span>
+                          <span className={`ml-2 px-3 py-1 text-xs font-semibold rounded-full ${
+                            STATUS_COLORS[selectedHelp.status]?.includes('yellow') ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                            STATUS_COLORS[selectedHelp.status]?.includes('blue') ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                            STATUS_COLORS[selectedHelp.status]?.includes('green') ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                            STATUS_COLORS[selectedHelp.status]?.includes('red') ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                            'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                          }`}>
+                            {selectedHelp.status || 'pending'}
+                          </span>
+                        </p>
+                      </div>
+                      {selectedHelp.paymentDetails?.utrNumber && (
+                        <div className="space-y-2 text-sm">
+                          <p><span className="text-slate-400">UTR Number:</span> <span className="text-slate-100 font-mono">{selectedHelp.paymentDetails.utrNumber}</span></p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedHelp.paymentDetails?.screenshotUrl && (
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <h3 className="font-semibold text-slate-200 mb-3 flex items-center">
+                        <Eye className="w-5 h-5 mr-2 text-blue-400" />
+                        Payment Proof
+                      </h3>
+                      <div className="flex justify-center">
+                        <motion.img
+                          whileHover={{ scale: 1.05 }}
+                          src={getDirectImageUrl(selectedHelp.paymentDetails.screenshotUrl)}
+                          alt="Payment Proof"
+                          className="max-w-full h-64 object-contain rounded-lg border border-slate-600 cursor-pointer transition-all duration-200"
+                          onClick={() => window.open(getDirectImageUrl(selectedHelp.paymentDetails.screenshotUrl), '_blank')}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjBGM0Y2Ii8+CjxwYXRoIGQ9Ik03NSAxMDBIMjI1VjE1MEg3NVYxMDBaIiBmaWxsPSIjOUNBM0FGIi8+CjxwYXRoIGQ9Ik0xMDAgNjVIMjAwVjEwMEgxMDBWNjVaIiBmaWxsPSIjN0MzRTVGIi8+Cjwvc3ZnPgo=';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

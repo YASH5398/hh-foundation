@@ -221,149 +221,245 @@ const AdminDashboard = () => {
     }, 2000);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <main className="flex-1 p-3 sm:p-4 md:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 max-w-6xl mx-auto">
-          {/* E-PIN Cards */}
-          <div className="bg-blue-600 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total E-PINs</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.total}</p>
+  // Stat Card Component
+  const StatCard = ({ title, value, icon, prefix = '', subtitle, delay = 0 }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay }}
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+      className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-slate-800/60"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="text-slate-400 text-sm font-medium mb-1">{title}</h3>
+          <div className="text-2xl font-bold text-white">
+            {prefix}{value?.toLocaleString() || 0}
           </div>
-          <div className="bg-green-600 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Used E-PINs</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.used}</p>
-          </div>
-          <div className="bg-red-600 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Unused E-PINs</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.unused}</p>
-          </div>
-          <div className="bg-orange-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Pending Requests</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.pending}</p>
-          </div>
-          {/* New User/Referral Cards */}
-          <div className="bg-cyan-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total Referrals</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.totalReferrals}</p>
-          </div>
-          <div className="bg-indigo-600 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total Team</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.totalTeam}</p>
-          </div>
-          <div className="bg-teal-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Active Referrals</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.activeReferrals}</p>
-          </div>
-          <div className="bg-orange-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Pending Referrals</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.pendingReferrals}</p>
-          </div>
-          {/* Level/Rank Cards - now included in the main grid */}
-          <div className="bg-blue-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Star Level</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.star}</p>
-          </div>
-          <div className="bg-gray-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Silver Level</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.silver}</p>
-          </div>
-          <div className="bg-yellow-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Gold Level</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.gold}</p>
-          </div>
-          <div className="bg-purple-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Platinum Level</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.platinum}</p>
-          </div>
-          <div className="bg-sky-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Diamond Level</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.diamond}</p>
-          </div>
-          {/* New 7 summary cards */}
-          <div className="bg-gray-800 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Payment Blocked Users</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.paymentBlocked}</p>
-          </div>
-          <div className="bg-gray-600 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Inactive Users (15+ days)</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.inactive15Days}</p>
-          </div>
-          <div className="bg-green-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Today's New Signups</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.todaysSignups}</p>
-          </div>
-          <div className="bg-yellow-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total Earnings Distributed</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">₹{stats.totalEarnings}</p>
-          </div>
-          <div className="bg-blue-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total Help Sent</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">₹{stats.totalSent}</p>
-          </div>
-          <div className="bg-teal-400 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Total Help Received</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">₹{stats.totalReceived}</p>
-          </div>
-          <div className="bg-pink-500 text-white rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center hover:shadow-xl transition-shadow">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 text-center">Power Referrers (5+)</h2>
-            <p className="text-2xl sm:text-3xl font-extrabold">{stats.powerReferrers}</p>
-          </div>
+          {subtitle && (
+            <p className="text-slate-500 text-xs mt-1">{subtitle}</p>
+          )}
         </div>
+        {icon && (
+          <div className="text-slate-500 text-lg">{icon}</div>
+        )}
+      </div>
+    </motion.div>
+  );
 
-        {/* Ticker Management Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6 sm:mt-8 bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl sm:rounded-3xl shadow-2xl border border-blue-200 p-4 sm:p-6 md:p-8 max-w-3xl mx-auto"
-        >
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-800 mb-4 sm:mb-6 flex items-center gap-2 text-center sm:text-left">
-            <span className="text-blue-600 text-3xl sm:text-4xl">📢</span>
-            Ticker Management
-          </h2>
-          
-          <div className="space-y-4 sm:space-y-6">
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border border-blue-100">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">Current Ticker Message</h3>
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border-l-4 border-blue-500">
-                <p className="text-sm sm:text-base text-gray-700 italic break-words">
-                  {currentTickerMessage || 'No ticker message set'}
-                </p>
+  return (
+    <div className="min-h-screen bg-slate-900">
+      <main className="flex-1 p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <h1 className="text-2xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <p className="text-slate-400">Platform metrics and management overview</p>
+          </motion.div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {/* E-PIN Metrics */}
+            <StatCard
+              title="Total E-PINs"
+              value={stats.total}
+              icon="🎫"
+              delay={0.1}
+            />
+            <StatCard
+              title="Used E-PINs"
+              value={stats.used}
+              icon="✅"
+              delay={0.15}
+            />
+            <StatCard
+              title="Unused E-PINs"
+              value={stats.unused}
+              icon="📦"
+              delay={0.2}
+            />
+            <StatCard
+              title="Pending Requests"
+              value={stats.pending}
+              icon="⏳"
+              delay={0.25}
+            />
+
+            {/* User & Referral Metrics */}
+            <StatCard
+              title="Total Referrals"
+              value={stats.totalReferrals}
+              icon="👥"
+              delay={0.3}
+            />
+            <StatCard
+              title="Total Team"
+              value={stats.totalTeam}
+              icon="🌐"
+              delay={0.35}
+            />
+            <StatCard
+              title="Active Referrals"
+              value={stats.activeReferrals}
+              icon="🔄"
+              delay={0.4}
+            />
+            <StatCard
+              title="Pending Referrals"
+              value={stats.pendingReferrals}
+              icon="⏳"
+              delay={0.45}
+            />
+
+            {/* Level Metrics */}
+            <StatCard
+              title="Star Level"
+              value={stats.star}
+              icon="⭐"
+              delay={0.5}
+            />
+            <StatCard
+              title="Silver Level"
+              value={stats.silver}
+              icon="🥈"
+              delay={0.55}
+            />
+            <StatCard
+              title="Gold Level"
+              value={stats.gold}
+              icon="🥇"
+              delay={0.6}
+            />
+            <StatCard
+              title="Platinum Level"
+              value={stats.platinum}
+              icon="💎"
+              delay={0.65}
+            />
+            <StatCard
+              title="Diamond Level"
+              value={stats.diamond}
+              icon="💠"
+              delay={0.7}
+            />
+
+            {/* System Metrics */}
+            <StatCard
+              title="Payment Blocked"
+              value={stats.paymentBlocked}
+              icon="🚫"
+              subtitle="Users with restrictions"
+              delay={0.75}
+            />
+            <StatCard
+              title="Inactive Users"
+              value={stats.inactive15Days}
+              icon="😴"
+              subtitle="15+ days inactive"
+              delay={0.8}
+            />
+            <StatCard
+              title="Today's Signups"
+              value={stats.todaysSignups}
+              icon="📈"
+              subtitle="New registrations"
+              delay={0.85}
+            />
+            <StatCard
+              title="Total Earnings"
+              value={stats.totalEarnings}
+              icon="💰"
+              prefix="₹"
+              subtitle="Distributed"
+              delay={0.9}
+            />
+            <StatCard
+              title="Help Sent"
+              value={stats.totalSent}
+              icon="📤"
+              prefix="₹"
+              subtitle="Total amount"
+              delay={0.95}
+            />
+            <StatCard
+              title="Help Received"
+              value={stats.totalReceived}
+              icon="📥"
+              prefix="₹"
+              subtitle="Total amount"
+              delay={1.0}
+            />
+            <StatCard
+              title="Power Referrers"
+              value={stats.powerReferrers}
+              icon="👑"
+              subtitle="5+ referrals"
+              delay={1.05}
+            />
+          </div>
+
+          {/* Ticker Management Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1.1 }}
+            className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg max-w-2xl mx-auto"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="text-2xl">📢</div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Ticker Management</h2>
+                <p className="text-slate-400 text-sm">Update platform announcement message</p>
               </div>
             </div>
-            
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border border-blue-100">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Update Ticker Message</h3>
-              <textarea
-                value={tickerMessage}
-                onChange={(e) => setTickerMessage(e.target.value)}
-                placeholder="Enter new ticker message..."
-                className="w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200 text-sm sm:text-base"
-                rows="4"
-              />
-              <button
-                onClick={updateTickerMessage}
-                disabled={tickerLoading || !tickerMessage.trim()}
-                className="mt-4 w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-6 sm:px-8 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 shadow-lg text-sm sm:text-base touch-manipulation"
-              >
-                {tickerLoading ? 'Updating...' : 'Update Ticker'}
-              </button>
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-slate-300 mb-2">Current Message</h3>
+                <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
+                  <p className="text-slate-200 text-sm">
+                    {currentTickerMessage || 'No ticker message set'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-slate-300 mb-2">Update Message</h3>
+                <textarea
+                  value={tickerMessage}
+                  onChange={(e) => setTickerMessage(e.target.value)}
+                  placeholder="Enter new ticker message..."
+                  className="w-full p-3 bg-slate-700/30 border border-slate-600/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200 text-slate-200 placeholder-slate-400 text-sm"
+                  rows="4"
+                />
+                <button
+                  onClick={updateTickerMessage}
+                  disabled={tickerLoading || !tickerMessage.trim()}
+                  className="mt-3 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  {tickerLoading ? 'Updating...' : 'Update Ticker'}
+                </button>
+              </div>
             </div>
-          </div>
-        </motion.div>
-        {error && (
-          <motion.div
-            className="w-full max-w-xl mx-auto p-6 rounded-2xl bg-green-100 border border-green-400 shadow-xl text-center mb-4"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="text-3xl mb-2 text-green-600">✔</div>
-            <div className="text-green-700 font-bold text-lg mb-2">{error}</div>
-            <div className="text-gray-700">Help sent successfully!</div>
           </motion.div>
-        )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-6 bg-green-500/10 border border-green-500/20 rounded-2xl p-4 max-w-md mx-auto text-center"
+            >
+              <div className="text-green-400 text-lg mb-2">✅</div>
+              <div className="text-green-300 font-medium text-sm">{error}</div>
+            </motion.div>
+          )}
+        </div>
       </main>
     </div>
   );

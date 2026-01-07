@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { auth, sendPasswordResetEmail } from "../config/firebase";
 import { toast } from 'react-hot-toast';
 
 export default function ForgotPassword() {
@@ -14,7 +14,6 @@ export default function ForgotPassword() {
     }
 
     setIsSubmitting(true);
-    const auth = getAuth();
     try {
       await sendPasswordResetEmail(auth, email);
       toast.success('Password reset email sent! Please check your inbox.');
