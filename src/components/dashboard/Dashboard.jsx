@@ -528,7 +528,8 @@ const Dashboard = () => {
   }, [selectedLevel]);
 
   return (
-    <div className="w-full min-h-screen p-0 m-0 overflow-x-hidden">
+    <div className="w-full flex justify-center">
+      <div className="w-full max-w-[380px] mx-auto px-3">
       {/* Activation Banner: Only show if user.isActivated === false and not dismissed */}
       {user && user.isActivated === false && showBanner && (
         <ActivationBanner onSendHelp={() => navigate('/dashboard/send-help')} onDismiss={handleDismiss} />
@@ -576,39 +577,39 @@ const Dashboard = () => {
       </motion.div>
 
       {/* Dashboard Statistics Section */}
-      <div className="w-full p-0 m-0 mt-14 mb-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+      <div className="mt-14 mb-12">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">💰</span>
             <div className="text-2xl font-bold mb-2">Total Sent Help</div>
             <div className="text-4xl font-extrabold">{totalSentHelp}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">👥</span>
             <div className="text-2xl font-bold mb-2">Received (AutoPool)</div>
             <div className="text-4xl font-extrabold">{receivedAutoPool}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">👥</span>
             <div className="text-2xl font-bold mb-2">Received (Sponsor)</div>
             <div className="text-4xl font-extrabold">{receivedSponsor}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">👥</span>
             <div className="text-2xl font-bold mb-2">Direct Member</div>
             <div className="text-4xl font-extrabold">{directMembers}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">👥</span>
             <div className="text-2xl font-bold mb-2">Total Team</div>
             <div className="text-4xl font-extrabold">{totalTeam}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">⚠️</span>
             <div className="text-2xl font-bold mb-2">Pending Helps</div>
             <div className="text-4xl font-extrabold">{pendingHelps}</div>
           </div>
-          <div className="w-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
+          <div className="w-full min-w-0 mx-auto bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 hover:scale-[1.05] transition-transform duration-200 flex flex-col items-center justify-center">
             <span className="text-6xl mb-5">🔑</span>
             <div className="text-2xl font-bold mb-2">Available E-PINs</div>
             <div className="text-4xl font-extrabold">{availableEpins}</div>
@@ -617,7 +618,7 @@ const Dashboard = () => {
       </div>
 
       {user && user.referralCount === 0 && (
-        <div className="w-full max-w-xl mx-auto bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center mb-6">
+        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center mb-6">
           <div className="text-blue-700 font-semibold text-lg mb-1">🚀 Boost Your Priority!</div>
           <div className="text-gray-700 text-sm mb-2">Complete social tasks to increase your chance of receiving help. <Link to="/dashboard/tasks" className="text-blue-600 underline font-medium">Go to Tasks</Link></div>
           <div className="text-blue-600 font-bold">Task Score: {tasks?.taskScore || 0} / 3</div>
@@ -625,7 +626,7 @@ const Dashboard = () => {
       )}
 
       {/* Upcoming Payment Section */}
-      <div className="w-full max-w-4xl mx-auto mt-6 sm:mt-8">
+      <div className="w-full mt-6 sm:mt-8">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-center text-white mb-4 sm:mb-6">Upcoming Payments</h2>
         {upcomingLoading ? (
           <div className="text-center text-white py-6 sm:py-8 text-sm sm:text-base">Loading payments...</div>
@@ -635,7 +636,7 @@ const Dashboard = () => {
       </div>
 
       {/* Leaderboard Section */}
-      <div className="w-full max-w-4xl mx-auto mt-8 sm:mt-12">
+      <div className="w-full mt-8 sm:mt-12">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-center text-white mb-4 sm:mb-6">Leaderboard</h2>
         {leaderboardLoading ? (
           <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
@@ -949,14 +950,15 @@ const Dashboard = () => {
           </div>
         </motion.div>
       )}
-      {/* Render ChatModal at the bottom */}
-      <ChatModal
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        chatId={chatInfo?.chatId}
-        currentUser={user}
-        otherUser={chatInfo?.otherUser}
-      />
+        {/* Render ChatModal at the bottom */}
+        <ChatModal
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+          chatId={chatInfo?.chatId}
+          currentUser={user}
+          otherUser={chatInfo?.otherUser}
+        />
+      </div>
     </div>
   );
 };

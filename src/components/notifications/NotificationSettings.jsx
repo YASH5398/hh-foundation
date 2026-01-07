@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import NotificationPreferences from './NotificationPreferences';
 import {
   FiSettings, FiVolume2, FiVolumeX, FiPlay, FiX,
@@ -9,6 +12,7 @@ import {
 } from 'react-icons/fi';
 
 const NotificationSettings = ({ isOpen, onClose, userId }) => {
+  const { user } = useAuth();
   const {
     soundEnabled,
     toggleSound,
@@ -18,6 +22,87 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
 
   const [testingSound, setTestingSound] = useState(null);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [settings, setSettings] = useState({
+    playSound: true,
+    sounds: {
+      default: 'default',
+      payment: 'payment',
+      success: 'success',
+      warning: 'warning',
+      admin: 'admin'
+    },
+    browserNotifications: false,
+    pushNotifications: false
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Load settings from Firestore
+  useEffect(() => {
+    if (isOpen && user?.uid) {
+      loadSettings();
+    }
+  }, [isOpen, user?.uid]);
+
+  const loadSettings = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const settingsRef = doc(db, 'notificationSettings', user.uid);
+      const settingsDoc = await getDoc(settingsRef);
+
+      if (settingsDoc.exists()) {
+        const data = settingsDoc.data();
+        setSettings({
+          playSound: data.playSound ?? true,
+          sounds: {
+            default: data.sounds?.default ?? 'default',
+            payment: data.sounds?.payment ?? 'payment',
+            success: data.sounds?.success ?? 'success',
+            warning: data.sounds?.warning ?? 'warning',
+            admin: data.sounds?.admin ?? 'admin'
+          },
+          browserNotifications: data.browserNotifications ?? false,
+          pushNotifications: data.pushNotifications ?? false
+        });
+      }
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+    }
+  };
+
+  const saveSettings = async (newSettings) => {
+    if (!user?.uid) return;
+
+    setLoading(true);
+    try {
+      const settingsRef = doc(db, 'notificationSettings', user.uid);
+      await setDoc(settingsRef, {
+        ...newSettings,
+        updatedAt: new Date()
+      }, { merge: true });
+      setSettings(newSettings);
+    } catch (error) {
+      console.error('Error saving notification settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSetting = async (key, value) => {
+    const newSettings = { ...settings, [key]: value };
+    await saveSettings(newSettings);
+  };
+
+  const updateSoundType = async (notificationType, soundType) => {
+    const newSettings = {
+      ...settings,
+      sounds: {
+        ...settings.sounds,
+        [notificationType]: soundType
+      }
+    };
+    await saveSettings(newSettings);
+  };
 
   const handleTestSound = async (soundType) => {
     setTestingSound(soundType);
@@ -79,7 +164,7 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
                 {/* Sound Toggle */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center space-x-3">
-                    {soundEnabled ? (
+                    {settings.playSound ? (
                       <FiVolume2 className="w-5 h-5 text-green-500" />
                     ) : (
                       <FiVolumeX className="w-5 h-5 text-gray-400" />
@@ -91,21 +176,22 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={toggleSound}
+                    onClick={() => updateSetting('playSound', !settings.playSound)}
+                    disabled={loading}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      soundEnabled ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
+                      settings.playSound ? 'bg-green-500' : 'bg-gray-300'
+                    } ${loading ? 'opacity-50' : ''}`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                        settings.playSound ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </motion.button>
                 </div>
 
-                {/* Sound Test Section */}
-                {soundEnabled && (
+                {/* Sound Selection Section */}
+                {settings.playSound && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -113,9 +199,9 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
                     className="space-y-4"
                   >
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Test Notification Sounds</h4>
+                      <h4 className="font-medium text-gray-900 mb-3">Notification Sound Types</h4>
                       <p className="text-sm text-gray-500 mb-4">
-                        Click on each sound type to preview how it will sound
+                        Choose sounds for different types of notifications
                       </p>
                     </div>
 
@@ -135,10 +221,22 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
                             </div>
                             <div className="text-left">
                               <div className="font-medium text-gray-900">{soundType.label}</div>
-                              <div className="text-sm text-gray-500">{soundType.description}</div>
+                              <div className="text-sm text-gray-500">
+                                Currently: {settings.sounds[soundType.key] === soundType.key ? 'Selected' : 'Other sound'}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center">
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={settings.sounds[soundType.key]}
+                              onChange={(e) => updateSoundType(soundType.key, e.target.value)}
+                              disabled={loading}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded"
+                            >
+                              {availableSoundTypes.map(st => (
+                                <option key={st.key} value={st.key}>{st.label}</option>
+                              ))}
+                            </select>
                             {testingSound === soundType.key ? (
                               <motion.div
                                 animate={{ rotate: 360 }}
@@ -146,7 +244,12 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
                                 className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"
                               />
                             ) : (
-                              <FiPlay className="w-4 h-4 text-gray-400" />
+                              <FiPlay className="w-4 h-4 text-gray-400 cursor-pointer hover:text-blue-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTestSound(soundType);
+                                }}
+                              />
                             )}
                           </div>
                         </motion.button>
@@ -157,19 +260,54 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
 
                 {/* Additional Settings */}
                 <div className="pt-4 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900 mb-3">More Settings</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">Browser Notifications</span>
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                        {Notification.permission === 'granted' ? 'Enabled' : 'Disabled'}
-                      </span>
+                  <h4 className="font-medium text-gray-900 mb-3">Additional Settings</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <FiBell className="w-5 h-5 text-blue-500" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Browser Notifications</div>
+                          <div className="text-xs text-gray-500">Show notifications in browser</div>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => updateSetting('browserNotifications', !settings.browserNotifications)}
+                        disabled={loading}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          settings.browserNotifications ? 'bg-blue-500' : 'bg-gray-300'
+                        } ${loading ? 'opacity-50' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            settings.browserNotifications ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </motion.button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">Push Notifications</span>
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                        {soundEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
+
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <FiSettings className="w-5 h-5 text-purple-500" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Push Notifications</div>
+                          <div className="text-xs text-gray-500">Receive push notifications</div>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => updateSetting('pushNotifications', !settings.pushNotifications)}
+                        disabled={loading}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          settings.pushNotifications ? 'bg-purple-500' : 'bg-gray-300'
+                        } ${loading ? 'opacity-50' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            settings.pushNotifications ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </motion.button>
                     </div>
                   </div>
                 </div>

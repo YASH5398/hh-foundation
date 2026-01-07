@@ -218,102 +218,147 @@ const AdminInsights = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <h1 className="text-3xl font-extrabold mb-8 flex items-center gap-3 text-gray-900 drop-shadow-sm">
-        <span role="img" aria-label="Admin Insights" className="text-3xl">📊</span>
-        Admin Insights
-      </h1>
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-10">
-        {Object.entries({
-          joins: 'New Joins (24h)',
-          payments: 'Payments Received (₹)',
-          testimonials: 'Testimonials Submitted',
-          blocked: 'Blocked Users',
-          upgrades: 'Upgrades Done (24h)',
-          epinReq: 'E-PIN Requested',
-          epinWallet: 'E-PIN In Wallet',
-          sendHelp: 'Send Help (₹)',
-          receiveHelp: 'Receive Help (₹)',
-        }).map(([key, label], i) => (
-          <motion.div
-            key={key}
-            {...cardMotion}
-            transition={{ ...cardMotion.transition, delay: i * 0.08 }}
-            className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center min-h-[120px] border border-gray-100"
-          >
-            <div className="mb-2">{ICONS[key]}</div>
-            <div className="text-2xl font-bold text-gray-900 mb-1">
-              {loading ? <span className="animate-pulse text-gray-400">...</span> : metrics[key]?.toLocaleString()}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold flex items-center gap-4 text-white mb-2">
+            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <span role="img" aria-label="Admin Insights" className="text-2xl">📊</span>
             </div>
-            <div className="text-sm text-gray-500 font-medium text-center">{label}</div>
-          </motion.div>
-        ))}
-      </div>
-      {/* Security Alerts */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2"><AlertTriangle className="text-yellow-600 w-6 h-6" /> Security Alerts</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {ALERTS.map(alert => (
-            <motion.button
-              key={alert.key}
+            <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Admin Insights Dashboard
+            </span>
+          </h1>
+          <p className="text-slate-400 text-lg">Monitor key metrics and security alerts in real-time</p>
+        </div>
+        {/* Metrics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+          {Object.entries({
+            joins: 'New Joins (24h)',
+            payments: 'Payments Received (₹)',
+            testimonials: 'Testimonials Submitted',
+            blocked: 'Blocked Users',
+            upgrades: 'Upgrades Done (24h)',
+            epinReq: 'E-PIN Requested',
+            epinWallet: 'E-PIN In Wallet',
+            sendHelp: 'Send Help (₹)',
+            receiveHelp: 'Receive Help (₹)',
+          }).map(([key, label], i) => (
+            <motion.div
+              key={key}
               {...cardMotion}
-              transition={{ ...cardMotion.transition, delay: 0.2 + ALERTS.indexOf(alert) * 0.08 }}
-              className="bg-white rounded-2xl shadow-lg p-5 flex flex-col items-center border border-gray-100 hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
-              onClick={() => setAlertDetail(alert.key)}
+              transition={{ ...cardMotion.transition, delay: i * 0.08 }}
+              className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 flex flex-col items-center justify-center min-h-[160px] border border-slate-700/50 hover:border-slate-600 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] group"
             >
-              <div className="mb-2">{alert.icon}</div>
-              <div className="text-lg font-semibold text-gray-800 mb-1">{alert.label}</div>
-              <div className="text-2xl font-bold text-yellow-700">{loading ? <span className="animate-pulse text-gray-400">...</span> : alerts[alert.key]}</div>
-            </motion.button>
+              <div className="mb-4 p-3 bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl group-hover:from-slate-600/50 group-hover:to-slate-700/50 transition-all duration-300">
+                {ICONS[key]}
+              </div>
+              <div className="text-3xl font-bold text-white mb-3 text-center">
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-pulse bg-slate-600 rounded h-8 w-16"></div>
+                  </div>
+                ) : (
+                  <span className="bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+                    {key === 'sendHelp' || key === 'receiveHelp' || key === 'payments'
+                      ? `₹${metrics[key]?.toLocaleString() || 0}`
+                      : metrics[key]?.toLocaleString() || 0
+                    }
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-slate-400 font-medium text-center leading-tight px-2">{label}</div>
+            </motion.div>
           ))}
         </div>
+        {/* Security Alerts */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg">
+                <AlertTriangle className="text-white w-6 h-6" />
+              </div>
+              Security Alerts
+            </h2>
+            <p className="text-slate-400">Monitor potential security threats and suspicious activities</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            {ALERTS.map(alert => (
+              <motion.button
+                key={alert.key}
+                {...cardMotion}
+                transition={{ ...cardMotion.transition, delay: 0.2 + ALERTS.indexOf(alert) * 0.08 }}
+                className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 flex flex-col items-center border border-slate-700/50 hover:border-orange-500/50 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:bg-gradient-to-br hover:from-orange-900/20 hover:to-red-900/20 group"
+                onClick={() => setAlertDetail(alert.key)}
+              >
+                <div className="mb-4 p-3 bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl group-hover:from-orange-900/30 group-hover:to-red-900/30 transition-all duration-300">{alert.icon}</div>
+                <div className="text-sm font-semibold text-white mb-3 text-center leading-tight px-2">{alert.label}</div>
+                <div className="text-3xl font-bold text-orange-400">
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-pulse bg-slate-600 rounded h-8 w-8"></div>
+                    </div>
+                  ) : (
+                    alerts[alert.key] || 0
+                  )}
+                </div>
+              </motion.button>
+            ))}
+          </div>
         {/* Alert Details Modal (expanded) */}
         {alertDetail && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8 max-w-3xl w-full relative">
-              <div className="absolute top-0 right-0 z-50 p-2">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-4 sm:p-6 lg:p-8 max-w-7xl w-full max-h-[95vh] overflow-hidden relative">
+              <div className="absolute top-4 right-4 z-50">
                 <button
-                  className="rounded-full bg-white shadow border border-gray-200 text-3xl text-gray-400 hover:text-red-500 focus:text-red-600 focus:outline-none transition w-10 h-10 flex items-center justify-center"
+                  className="rounded-full bg-slate-700 hover:bg-slate-600 shadow-lg border border-slate-600 text-xl text-slate-400 hover:text-white focus:text-white focus:outline-none transition-all duration-200 w-10 h-10 flex items-center justify-center hover:scale-110"
                   aria-label="Close"
                   onClick={() => setAlertDetail(null)}
                 >
                   &times;
                 </button>
               </div>
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-900">{ALERTS.find(a => a.key === alertDetail)?.icon} {ALERTS.find(a => a.key === alertDetail)?.label}</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm text-left border border-gray-200 bg-white">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold mb-2 flex items-center gap-3 text-white">
+                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
+                    {ALERTS.find(a => a.key === alertDetail)?.icon}
+                  </div>
+                  {ALERTS.find(a => a.key === alertDetail)?.label}
+                </h3>
+                <p className="text-slate-400">{alertDetailsList[alertDetail]}</p>
+              </div>
+              <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
+                <table className="min-w-full text-sm text-left border border-slate-700 bg-slate-800/50 rounded-lg overflow-hidden">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-800 border-b border-gray-200">
-                      <th className="px-3 py-2">User ID</th>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Email</th>
-                      <th className="px-3 py-2">Phone</th>
-                      <th className="px-3 py-2">Reason</th>
-                      <th className="px-3 py-2">Join Date</th>
-                      <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2">Action</th>
+                    <tr className="bg-gradient-to-r from-slate-700 to-slate-800 text-white border-b border-slate-600">
+                      <th className="px-4 py-3 font-semibold">User ID</th>
+                      <th className="px-4 py-3 font-semibold">Name</th>
+                      <th className="px-4 py-3 font-semibold">Email</th>
+                      <th className="px-4 py-3 font-semibold">Phone</th>
+                      <th className="px-4 py-3 font-semibold">Reason</th>
+                      <th className="px-4 py-3 font-semibold">Join Date</th>
+                      <th className="px-4 py-3 font-semibold">Status</th>
+                      <th className="px-4 py-3 font-semibold">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(alertUsers[alertDetail] || []).length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-6 text-gray-400 bg-white">No affected users found.</td></tr>
+                      <tr><td colSpan={8} className="text-center py-8 text-slate-400 bg-slate-900/30">No affected users found.</td></tr>
                     ) : (alertUsers[alertDetail] || []).map(user => (
-                      <tr key={user.id} className="border-b border-gray-100 last:border-0 bg-white hover:bg-gray-50 transition">
-                        <td className="px-3 py-2 font-mono text-gray-900">{user.userId}</td>
-                        <td className="px-3 py-2 text-gray-900">{user.fullName}</td>
-                        <td className="px-3 py-2 text-gray-900">{user.email}</td>
-                        <td className="px-3 py-2 text-gray-900">{user.phone}</td>
-                        <td className="px-3 py-2 text-gray-700">{alertDetail === 'fakeUtr' ? 'Duplicate UTR' : alertDetail === 'dupRef' ? 'Duplicate Referral' : alertDetail === 'pendingScreens' ? 'Pending Screenshot' : alertDetail === 'suspicious' ? 'Suspicious' : 'Multiple IDs'}</td>
-                        <td className="px-3 py-2 text-gray-700">{user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : '-'}</td>
-                        <td className="px-3 py-2">
-                          {user.isBlocked ? <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 border border-red-200 rounded-full text-xs"><Ban className="w-4 h-4" /> Blocked</span> : <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 border border-green-200 rounded-full text-xs"><CheckCircle className="w-4 h-4" /> Not Blocked</span>}
+                      <tr key={user.id} className="border-b border-slate-700/50 last:border-0 bg-slate-900/20 hover:bg-slate-800/30 transition-colors">
+                        <td className="px-4 py-3 font-mono text-slate-300">{user.userId}</td>
+                        <td className="px-4 py-3 text-white font-medium">{user.fullName}</td>
+                        <td className="px-4 py-3 text-slate-300">{user.email}</td>
+                        <td className="px-4 py-3 text-slate-300">{user.phone}</td>
+                        <td className="px-4 py-3 text-orange-400">{alertDetail === 'fakeUtr' ? 'Duplicate UTR' : alertDetail === 'dupRef' ? 'Duplicate Referral' : alertDetail === 'pendingScreens' ? 'Pending Screenshot' : alertDetail === 'suspicious' ? 'Suspicious' : 'Multiple IDs'}</td>
+                        <td className="px-4 py-3 text-slate-400">{user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3">
+                          {user.isBlocked ? <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-900/50 text-red-300 border border-red-700 rounded-full text-xs font-medium"><Ban className="w-4 h-4" /> Blocked</span> : <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-900/50 text-green-300 border border-green-700 rounded-full text-xs font-medium"><CheckCircle className="w-4 h-4" /> Active</span>}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-4 py-3">
                           {!user.isBlocked && (
                             <button
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold disabled:opacity-60"
+                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all duration-200 hover:shadow-lg hover:scale-105"
                               disabled={blockLoading[user.id]}
                               onClick={() => setConfirmBlock({ open: true, user })}
                             >
@@ -329,20 +374,34 @@ const AdminInsights = () => {
             </div>
             {/* Block confirmation dialog */}
             {confirmBlock.open && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-                <div className="bg-white rounded-xl shadow-xl p-6 max-w-xs w-full relative">
-                  <button className="absolute top-2 right-3 text-2xl text-gray-400 hover:text-gray-700" onClick={() => setConfirmBlock({ open: false, user: null })}>&times;</button>
-                  <h4 className="text-lg font-bold mb-3">Block User?</h4>
-                  <p className="mb-4 text-gray-700">Are you sure you want to block <span className="font-semibold">{confirmBlock.user?.fullName}</span>?</p>
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-2xl border border-slate-700 p-6 max-w-sm w-full relative">
+                  <button className="absolute top-3 right-3 text-xl text-slate-400 hover:text-white transition-colors" onClick={() => setConfirmBlock({ open: false, user: null })}>&times;</button>
+                  <div className="mb-4">
+                    <h4 className="text-xl font-bold text-white mb-2">Block User?</h4>
+                    <p className="text-slate-300 leading-relaxed">Are you sure you want to block <span className="font-semibold text-orange-400">{confirmBlock.user?.fullName}</span>?</p>
+                  </div>
                   <div className="flex gap-3 justify-end">
-                    <button className="px-4 py-1 rounded bg-gray-200 text-gray-700" onClick={() => setConfirmBlock({ open: false, user: null })}>Cancel</button>
-                    <button className="px-4 py-1 rounded bg-red-600 text-white font-bold" onClick={() => handleBlockUser(confirmBlock.user)} disabled={blockLoading[confirmBlock.user?.id]}>Yes, Block</button>
+                    <button
+                      className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white font-medium transition-all duration-200"
+                      onClick={() => setConfirmBlock({ open: false, user: null })}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold transition-all duration-200 hover:shadow-lg hover:scale-105"
+                      onClick={() => handleBlockUser(confirmBlock.user)}
+                      disabled={blockLoading[confirmBlock.user?.id]}
+                    >
+                      Yes, Block
+                    </button>
                   </div>
                 </div>
               </div>
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

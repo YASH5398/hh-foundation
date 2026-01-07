@@ -61,12 +61,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, menuItems, logoutRoute }) =>
       <div
         ref={sidebarRef}
         id="sidebar"
-        className={`fixed left-0 top-0 z-40 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 shadow-2xl transform transition-all duration-300 ease-in-out overflow-y-auto border-r border-blue-700
-          ${isMobile 
-            ? (isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64') 
-            : (isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64')
-          }
-        `}
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 shadow-2xl transform transition-all duration-300 ease-in-out overflow-y-auto border-r border-blue-700 -translate-x-full sm:translate-x-0 sm:static`}
         style={{
           height: '100vh',
           paddingTop: '64px'

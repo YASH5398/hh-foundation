@@ -48,3 +48,8 @@ coverage/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log 
+
+
+# Server environment (Cloudinary credentials)
+server/.env
+server/.env.local

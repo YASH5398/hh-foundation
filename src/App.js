@@ -43,7 +43,6 @@ import EPinManagement from './admin/components/epin/EPinManagement';
 import HelpManager from './admin/components/HelpManager';
 import SendHelpManager from './admin/components/SendHelpManager';
 import ForceReceiverAssignment from './admin/components/ForceReceiverAssignment';
-import TeamViewer from './TeamViewer';
 import ManageHelpAssignments from './pages/admin/ManageHelpAssignments';
 import AdminInsights from './pages/admin/AdminInsights';
 import Testimonials from './pages/admin/AdminTestimonials';
@@ -245,7 +244,6 @@ export const router = createBrowserRouter([
       { path: 'sendhelp-manager', element: <SendHelpManager /> },
       { path: 'force-assignment', element: <ForceReceiverAssignment /> },
       { path: 'level-manager', element: <LevelManager /> },
-      { path: 'team-viewer', element: <TeamViewer /> },
       { path: 'manage-assignments', element: <ManageHelpAssignments /> },
       { path: 'insights', element: <AdminInsights /> },
       { path: 'testimonials', element: <Testimonials /> },

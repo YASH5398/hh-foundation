@@ -2,6 +2,7 @@
 // This is a FULLY CORRECTED, MINIMAL, and ROBUST version of PaymentPage
 // focused on GUARANTEED QR rendering.
 // All business logic remains the same.
+// Uses Cloudinary for image uploads (FREE tier, no Blaze plan required)
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -12,7 +13,7 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import notificationService from '../../services/notificationService';
-import storageService from '../../services/storageService';
+import { uploadImageToCloudinary } from '../../services/cloudinaryService';
 
 const QR_IMAGE_URL = 'https://res.cloudinary.com/dq6hzrfxc/image/upload/v1767681301/Screenshot_2026-01-06-12-03-30-81_944a2809ea1b4cda6ef12d1db9048ed3_wdcjbj.jpg';
 
@@ -47,7 +48,8 @@ export default function PaymentPage() {
     setLoading(true);
 
     try {
-      const screenshotUrl = await storageService.uploadEpinScreenshot(
+      // Upload screenshot to Cloudinary (FREE tier, no Firebase Storage)
+      const screenshotUrl = await uploadImageToCloudinary(
         screenshot,
         (p) => setUploadProgress(p)
       );

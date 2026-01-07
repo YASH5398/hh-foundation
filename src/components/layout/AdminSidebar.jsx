@@ -108,7 +108,6 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     { name: 'Support Manager', icon: MdSupport, route: '/admin/support-manager' },
     { name: 'Force Receiver Assignment', icon: MdAssignment, route: '/admin/force-assignment' },
     { name: 'Level Manager', icon: MdTrendingUp, route: '/admin/level-manager' },
-    { name: 'Team Viewer', icon: MdGroup, route: '/admin/team-viewer' },
     { name: 'Manage Help Assignments', icon: Users, route: '/admin/manage-assignments' },
     ...(isAdmin ? [
       { name: 'Admin Insights', icon: null, route: '/admin/insights', emoji: '📊' },
@@ -122,66 +121,51 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     <div
       ref={sidebarRef}
       id="admin-sidebar"
-      className={`fixed inset-y-0 left-0 z-30 w-64 lg:w-64 h-screen max-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 backdrop-blur-xl bg-opacity-90 border-r border-white/30 shadow-2xl text-white transform transition-all duration-500 ease-out overflow-y-auto rounded-r-xl
+      className={`fixed inset-y-0 left-0 z-30 w-64 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 shadow-2xl text-white transform transition-all duration-300 ease-out overflow-y-auto
         ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'} lg:translate-x-0 lg:opacity-100 lg:static lg:inset-0`}
-      style={{ 
-        maxWidth: '100vw',
-        background: 'linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(124, 58, 237, 0.9) 25%, rgba(147, 51, 234, 0.85) 50%, rgba(79, 70, 229, 0.9) 100%)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-      }}
+      style={{ maxWidth: '100vw' }}
     >
-      <div className="flex items-center justify-between h-20 shadow-xl px-6 border-b border-white/20 bg-gradient-to-r from-white/15 to-white/5 backdrop-blur-xl sticky top-0 z-10">
-        <h1 className="text-xl font-black bg-gradient-to-r from-white via-purple-100 to-cyan-100 bg-clip-text text-transparent tracking-wide drop-shadow-2xl">Admin Panel</h1>
+      <div className="flex items-center justify-between h-16 px-6 border-b border-slate-700/50">
+        <h1 className="text-lg font-bold text-white">Admin Panel</h1>
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="text-gray-200 hover:text-white hover:bg-white/20 hover:scale-110 focus:outline-none lg:hidden transition-all duration-300 rounded-xl p-2"
+          className="text-slate-400 hover:text-white focus:outline-none lg:hidden transition-colors duration-200 rounded-lg p-1"
           aria-label="Close menu"
         >
-          <HiX className="h-6 w-6" />
+          <HiX className="h-5 w-5" />
         </button>
       </div>
-      <nav className="flex-1 flex flex-col py-6 space-y-3 px-3 min-h-0">
-        {menuItems.map((item, index) => (
+      <nav className="flex-1 flex flex-col py-4 px-4 space-y-1">
+        {menuItems.map((item) => (
           <NavLink
             key={item.name}
             to={item.route}
             className={({ isActive }) =>
-              `flex items-center px-5 py-4 rounded-2xl transition-all duration-300 text-base font-semibold border border-transparent group relative overflow-hidden animate-fade-in-up
-              ${isActive && item.name === 'E-PIN Manager' 
-                ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 text-gray-900 shadow-2xl font-bold ring-2 ring-amber-300/50 border-amber-200 scale-105' 
-                : isActive 
-                ? 'bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80 text-white shadow-2xl border-cyan-300/50 scale-105' 
-                : 'hover:bg-gradient-to-r hover:from-white/15 hover:to-white/5 hover:border-white/20 hover:shadow-2xl hover:scale-105 hover:backdrop-blur-sm text-gray-100 hover:text-white'
-              }
-              `
+              `flex items-center px-3 py-3 rounded-lg transition-all duration-200 text-sm font-medium group
+              ${isActive
+                ? 'bg-blue-500/20 text-blue-300 border-l-2 border-blue-500'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+              }`
             }
-            style={{ 
-              animationDelay: `${index * 50}ms`,
-              ...(({ isActive }) => item.name === 'E-PIN Manager' && isActive ? { boxShadow: '0 0 20px 4px rgba(251, 191, 36, 0.4)' } : {})
-            }}
             onClick={() => setIsSidebarOpen(false)}
             aria-current={({ isActive }) => isActive ? 'page' : undefined}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             {item.emoji ? (
-              <span className="mr-4 text-2xl group-hover:scale-125 transition-transform duration-300 relative z-10" role="img" aria-label={item.name}>{item.emoji}</span>
-            ) : item.materialIcon ? (
-              <span className="material-icons mr-4 text-2xl group-hover:scale-125 transition-transform duration-300 relative z-10">{item.materialIcon}</span>
+              <span className="mr-3 text-base" role="img" aria-label={item.name}>{item.emoji}</span>
             ) : item.icon ? (
-              <item.icon className={`w-7 h-7 mr-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 relative z-10 ${item.name === 'E-PIN Manager' ? 'text-yellow-600 drop-shadow-lg' : ''}`} />
+              <item.icon className="w-5 h-5 mr-3" />
             ) : null}
-            <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10 truncate">{item.name}</span>
+            <span className="truncate">{item.name}</span>
           </NavLink>
         ))}
       </nav>
-      <div className="px-4 pb-6 pt-4 sticky bottom-0 bg-gradient-to-t from-violet-900/95 via-purple-800/90 to-transparent backdrop-blur-xl">
+      <div className="px-4 pb-4 border-t border-slate-700/50">
         <button
           onClick={handleLogout}
-          className="flex items-center w-full px-5 py-4 rounded-2xl transition-all duration-300 bg-gradient-to-r from-red-600/80 via-red-500/80 to-pink-600/80 hover:from-red-700 hover:via-red-600 hover:to-pink-700 hover:scale-105 text-white font-bold shadow-2xl border border-white/20 hover:border-white/40 group relative overflow-hidden"
+          className="flex items-center w-full px-3 py-3 rounded-lg transition-all duration-200 bg-slate-800/50 hover:bg-red-500/20 hover:border-red-500/30 text-slate-300 hover:text-red-300 border border-slate-600/50 hover:border-red-500/30 mt-2"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <MdLogout className="w-6 h-6 mr-3 group-hover:scale-125 group-hover:-rotate-12 transition-all duration-300 relative z-10" />
-          <span className="group-hover:translate-x-1 transition-transform duration-300 relative z-10">Logout</span>
+          <MdLogout className="w-5 h-5 mr-3" />
+          <span>Logout</span>
         </button>
       </div>
     </div>

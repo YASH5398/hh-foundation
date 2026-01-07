@@ -205,15 +205,12 @@ const NotificationDropdown = () => {
     let filtered = notifications;
 
     // Apply type filter
-    if (filter === 'unread') {
-      filtered = filtered.filter(n => !n.isRead);
-    } else if (filter === 'payment') {
+    if (filter === 'payment') {
       filtered = filtered.filter(n => n.title?.includes('Payment') || n.title?.includes('₹') || n.category === 'payment');
-    } else if (filter === 'system') {
-      filtered = filtered.filter(n => n.type === 'system' || n.type === 'activity');
     } else if (filter === 'admin') {
       filtered = filtered.filter(n => n.type === 'admin');
     }
+    // 'all' filter shows all notifications (no filtering needed)
 
     // Apply search filter
     if (searchTerm) {
@@ -265,7 +262,24 @@ const NotificationDropdown = () => {
           damping: 30,
           duration: 0.4
         }}
-        className="absolute top-full right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] z-50"
+        className="
+fixed
+top-16
+left-1/2
+-translate-x-1/2
+w-[calc(100vw-24px)]
+max-w-[340px]
+px-3
+z-[9999]
+
+sm:absolute
+sm:top-full
+sm:right-0
+sm:left-auto
+sm:translate-x-0
+sm:w-96
+sm:px-0
+"
       >
         {/* Enhanced Glassmorphism Container */}
         <div className="bg-white/98 backdrop-blur-2xl border border-white/40 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-black/5">
@@ -327,9 +341,7 @@ const NotificationDropdown = () => {
               <div className="flex space-x-1 p-1 bg-gray-100/60 rounded-xl">
                 {[
                   { key: 'all', label: 'All', count: notifications.length },
-                  { key: 'unread', label: 'Unread', count: unreadCount },
-                  { key: 'payment', label: '💰 Payments', count: notifications.filter(n => n.title?.includes('Payment') || n.title?.includes('₹')).length },
-                  { key: 'system', label: '🔧 System', count: notifications.filter(n => n.type === 'system' || n.type === 'activity').length },
+                  { key: 'payment', label: '💰 Payments', count: notifications.filter(n => n.title?.includes('Payment') || n.title?.includes('₹') || n.category === 'payment').length },
                   { key: 'admin', label: '👤 Admin', count: notifications.filter(n => n.type === 'admin').length }
                 ].map(({ key, label, count }) => (
                   <button
