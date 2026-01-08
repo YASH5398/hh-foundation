@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Bell, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDoc, limit } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { db, auth } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 import dayjs from 'dayjs';
@@ -30,6 +30,7 @@ const Notifications = () => {
 
   // Fetch userId from Firestore profile
   useEffect(() => {
+    if (!auth.currentUser) return;
     if (!user?.uid) return;
     const fetchUserId = async () => {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -40,18 +41,35 @@ const Notifications = () => {
 
   // Real-time notifications by userId (latest 10)
   useEffect(() => {
-    if (!userId) return;
-    setLoading(true);
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', userId),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
+    let unsub = () => {};
+
+    const setupListener = async () => {
+      if (!auth.currentUser) return;
+      if (!userId) return;
+      setLoading(true);
+
+      try {
+        // Force token refresh before creating listener
+        await auth.currentUser.getIdToken(true);
+
+        const q = query(
+          collection(db, 'notifications'),
+          where('userId', '==', userId),
+          orderBy('timestamp', 'desc'),
+          limit(10)
+        );
+        unsub = onSnapshot(q, (snap) => {
+          setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          setLoading(false);
+        });
+      } catch (error) {
+        console.error('Failed to setup notifications listener:', error);
+        setLoading(false);
+      }
+    };
+
+    setupListener();
+
     return () => unsub();
   }, [userId]);
 

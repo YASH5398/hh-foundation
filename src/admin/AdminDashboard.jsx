@@ -101,7 +101,8 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Real-time listener for E-PINs
-    const unsubEpins = onSnapshot(collection(db, 'epins'), (epinsSnap) => {
+    const epinsQuery = query(collection(db, 'epins'), where('status', '!=', null));
+    const unsubEpins = onSnapshot(epinsQuery, (epinsSnap) => {
       const epins = epinsSnap.docs.map(doc => doc.data());
       const total = epins.length;
       const used = epins.filter(e => e.status === 'used').length;
@@ -109,13 +110,15 @@ const AdminDashboard = () => {
       setStats(prev => ({ ...prev, total, used, unused }));
     });
     // Real-time listener for E-PIN Requests
-    const unsubReqs = onSnapshot(collection(db, 'epinRequests'), (epinReqSnap) => {
+    const epinReqQuery = query(collection(db, 'epinRequests'), where('status', '!=', null));
+    const unsubReqs = onSnapshot(epinReqQuery, (epinReqSnap) => {
       const epinRequests = epinReqSnap.docs.map(doc => doc.data());
       const pending = epinRequests.filter(r => r.status === 'pending').length;
       setStats(prev => ({ ...prev, pending }));
     });
     // Real-time listener for Users (for referral/team stats)
-    const unsubUsers = onSnapshot(collection(db, 'users'), (usersSnap) => {
+    const usersQuery = query(collection(db, 'users'), where('isActivated', '!=', null));
+    const unsubUsers = onSnapshot(usersQuery, (usersSnap) => {
       const users = usersSnap.docs.map(doc => doc.data());
       // Total Referrals: sum of directReferral.length or count of users with non-empty referrerId
       let totalReferrals = 0;

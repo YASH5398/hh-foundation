@@ -31,6 +31,7 @@ const Notifications = ({ isAdmin }) => {
       setLoading(true);
       const q = query(
         collection(db, 'notifications'),
+        where('isDeleted', '==', false),
         orderBy('timestamp', 'desc')
       );
       const unsub = onSnapshot(q, (snap) => {

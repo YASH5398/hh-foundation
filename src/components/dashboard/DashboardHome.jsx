@@ -170,22 +170,69 @@ function TickerSection() {
   React.useEffect(() => {
     let unsubSettings = () => {};
     let unsubUser = () => {};
-    if (!user?.uid) {
-      setLoading(false);
-      setEnabled(false);
-      return;
-    }
-    unsubSettings = onSnapshot(doc(db, 'appSettings', 'tickerStatus'), (docSnap) => {
-      setEnabled(docSnap.exists() ? docSnap.data().enabled !== false : true);
-    });
-    unsubUser = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setFullName(docSnap.data().fullName || '');
-      } else {
-        setFullName('');
+
+    const setupListeners = async () => {
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+      if (!user?.uid) {
+        setLoading(false);
+        setEnabled(false);
+        return;
       }
-      setLoading(false);
-    });
+
+      try {
+        // Force token refresh before creating listeners
+        await auth.currentUser.getIdToken(true);
+
+        // Safe snapshot for appSettings with error handling
+        unsubSettings = onSnapshot(
+          doc(db, 'appSettings', 'tickerStatus'),
+          (docSnap) => {
+            setEnabled(docSnap.exists() ? docSnap.data().enabled !== false : true);
+          },
+          (error) => {
+            // Immediately unsubscribe on permission-denied
+            if (error.code === 'permission-denied') {
+              unsubSettings();
+              setEnabled(true); // Default to enabled
+            } else {
+              console.error('TickerSection settings error:', error);
+            }
+          }
+        );
+
+        // Safe snapshot for user doc with error handling
+        unsubUser = onSnapshot(
+          doc(db, 'users', user.uid),
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setFullName(docSnap.data().fullName || '');
+            } else {
+              setFullName('');
+            }
+            setLoading(false);
+          },
+          (error) => {
+            // Immediately unsubscribe on permission-denied
+            if (error.code === 'permission-denied') {
+              unsubUser();
+              setFullName('');
+            } else {
+              console.error('TickerSection user error:', error);
+            }
+            setLoading(false);
+          }
+        );
+      } catch (error) {
+        console.error('Failed to setup listeners:', error);
+        setEnabled(true);
+        setFullName('');
+        setLoading(false);
+      }
+    };
+
+    setupListeners();
+
     return () => { unsubSettings(); unsubUser(); };
   }, [user]);
 
@@ -272,133 +319,217 @@ const DashboardHome = () => {
 
   // Fetch user profile from Firestore
   useEffect(() => {
-    console.log('🔄 useEffect triggered for user profile fetch');
-    const userId = getUserId();
-    if (!userId) {
-      console.log('❌ No user ID available for profile fetch');
-      return;
-    }
+    let unsubscribe = () => {};
 
-    // Always use UID for Firestore doc
-    const docRef = doc(db, 'users', userId); // userId here is UID
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const userProfile = docSnap.data();
-        setUserProfile({ ...userProfile, uid: userId });
-        setLocalUserProfile({ ...userProfile, uid: userId });
-        setStats(prev => ({
-          ...prev,
-          totalTeam: userProfile.totalTeam || 0
-        }));
-      } else {
-        setUserProfile(null);
-        setLocalUserProfile(null);
-        console.warn('⚠️ No user profile found for UID:', userId);
+    const setupListener = async () => {
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+      if (!user || !user.uid) return;
+
+      const userId = getUserId();
+      if (!userId) return;
+
+      try {
+        // Force token refresh before creating listener
+        await auth.currentUser.getIdToken(true);
+
+        const docRef = doc(db, 'users', userId);
+        unsubscribe = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const userProfile = docSnap.data();
+            setUserProfile({ ...userProfile, uid: userId });
+            setLocalUserProfile({ ...userProfile, uid: userId });
+            setStats(prev => ({
+              ...prev,
+              totalTeam: userProfile.totalTeam || 0
+            }));
+          } else {
+            setUserProfile(null);
+            setLocalUserProfile(null);
+          }
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubscribe();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to setup user profile listener:', error);
       }
-    }, (error) => {
-      setUserProfile(null);
-      setLocalUserProfile(null);
-      console.error('❌ Error fetching user profile:', error);
-    });
+    };
+
+    setupListener();
+
     return () => unsubscribe();
-  }, [user, loading]);
+  }, [user?.uid]);
 
-  // Real-time Firestore listeners for dashboard stats
+  // Real-time Firestore listeners for dashboard stats (only for user-owned data)
   useEffect(() => {
-    if (!userProfile?.uid || !userProfile?.userId) return;
+    let unsubSentHelp = () => {};
+    let unsubReceivedAutoPool = () => {};
+    let unsubReceivedSponsor = () => {};
+    let unsubEarnings = () => {};
+    let unsubPendingHelps = () => {};
+    let unsubUpcoming = () => {};
 
-    // 1. Total Sent Help (sum amount for senderUid === currentUser.uid)
-    const sentHelpQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid));
-    const unsubSentHelp = onSnapshot(sentHelpQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        total += Number(data.amount) || 0;
-      });
-      setStats(prev => ({ ...prev, totalSentAmount: total }));
-    });
+    const setupListeners = async () => {
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+      if (!user || !user.uid) return;
+      if (!userProfile || !userProfile.userId) return;
 
-    // 2. Received (AutoPool): receiveHelp where receiverId === userId, source === 'autopool', sum amount
-    const receivedAutoPoolQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', userProfile.userId), where('source', '==', 'autopool'));
-    const unsubReceivedAutoPool = onSnapshot(receivedAutoPoolQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        total += Number(data.amount) || 0;
-      });
-      setStats(prev => ({ ...prev, totalReceivedAutopool: total }));
-    });
+      try {
+        // Force token refresh before creating listeners
+        await auth.currentUser.getIdToken(true);
 
-    // 3. Received (Sponsor): receiveHelp where receiverId === userId, source === 'sponsor', sum amount
-    const receivedSponsorQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', userProfile.userId), where('source', '==', 'sponsor'));
-    const unsubReceivedSponsor = onSnapshot(receivedSponsorQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        total += Number(data.amount) || 0;
-      });
-      setStats(prev => ({ ...prev, totalReceivedSponsor: total }));
-    });
+        // 1. Total Sent Help (sum amount for senderUid === currentUser.uid)
+        const sentHelpQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid));
+        unsubSentHelp = onSnapshot(sentHelpQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalSentAmount: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubSentHelp();
+          }
+        });
 
-    // 4. Total Earnings: receiveHelp where receiverId === userId, status === 'confirmed' or confirmedByReceiver === true, sum amount
-    const earningsQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', userProfile.userId));
-    const unsubEarnings = onSnapshot(earningsQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        if (data.status === 'confirmed' || data.confirmedByReceiver === true) {
-          total += Number(data.amount) || 0;
-        }
-      });
-      setStats(prev => ({ ...prev, totalEarnings: total }));
-    });
+        // 2. Received (AutoPool): receiveHelp where receiverUid === uid, source === 'autopool', sum amount
+        const receivedAutoPoolQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('source', '==', 'autopool'));
+        unsubReceivedAutoPool = onSnapshot(receivedAutoPoolQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalReceivedAutopool: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubReceivedAutoPool();
+          }
+        });
 
-    // 5. Pending Helps: receiveHelp where receiverId === userId, status === 'pending', sum amount
-    const pendingHelpsQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', userProfile.userId), where('status', '==', 'pending'));
-    const unsubPendingHelps = onSnapshot(pendingHelpsQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        total += Number(data.amount) || 0;
-      });
-      setStats(prev => ({ ...prev, pendingHelps: total }));
-    });
+        // 3. Received (Sponsor): receiveHelp where receiverUid === uid, source === 'sponsor', sum amount
+        const receivedSponsorQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('source', '==', 'sponsor'));
+        unsubReceivedSponsor = onSnapshot(receivedSponsorQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalReceivedSponsor: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubReceivedSponsor();
+          }
+        });
 
-    // 6. Upcoming Payments: sendHelp where senderUid === currentUser.uid, status === 'pending' or 'blocked', sum amount
-    const upcomingQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid), where('status', 'in', ['pending', 'blocked']));
-    const unsubUpcoming = onSnapshot(upcomingQ, snap => {
-      let total = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        total += Number(data.amount) || 0;
-      });
-      setStats(prev => ({ ...prev, upcomingPayment: total }));
-    });
+        // 4. Total Earnings: receiveHelp where receiverUid === uid, status === 'confirmed' or confirmedByReceiver === true, sum amount
+        const earningsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid));
+        unsubEarnings = onSnapshot(earningsQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'confirmed' || data.confirmedByReceiver === true) {
+              total += Number(data.amount) || 0;
+            }
+          });
+          setStats(prev => ({ ...prev, totalEarnings: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubEarnings();
+          }
+        });
 
-    // Direct Members (count)
-    const directMembersQ = query(collection(db, 'users'), where('sponsorId', '==', userProfile.userId));
-    const unsubDirectMembers = onSnapshot(directMembersQ, snap => {
-      setStats(prev => ({ ...prev, directReferrals: snap.size }));
-    });
+        // 5. Pending Helps: receiveHelp where receiverUid === uid, status === 'pending', sum amount
+        const pendingHelpsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('status', '==', 'pending'));
+        unsubPendingHelps = onSnapshot(pendingHelpsQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, pendingHelps: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubPendingHelps();
+          }
+        });
 
-    // Available E-PINs (count)
-    const availableEpinsQ = query(collection(db, 'epins'), where('usedBy', '==', null), where('ownerUid', '==', userProfile.uid));
-    const unsubAvailableEpins = onSnapshot(availableEpinsQ, snap => {
-      setStats(prev => ({ ...prev, availableEpins: snap.size }));
-    });
+        // 6. Upcoming Payments: sendHelp where senderUid === currentUser.uid, status === 'pending' or 'blocked', sum amount
+        const upcomingQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid));
+        unsubUpcoming = onSnapshot(upcomingQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            // Filter status on frontend to avoid Firestore permission-denied errors
+            if (data.status === 'pending' || data.status === 'blocked') {
+              total += Number(data.amount) || 0;
+            }
+          });
+          setStats(prev => ({ ...prev, upcomingPayment: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubUpcoming();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to setup stats listeners:', error);
+      }
+    };
 
-    // Cleanup
+    setupListeners();
+
     return () => {
       unsubSentHelp();
       unsubReceivedAutoPool();
       unsubReceivedSponsor();
-      unsubDirectMembers();
       unsubPendingHelps();
-      unsubAvailableEpins();
       unsubEarnings();
       unsubUpcoming();
     };
-  }, [userProfile]);
+  }, [user?.uid, userProfile?.userId]);
+
+  // One-time fetch for Direct Members and Available E-PINs (prevents permission-denied errors)
+  useEffect(() => {
+    // Wait for auth to be ready
+    if (!auth.currentUser) return;
+    if (!user || !user.uid) return;
+    if (!userProfile || !userProfile.userId) return;
+
+    const fetchDirectMembers = async () => {
+      try {
+        // Force token refresh before query
+        await auth.currentUser.getIdToken(true);
+
+        const q = query(collection(db, 'users'), where('sponsorId', '==', userProfile.uid));
+        const snap = await getDocs(q);
+        setStats(prev => ({ ...prev, directReferrals: snap.size }));
+      } catch (e) {
+        console.error('Failed to fetch direct members:', e);
+      }
+    };
+
+    const fetchAvailableEpins = async () => {
+      try {
+        const q = query(collection(db, 'epins'), where('usedBy', '==', null), where('assignedTo', '==', userProfile.uid));
+        const snap = await getDocs(q);
+        setStats(prev => ({ ...prev, availableEpins: snap.size }));
+      } catch (e) {}
+    };
+
+    fetchDirectMembers();
+    fetchAvailableEpins();
+  }, [user?.uid, userProfile?.userId]);
 
   const navigate = useNavigate();
 

@@ -604,6 +604,7 @@ const SendHelp = () => {
     try {
       const q = query(
         collection(db, 'users'),
+        where('level', '==', currentUser.level || 1),
         where('isActivated', '==', true),
         where('helpVisibility', '==', true),
         where('isOnHold', '==', false),

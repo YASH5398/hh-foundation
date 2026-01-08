@@ -131,11 +131,10 @@ export default function Leaderboard() {
   useEffect(() => {
     const fetchTopEarners = async () => {
       try {
-        const usersRef = collection(db, 'users');
+        const leaderboardRef = collection(db, 'leaderboard');
         const q = query(
-          usersRef,
-          where('isActivated', '==', true),
-          where('totalEarnings', '>', 0),
+          leaderboardRef,
+          where("level", "==", 1),
           orderBy('totalEarnings', 'desc'),
           limit(5)
         );

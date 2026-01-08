@@ -6,7 +6,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 const usersCollectionRef = collection(db, 'users');
 
 export const getUsers = (onUpdate = () => {}, onError = () => {}) => {
-  const unsubscribe = onSnapshot(usersCollectionRef, (snapshot) => {
+  // Add basic filtering to prevent unfiltered access
+  const q = query(usersCollectionRef, where('isActivated', '!=', null));
+  const unsubscribe = onSnapshot(q, (snapshot) => {
     const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     onUpdate(users, null);
   }, onError);

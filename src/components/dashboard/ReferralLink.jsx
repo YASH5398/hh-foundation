@@ -9,7 +9,6 @@ import {
   validateEmail,
   validatePhone,
   validatePassword,
-  checkUserExists,
   cleanupAuthUser,
   getRegistrationErrorMessage,
   requiresCleanup
@@ -150,13 +149,6 @@ const Signup = () => {
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         toast.error(passwordValidation.message);
-        setLoading(false);
-        return;
-      }
-
-      const userExistsCheck = await checkUserExists(email, phone);
-      if (userExistsCheck.exists) {
-        toast.error(userExistsCheck.message);
         setLoading(false);
         return;
       }

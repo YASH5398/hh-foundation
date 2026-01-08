@@ -1,4 +1,5 @@
-const functions = require('firebase-functions');
+const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onRequest: httpsOnRequest, onCall: httpsOnCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -24,8 +25,7 @@ const {
   validateLevelUpgrade,
   validateSponsorPayment,
   validateUpgradePayment
-} = require('../src/shared/mlmCore');
-
+} = require('./shared/mlmCore');
 
 // Helper functions for level management
 const unblockUserIncome = async (userId, level) => {
@@ -124,9 +124,7 @@ const createActivityNotificationData = (params) => {
   });
 };
 
-exports.onReceiveHelpConfirmed = functions.firestore
-  .document('receiveHelp/{docId}')
-  .onUpdate(async (change, context) => {
+exports.onReceiveHelpConfirmed = onDocumentUpdated('receiveHelp/{docId}', async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
     if (before.confirmedByReceiver === false && after.confirmedByReceiver === true) {
@@ -171,9 +169,7 @@ exports.onReceiveHelpConfirmed = functions.firestore
    });
 
 // Cloud Function: Payment delay reminder notifications
-exports.onReceiveHelpPaymentDelay = functions.firestore
-  .document('receiveHelp/{receiveHelpId}')
-  .onUpdate(async (change, context) => {
+exports.onReceiveHelpPaymentDelay = onDocumentUpdated('receiveHelp/{receiveHelpId}', async (change, context) => {
     const receiveHelpId = context.params.receiveHelpId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -247,9 +243,7 @@ exports.onReceiveHelpPaymentDelay = functions.firestore
   });
 
 // Cloud Function: Leaderboard ranking notifications
-exports.onLeaderboardUpdate = functions.firestore
-  .document('leaderboard/{leaderboardId}')
-  .onUpdate(async (change, context) => {
+exports.onLeaderboardUpdate = onDocumentUpdated('leaderboard/{leaderboardId}', async (change, context) => {
     const leaderboardId = context.params.leaderboardId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -340,9 +334,7 @@ exports.onLeaderboardUpdate = functions.firestore
   });
 
 // Cloud Function: Testimonial approval notification (Earn Free E-PIN)
-exports.onTestimonialUpdate = functions.firestore
-  .document('testimonials/{testimonialId}')
-  .onUpdate(async (change, context) => {
+exports.onTestimonialUpdate = onDocumentUpdated('testimonials/{testimonialId}', async (change, context) => {
     const testimonialId = context.params.testimonialId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -412,9 +404,7 @@ exports.onTestimonialUpdate = functions.firestore
   });
 
 // Cloud Function: Support ticket creation notification
-exports.onSupportTicketCreate = functions.firestore
-  .document('supportTickets/{ticketId}')
-  .onCreate(async (snap, context) => {
+exports.onSupportTicketCreate = onDocumentCreated('supportTickets/{ticketId}', async (snap, context) => {
     const ticketId = context.params.ticketId;
     const ticketData = snap.data();
     
@@ -452,9 +442,7 @@ exports.onSupportTicketCreate = functions.firestore
   });
 
 // Cloud Function: Support ticket agent assignment notification
-exports.onSupportTicketUpdate = functions.firestore
-  .document('supportTickets/{ticketId}')
-  .onUpdate(async (change, context) => {
+exports.onSupportTicketUpdate = onDocumentUpdated('supportTickets/{ticketId}', async (change, context) => {
     const ticketId = context.params.ticketId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -636,7 +624,8 @@ const sendPushNotification = async (userId, notificationData) => {
 
 // HTTP Cloud Function: Send notification
 // HTTP Cloud Function for backward compatibility
-exports.sendNotification = functions.https.onRequest(async (req, res) => {
+/*
+exports.sendNotification = httpsOnRequest(async (req, res) => {
   // Enable CORS
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -685,16 +674,16 @@ exports.sendNotification = functions.https.onRequest(async (req, res) => {
 });
 
 // Callable Cloud Function (secure, recommended)
-exports.sendNotificationCallable = functions.https.onCall(async (data, context) => {
+exports.sendNotificationCallable = httpsOnCall(async (data, context) => {
   try {
     const { token, title, body, data: notificationData } = data || {};
     
     if (!token && !data.userId) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing token or userId');
+      throw new HttpsError('invalid-argument', 'Missing token or userId');
     }
     
     if (!title || !body) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing title or body');
+      throw new HttpsError('invalid-argument', 'Missing title or body');
     }
 
     // If token is provided, send directly to that token
@@ -747,14 +736,13 @@ exports.sendNotificationCallable = functions.https.onCall(async (data, context) 
     
   } catch (error) {
     console.error('sendNotificationCallable error:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to send notification', { error: error.message });
+    throw new HttpsError('internal', 'Failed to send notification', { error: error.message });
   }
 });
+*/
 
 // Cloud Function: New user joined notification
-exports.onUserCreate = functions.firestore
-  .document('users/{userId}')
-  .onCreate(async (snap, context) => {
+exports.onUserCreate = onDocumentCreated('users/{userId}', async (snap, context) => {
     const userId = context.params.userId;
     const userData = snap.data();
     
@@ -850,9 +838,7 @@ exports.onUserCreate = functions.firestore
   });
 
 // Cloud Function: Send Help notification
-exports.onSendHelpCreate = functions.firestore
-  .document('sendHelp/{helpId}')
-  .onCreate(async (snap, context) => {
+exports.onSendHelpCreate = onDocumentCreated('sendHelp/{helpId}', async (snap, context) => {
     const helpId = context.params.helpId;
     const helpData = snap.data();
     
@@ -893,9 +879,7 @@ exports.onSendHelpCreate = functions.firestore
   });
 
 // Cloud Function: Receive Help notification
-exports.onReceiveHelpCreate = functions.firestore
-  .document('receiveHelp/{helpId}')
-  .onCreate(async (snap, context) => {
+exports.onReceiveHelpCreate = onDocumentCreated('receiveHelp/{helpId}', async (snap, context) => {
     const helpId = context.params.helpId;
     const helpData = snap.data();
     
@@ -936,9 +920,7 @@ exports.onReceiveHelpCreate = functions.firestore
   });
 
 // Cloud Function: Payment confirmation notification
-exports.onPaymentConfirm = functions.firestore
-  .document('epinTransfers/{transferId}')
-  .onUpdate(async (change, context) => {
+exports.onPaymentConfirm = onDocumentUpdated('epinTransfers/{transferId}', async (change, context) => {
     const transferId = context.params.transferId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -1011,9 +993,7 @@ exports.onPaymentConfirm = functions.firestore
 
 
 // Cloud Function: Level payment confirmation (upgrade or sponsor payment)
-exports.onLevelPaymentConfirmed = functions.firestore
-  .document('levelPayments/{paymentId}')
-  .onUpdate(async (change, context) => {
+exports.onLevelPaymentConfirmed = onDocumentUpdated('levelPayments/{paymentId}', async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
@@ -1152,9 +1132,7 @@ exports.onLevelPaymentConfirmed = functions.firestore
   });
 
 // Cloud Function: E-PIN request status notifications
-exports.onEpinRequestUpdate = functions.firestore
-  .document('epinRequests/{requestId}')
-  .onUpdate(async (change, context) => {
+exports.onEpinRequestUpdate = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
     const requestId = context.params.requestId;
     const beforeData = change.before.data();
     const afterData = change.after.data();

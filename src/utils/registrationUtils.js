@@ -42,36 +42,6 @@ export const validatePassword = (password) => {
   return { isValid: true, message: 'Password is valid' };
 };
 
-/**
- * Check if email or phone already exists in Firestore
- * @param {string} email - Email to check
- * @param {string} phone - Phone to check
- * @returns {Promise<Object>} Result with exists and message
- */
-export const checkUserExists = async (email, phone) => {
-  try {
-    const emailQuery = query(collection(db, 'users'), where('email', '==', email));
-    const phoneQuery = query(collection(db, 'users'), where('phone', '==', phone));
-    
-    const [emailSnapshot, phoneSnapshot] = await Promise.all([
-      getDocs(emailQuery),
-      getDocs(phoneQuery)
-    ]);
-    
-    if (!emailSnapshot.empty) {
-      return { exists: true, message: 'Email already registered' };
-    }
-    
-    if (!phoneSnapshot.empty) {
-      return { exists: true, message: 'Phone number already registered' };
-    }
-    
-    return { exists: false, message: 'User does not exist' };
-  } catch (error) {
-    console.error('Error checking user existence:', error);
-    return { exists: false, message: 'Error checking user existence' };
-  }
-};
 
 /**
  * Safely get the current user's UID, waiting if necessary

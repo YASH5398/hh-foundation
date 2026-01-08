@@ -158,9 +158,10 @@ const Leaderboard = () => {
       setError(false);
       
       try {
-        // Fetch top 100 users by referral count
+        // Fetch top 100 from leaderboard collection (level 1)
         const q = query(
-          collection(db, 'users'),
+          collection(db, 'leaderboard'),
+          where("level", "==", 1),
           orderBy('referralCount', 'desc'),
           limit(100)
         );
@@ -171,26 +172,12 @@ const Leaderboard = () => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setUsers(data);
 
-        // Calculate earnings for each user
+        // Use earnings from leaderboard data
         const earningsMap = {};
-        
-        for (const user of data) {
-          try {
-            const receiveHelpQuery = query(
-              collection(db, 'receiveHelp'),
-              where('receiverId', '==', user.userId)
-            );
-            
-            const receiveHelpSnapshot = await getDocs(receiveHelpQuery);
-            const receiveHelps = receiveHelpSnapshot.docs.map(doc => doc.data());
-            const totalEarnings = calculateTotalEarnings(receiveHelps);
-            earningsMap[user.id] = totalEarnings;
-          } catch (err) {
-            console.error(`Error calculating earnings for user ${user.userId}:`, err);
-            earningsMap[user.id] = 0;
-          }
-        }
-        
+        data.forEach(user => {
+          earningsMap[user.id] = user.totalEarnings || 0;
+        });
+
         if (!ignore) {
           setUserEarnings(earningsMap);
         }

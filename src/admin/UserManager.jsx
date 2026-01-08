@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FaEdit, FaUser, FaShieldAlt, FaUserCheck, FaUserTimes, FaSearch } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../config/firebase';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { auth } from "../config/firebase";
 import { getIdToken, getIdTokenResult, signOut } from "firebase/auth";
@@ -48,7 +48,8 @@ function UserManager() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const q = query(collection(db, 'users'), where('isActivated', '!=', null));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

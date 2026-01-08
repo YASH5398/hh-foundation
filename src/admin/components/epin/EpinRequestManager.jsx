@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, updateDoc, doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,8 +49,8 @@ const EpinRequestManager = () => {
 
   useEffect(() => {
     // Real-time listener for all E-PIN requests
-    const unsubscribe = onSnapshot(
-      collection(db, 'epinRequests'),
+    const q = query(collection(db, 'epinRequests'), where('status', '!=', null));
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
         const reqList = snapshot.docs.map(doc => ({ 
           id: doc.id, 

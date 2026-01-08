@@ -1,436 +1,250 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // Helper function to check if user is admin
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-    
-    // Helper function to check if user is agent
-    function isAgent() {
-      return exists(/databases/$(database)/documents/agents/$(request.auth.uid)) ||
-             (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent');
-    }
-    
-    // Helper function to check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    // Helper function to check if user has admin or agent role
-    function isAdminOrAgent() {
-      return isAdmin() || isAgent();
-    }
+rules_version = '2'; service cloud.firestore { match /databases/{database}/documents {
 
-    // Users collection - users can read/write their own data, agents/admins can read all
-    match /users/{userId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow list: if isAuthenticated(); // Allow listing for leaderboard and agent operations
-    }
+function isAdmin() {
+  return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+}
 
-    // Admins collection - only admins can access
-    match /admins/{docId} {
-      allow read, write, create, list: if isAuthenticated() && isAdmin();
-    }
+function isAgent() {
+  return request.auth != null &&
+    exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+}
 
-    // Agents collection - agents can read their own data, admins can manage all
-    match /agents/{agentId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == agentId || isAdmin());
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
+function isAuthenticated() {
+  return request.auth != null;
+}
 
-    // ChatRooms collection - participants can read/write their own chats, agents can access all
-    match /chatRooms/{chatId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid in resource.data.participants || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid in resource.data.participants || isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid in request.resource.data.participants || isAdminOrAgent());
-      allow list: if isAuthenticated(); // Allow listing to find user's chats
+function isAdminOrAgent() {
+  return isAdmin() || isAgent();
+}
 
-      // Messages subcollection within chatRooms
-      match /messages/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
-      }
-    }
 
-    // Agent Chats collection - for agent support system
-    match /agentChats/{chatId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.agentId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.agentId || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated();
-      allow list: if isAuthenticated() && isAdminOrAgent();
+match /users/{userId} {
+  allow read: if request.auth != null;
+  allow update: if request.auth != null && request.auth.uid == userId;
+}
 
-      // Messages subcollection within agentChats
-      match /messages/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId ||
-           request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId ||
-           isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId ||
-           request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId ||
-           isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId ||
-           request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId ||
-           isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId ||
-           request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId ||
-           isAdminOrAgent());
-      }
-    }
+match /admins/{docId} {
+  allow read, write, create, list: if isAuthenticated() && isAdmin();
+}
 
-    // Legacy chats collection (for backward compatibility)
-    match /chats/{chatId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid in resource.data.participants || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid in resource.data.participants || isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid in request.resource.data.participants || isAdminOrAgent());
-      allow list: if isAuthenticated();
-      
-      // Messages subcollection within chats
-      match /messages/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
-      }
-    }
+match /agents/{agentId} {
+  allow read: if isAuthenticated() && (request.auth.uid == agentId || isAdmin());
+  allow write, create: if isAuthenticated() && isAdmin();
+  allow list: if isAuthenticated() && isAdminOrAgent();
+}
 
-    // Messages collection - standalone messages (for direct messaging)
-    match /messages/{messageId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.recipientId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.recipientId || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.senderId || isAdminOrAgent());
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-    }
+match /chatRooms/{chatId} {
+  allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid in request.resource.data.participants || isAdminOrAgent());
+  allow list: if isAuthenticated();
 
-    // SendHelp collection - sender and receiver can access, agents can view all
-    match /sendHelp/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.senderId || isAdmin());
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-      
-      // Chat subcollection for send help transactions
-      match /chat/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/sendHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-      }
-    }
-
-    // ReceiveHelp collection - sender and receiver can access, agents can view all
-    match /receiveHelp/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.receiverId || isAdmin());
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-      
-      // Chat subcollection for receive help transactions
-      match /chat/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/receiveHelp/$(docId)).data.receiverId ||
-           isAdminOrAgent());
-      }
-    }
-
-    // Help History collection - users can access their own history, agents/admins can access all
-    match /helpHistory/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated();
-    }
-
-    // EPINs collection - users can read all, write their own, agents can manage
-    match /epins/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.ownerId || 
-         request.auth.uid == resource.data.createdBy || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated();
-      allow list: if isAuthenticated();
-    }
-
-    // EPIN Requests collection - users can access their own requests, agents can manage all
-    match /epinRequests/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.userId || isAdminOrAgent());
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-    }
-
-    // Testimonials collection - users can manage their own, agents/admins can manage all
-    match /testimonials/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.uid || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.uid || isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.uid || isAdminOrAgent());
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
-
-    // Social Tasks collection - users can manage their own tasks
-    match /socialTasks/{userId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
-
-    // Notifications collection - users can access their own notifications
-    match /notifications/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if isAuthenticated();
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-    }
-
-    // Support tickets collection - users can access their own tickets, agents can manage all
-    match /supportTickets/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.agentId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.agentId || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == request.resource.data.userId || isAdminOrAgent());
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-    }
-
-    // FCM Tokens collection - users can manage their own tokens, system can manage all
-    match /fcmTokens/{userId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow list: if isAuthenticated() && isAdmin();
-    }
-
-    // Payments collection - users can read their own, agents/admins can manage all
-    match /payments/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write, create: if isAuthenticated() && isAdminOrAgent();
-      allow list: if isAuthenticated();
-    }
-
-    // Settings collection - read for all authenticated users, write for admins
-    match /settings/{docId} {
-      allow read: if isAuthenticated();
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated();
-    }
-
-    // Global Settings collection - read for agents/admins, write for admins only
-    match /globalSettings/{docId} {
-      allow read: if isAuthenticated() && isAdminOrAgent();
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
-
-    // Broadcasts collection - read for all authenticated users, write for admins
-    match /broadcasts/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create: if isAuthenticated() && isAdmin();
-    }
-
-    // Levels collection - read for all authenticated users, write for admins
-    match /levels/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create: if isAuthenticated() && isAdmin();
-    }
-
-    // Leaderboard collection - read for all authenticated users, write for admins
-    match /leaderboard/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create: if isAuthenticated() && isAdmin();
-    }
-
-    // System Config collection - read for authenticated users, write for admins
-    match /systemConfig/{docId} {
-      allow read: if isAuthenticated();
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
-
-    // Transaction logs - users can read their own, agents/admins can read all
-    match /transactionLogs/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write, create: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated(); // Allow listing with proper where clauses
-    }
-
-    // Agent Dashboard collection - only agents and admins can access
-    match /agentDashboard/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.agentId || isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.agentId || isAdmin());
-      allow create: if isAuthenticated() && isAdminOrAgent();
-      allow list: if isAuthenticated() && isAdminOrAgent();
-    }
-
-    // Tickets collection - users can access their own, agents can manage assigned tickets
-    match /tickets/{docId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.assignedAgent || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.userId || 
-         request.auth.uid == resource.data.assignedAgent || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated();
-      allow list: if isAuthenticated();
-    }
-
-    // Help Chats collection - participants can access their chats
-    match /helpChats/{chatId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow write: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId || 
-         isAdminOrAgent());
-      allow create: if isAuthenticated();
-      allow list: if isAuthenticated();
-
-      // Messages subcollection within helpChats
-      match /messages/{messageId} {
-        allow read: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId ||
-           isAdminOrAgent());
-        allow write: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId ||
-           isAdminOrAgent());
-        allow create: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId ||
-           isAdminOrAgent());
-        allow list: if isAuthenticated() && 
-          (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId ||
-           request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId ||
-           isAdminOrAgent());
-      }
-    }
-
-    // Test collection - for development and testing purposes
-    match /test/{docId} {
-      allow read, write, create, list: if isAuthenticated() && isAdmin();
-    }
-
-    // Default deny rule for any other collections
-    match /{document=**} {
-      allow read, write: if false;
-    }
+  match /messages/{messageId} {
+    allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
+    allow write: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
+    allow create: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
+    allow list: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatId)).data.participants || isAdminOrAgent());
   }
 }
+
+match /agentChats/{chatId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.agentId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.agentId || isAdminOrAgent());
+  allow create: if isAuthenticated();
+  allow list: if isAuthenticated() && isAdminOrAgent();
+
+  match /messages/{messageId} {
+    allow read: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId || request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId || isAdminOrAgent());
+    allow write: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId || request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId || isAdminOrAgent());
+    allow create: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId || request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId || isAdminOrAgent());
+    allow list: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId || request.auth.uid == get(/databases/$(database)/documents/agentChats/$(chatId)).data.agentId || isAdminOrAgent());
+  }
+}
+
+match /chats/{chatId} {
+  allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid in request.resource.data.participants || isAdminOrAgent());
+  allow list: if isAuthenticated();
+  
+  match /messages/{messageId} {
+    allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
+    allow write: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
+    allow create: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
+    allow list: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdminOrAgent());
+  }
+}
+
+match /messages/{messageId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.senderId || isAdminOrAgent());
+  allow list: if isAuthenticated();
+}
+
+match /sendHelp/{docId} {
+  allow read, list: if request.auth != null;
+  allow create, update: if request.auth != null;
+}
+
+match /receiveHelp/{docId} {
+  allow read, list: if request.auth != null;
+  allow create, update: if request.auth != null;
+}
+
+match /helpHistory/{docId} {
+  // Allow read/list for all authenticated users to prevent LIST evaluation failures
+  allow read: if isAuthenticated();
+  allow list: if isAuthenticated();
+  // Ownership checks only on write operations
+  allow write, create: if isAuthenticated() && isAdmin();
+}
+
+match /epins/{docId} {
+  allow read: if isAuthenticated();
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || request.auth.uid == resource.data.createdBy || isAdminOrAgent());
+  allow create: if isAuthenticated();
+  allow list: if isAuthenticated();
+}
+
+match /epinRequests/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdminOrAgent());
+  allow list: if isAuthenticated();
+}
+
+match /testimonials/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.uid || isAdminOrAgent());
+  allow list: if isAuthenticated();
+}
+
+match /socialTasks/{userId} {
+  allow read: if isAuthenticated() && (request.auth.uid == userId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+  allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+  allow list: if isAuthenticated() && isAdminOrAgent();
+}
+
+match /notifications/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+  allow create: if isAuthenticated();
+  allow list: if isAuthenticated();
+}
+
+match /supportTickets/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.agentId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.agentId || isAdminOrAgent());
+  allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdminOrAgent());
+  allow list: if isAuthenticated();
+}
+
+match /fcmTokens/{userId} {
+  allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+  allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+  allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+  allow list: if isAuthenticated() && isAdmin();
+}
+
+match /payments/{docId} {
+  // Allow read/list for all authenticated users to prevent LIST evaluation failures
+  allow read: if isAuthenticated();
+  allow list: if isAuthenticated();
+  // Ownership checks only on write operations
+  allow write, create: if isAuthenticated() && isAdminOrAgent();
+}
+
+match /settings/{docId} {
+  allow read: if isAuthenticated();
+  allow write, create: if isAuthenticated() && isAdmin();
+  allow list: if isAuthenticated();
+}
+
+match /globalSettings/{docId} {
+  allow read: if isAuthenticated() && isAdminOrAgent();
+  allow write, create: if isAuthenticated() && isAdmin();
+  allow list: if isAuthenticated() && isAdminOrAgent();
+}
+
+match /broadcasts/{docId} {
+  allow read, list: if isAuthenticated();
+  allow write, create: if isAuthenticated() && isAdmin();
+}
+
+match /levels/{docId} {
+  allow read, list: if isAuthenticated();
+  allow write, create: if isAuthenticated() && isAdmin();
+}
+
+
+match /systemConfig/{docId} {
+  allow read: if isAuthenticated();
+  allow write, create: if isAuthenticated() && isAdmin();
+  allow list: if isAuthenticated() && isAdminOrAgent();
+}
+
+match /transactionLogs/{docId} {
+  // Allow read/list for all authenticated users to prevent LIST evaluation failures
+  allow read: if isAuthenticated();
+  allow list: if isAuthenticated();
+  // Ownership checks only on write operations
+  allow write, create: if isAuthenticated() && isAdmin();
+}
+
+match /agentDashboard/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.agentId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.agentId || isAdmin());
+  allow create: if isAuthenticated() && isAdminOrAgent();
+  allow list: if isAuthenticated();
+}
+
+match /tickets/{docId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.assignedAgent || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.assignedAgent || isAdminOrAgent());
+  allow create: if isAuthenticated();
+  allow list: if isAuthenticated();
+}
+
+match /helpChats/{chatId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId || isAdminOrAgent());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId || isAdminOrAgent());
+  allow create: if isAuthenticated();
+  allow list: if isAuthenticated();
+
+  match /messages/{messageId} {
+    allow read: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId || request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId || isAdminOrAgent());
+    allow write: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId || request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId || isAdminOrAgent());
+    allow create: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId || request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId || isAdminOrAgent());
+    allow list: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.senderId || request.auth.uid == get(/databases/$(database)/documents/helpChats/$(chatId)).data.receiverId || isAdminOrAgent());
+  }
+}
+
+match /appSettings/{docId} {
+  allow read: if isAuthenticated();
+  allow list: if isAuthenticated();
+  allow write, create: if isAuthenticated() && isAdmin();
+}
+
+match /chatbotChats/{chatId} {
+  allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+  allow write: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+  allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
+  allow list: if isAuthenticated();
+
+  match /messages/{messageId} {
+    allow read: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/chatbotChats/$(chatId)).data.userId || isAdmin());
+    allow write: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/chatbotChats/$(chatId)).data.userId || isAdmin());
+    allow create: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/chatbotChats/$(chatId)).data.userId || isAdmin());
+    allow list: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/chatbotChats/$(chatId)).data.userId || isAdmin());
+  }
+}
+
+match /test/{docId} {
+  allow read, write, create, list: if isAuthenticated() && isAdmin();
+}
+
+} }

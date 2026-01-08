@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { db } from '../../config/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -52,7 +52,8 @@ const EpinManager = () => {
   // Real-time E-PIN sync
   useEffect(() => {
     isMounted.current = true;
-    const unsub = onSnapshot(collection(db, 'epins'), async (snapshot) => {
+    const q = query(collection(db, 'epins'), where('status', '!=', null));
+    const unsub = onSnapshot(q, async (snapshot) => {
       const pins = [];
       for (const docSnap of snapshot.docs) {
         const data = docSnap.data();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../config/firebase";
+import { db, auth } from "../../config/firebase";
 
 const gradientCard = "rounded-xl shadow-lg px-6 py-6 text-center text-white font-bold text-lg bg-gradient-to-br border-2 border-white hover:scale-105 transition-transform duration-200";
 const gradients = [
@@ -18,7 +18,7 @@ export default function DirectReferrals() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.userId) {
+    if (!user?.uid) {
       setReferrals([]);
       setLoading(false);
       return;
@@ -27,9 +27,12 @@ export default function DirectReferrals() {
     setError("");
     async function fetchReferrals() {
       try {
+        // Force token refresh before query
+        await auth.currentUser.getIdToken(true);
+
         const q = query(
           collection(db, "users"),
-          where("sponsorId", "==", user.userId)
+          where("sponsorId", "==", user.uid)
         );
         const snap = await getDocs(q);
         const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -41,7 +44,7 @@ export default function DirectReferrals() {
       }
     }
     fetchReferrals();
-  }, [user?.userId]);
+  }, [user?.uid]);
 
   // Stats
   const total = referrals.length;
@@ -58,7 +61,7 @@ export default function DirectReferrals() {
     );
   }
 
-  if (!user?.userId) {
+  if (!user?.uid) {
     return null;
   }
 

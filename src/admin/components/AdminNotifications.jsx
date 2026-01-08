@@ -45,10 +45,12 @@ const AdminNotifications = () => {
 
   // Fetch notification history
   useEffect(() => {
+    let unsubscribe = () => {};
+
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        const unsubscribe = notificationService.subscribeToAllNotifications(
+        unsubscribe = await notificationService.subscribeToAllNotifications(
           (notificationsList) => {
             setNotifications(notificationsList);
             setLoading(false);
@@ -65,7 +67,14 @@ const AdminNotifications = () => {
         setLoading(false);
       }
     };
+
     fetchNotifications();
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleInputChange = (e) => {

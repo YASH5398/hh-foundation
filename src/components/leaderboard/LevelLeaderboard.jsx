@@ -103,9 +103,8 @@ const LevelLeaderboard = () => {
       try {
         // Fetch top 100
         const q = query(
-          collection(db, "users"),
+          collection(db, "leaderboard"),
           where("level", "==", userProfile.level),
-          where("levelStatus", "==", "active"),
           orderBy("referralCount", "desc"),
           limit(100)
         );
@@ -115,9 +114,8 @@ const LevelLeaderboard = () => {
 
         // Fetch current user's rank
         const rankQuery = query(
-          collection(db, "users"),
+          collection(db, "leaderboard"),
           where("level", "==", userProfile.level),
-          where("levelStatus", "==", "active"),
           where("referralCount", ">", userProfile.referralCount || 0)
         );
         const rankSnapshot = await getCountFromServer(rankQuery);
