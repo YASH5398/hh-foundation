@@ -2,18 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  generateUserId, 
-  validateEmail, 
-  validatePhone, 
-  validatePassword, 
-  checkUserExists, 
-  cleanupAuthUser, 
-  getRegistrationErrorMessage, 
+  generateUserId,
+  validateEmail,
+  validatePhone,
+  validatePassword,
+  cleanupAuthUser,
+  getRegistrationErrorMessage,
   requiresCleanup
 } from '../../utils/registrationUtils';
 import { useAuth } from '../../context/AuthContext';
@@ -209,13 +208,6 @@ const Signup = () => {
         return;
       }
 
-      const userExistsCheck = await checkUserExists(email, phone);
-      if (userExistsCheck.exists) {
-        toast.error(userExistsCheck.message);
-        setLoading(false);
-        return;
-      }
-
       const epinQuery = query(collection(db, 'epins'), where('epin', '==', epin), where('status', '==', 'unused'));
       const epinSnapshot = await getDocs(epinQuery);
       if (epinSnapshot.empty) {
@@ -229,16 +221,26 @@ const Signup = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       const uid = user.uid;
-      
+
       const userId = generateUserId();
       uidForCleanup = uid;
-      
+
       await updateDoc(epinRef, {
         status: 'used',
         assignedTo: uid,
         usedBy: uid,
         usedAt: serverTimestamp()
       });
+
+      // Check if user document exists, create if not
+      const userDocRef = doc(db, "users", uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        // User document already exists, this shouldn't happen during signup
+        toast.error('User already exists');
+        setLoading(false);
+        return;
+      }
 
       // Prepare payment method data based on selection
       let paymentMethodData = {};

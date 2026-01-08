@@ -313,7 +313,8 @@ export function listenToReceiveHelps(userUid, callback) {
 
 // Admin functions for managing help requests
 export function getSendHelpRequests(callback) {
-  const q = query(collection(db, 'sendHelp'));
+  // Add basic filtering to prevent unfiltered access
+  const q = query(collection(db, 'sendHelp'), where('status', '!=', null));
   return onSnapshot(q, (snapshot) => {
     const requests = snapshot.docs.map(doc => ({
       id: doc.id,

@@ -151,7 +151,8 @@ export const getAllEpinRequests = async () => {
 export const subscribeToEpinRequests = (callback) => {
   try {
     const epinRequestsCollectionRef = collection(db, 'epinRequests');
-    const unsubscribe = onSnapshot(epinRequestsCollectionRef, (snapshot) => {
+    const q = query(epinRequestsCollectionRef, where('status', '!=', null));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const requests = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

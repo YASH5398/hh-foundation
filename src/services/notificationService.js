@@ -14,7 +14,7 @@ import {
   limit,
   Timestamp
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import { createNotificationData, createAdminNotificationData, createActivityNotificationData, cleanNotificationData } from '../utils/createNotificationData';
 
 class NotificationService {
@@ -379,9 +379,12 @@ class NotificationService {
   }
 
   // Subscribe to user notifications with real-time updates
-  subscribeToUserNotifications(uid, callback, errorCallback) {
+  async subscribeToUserNotifications(uid, callback, errorCallback) {
     try {
       console.log('Setting up notification subscription for user:', uid);
+
+      // Force token refresh before creating listener
+      await auth.currentUser.getIdToken(true);
 
       // Query for notifications where uid == uid
       const userQuery = query(
@@ -930,17 +933,20 @@ class NotificationService {
 }
 
 // Subscribe to all notifications (for admin panel)
-const subscribeToAllNotifications = (onUpdate, onError) => {
+const subscribeToAllNotifications = async (onUpdate, onError) => {
   try {
+    // Force token refresh before creating listener
+    await auth.currentUser.getIdToken(true);
+
     const notificationsRef = collection(db, 'notifications');
     const q = query(
-      notificationsRef, 
+      notificationsRef,
       where('isDeleted', '==', false),
       orderBy('timestamp', 'desc'),
       limit(100)
     );
-    
-    return onSnapshot(q, 
+
+    return onSnapshot(q,
       (snapshot) => {
         const notifications = snapshot.docs.map(doc => ({
           id: doc.id,

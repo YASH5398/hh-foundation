@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, increment, writeBatch, limit } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../config/firebase';
+import { db, auth } from '../../config/firebase';
 import { 
   Phone, 
   MessageCircle, 
@@ -104,7 +104,7 @@ export default function ReceiveHelp() {
     // Create query with limit to show maximum 3 receivers
     const baseQuery = query(
       collection(db, "receiveHelp"),
-      where("receiverUid", "==", user.uid),
+      where("receiverId", "==", user.uid),
       limit(3)
     );
     
@@ -125,7 +125,7 @@ export default function ReceiveHelp() {
             return;
           }
           
-          const combination = `${help.senderId || help.senderUid || 'unknown'}_${help.receiverUid || user.uid}`;
+          const combination = `${help.senderId || help.senderUid || 'unknown'}_${help.receiverId || user.uid}`;
           if (!seenCombinations.has(combination)) {
             seenCombinations.add(combination);
             uniqueHelps.push(help);
@@ -201,7 +201,16 @@ export default function ReceiveHelp() {
 
     try {
       const currentTimestamp = Date.now();
-      
+
+      // Ensure the document belongs to the current user before updating
+      if (help.receiverId !== user.uid) {
+        toast.error("You can only update your own receive help requests.");
+        return;
+      }
+
+      // Force token refresh before write operation
+      await auth.currentUser.getIdToken(true);
+
       // Update Firestore document with request timestamp
       const receiveHelpRef = doc(db, "receiveHelp", help.id);
       await updateDoc(receiveHelpRef, {

@@ -1,12 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import { auth, db } from "../config/firebase";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { auth } from "../config/firebase";
 import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   getIdTokenResult,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 const AuthContext = createContext();
@@ -70,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Listen Auth State
+  // 🔹 Listen Auth State (NO Firestore access - prevents permission-denied logs)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
@@ -79,12 +78,15 @@ export const AuthProvider = ({ children }) => {
           const tokenResult = await getIdTokenResult(firebaseUser, true);
           setUserClaims(tokenResult.claims || {});
 
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUser({ ...userDoc.data(), uid: firebaseUser.uid });
-          } else {
-            setUser(null); // Or handle as an error
-          }
+          // 🔒 Only store Firebase Auth data - NO Firestore reads here
+          // Firestore user data should be fetched in protected pages/components
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            phone: firebaseUser.phoneNumber,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
         } else {
           setUser(null);
           setUserClaims({});
@@ -102,24 +104,6 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // 🔹 Live Firestore User Updates
-  useEffect(() => {
-    if (user?.uid) {
-      const userDocRef = doc(db, "users", user.uid);
-      const unsubscribe = onSnapshot(
-        userDocRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            setUser({ ...docSnap.data(), uid: user.uid });
-          }
-        },
-        (error) => {
-          console.error("Firestore onSnapshot error (user profile):", error);
-        }
-      );
-      return () => unsubscribe();
-    }
-  }, [user?.uid]);
 
   // 🔹 Context Value
   const value = {

@@ -56,10 +56,15 @@ class RealtimeService {
    */
   subscribeToTickets(callback, filters = {}) {
     const listenerId = this.generateListenerId('tickets', filters);
-    
+
     try {
+      // Require at least one filter to prevent unfiltered access
+      if (!filters.status && !filters.priority && !filters.assignedTo && !filters.type) {
+        throw new Error('subscribeToTickets requires at least one filter (status, priority, assignedTo, or type)');
+      }
+
       let ticketsQuery = collection(db, 'supportTickets');
-      
+
       // Apply filters
       if (filters.status) {
         ticketsQuery = query(ticketsQuery, where('status', '==', filters.status));
@@ -129,10 +134,15 @@ class RealtimeService {
    */
   subscribeToPayments(callback, type = 'sendHelp', filters = {}) {
     const listenerId = this.generateListenerId(`payments_${type}`, filters);
-    
+
     try {
+      // Require at least one filter to prevent unfiltered access
+      if (!filters.status && !filters.verifiedBy && !filters.userId) {
+        throw new Error('subscribeToPayments requires at least one filter (status, verifiedBy, or userId)');
+      }
+
       let paymentsQuery = collection(db, type);
-      
+
       // Apply filters
       if (filters.status) {
         paymentsQuery = query(paymentsQuery, where('status', '==', filters.status));
@@ -213,10 +223,15 @@ class RealtimeService {
    */
   subscribeToUsers(callback, filters = {}) {
     const listenerId = this.generateListenerId('users', filters);
-    
+
     try {
+      // Require at least one filter to prevent unfiltered access
+      if (!filters.status && !filters.kycStatus && !filters.urgentLevel) {
+        throw new Error('subscribeToUsers requires at least one filter (status, kycStatus, or urgentLevel)');
+      }
+
       let usersQuery = collection(db, 'users');
-      
+
       // Apply filters
       if (filters.status) {
         usersQuery = query(usersQuery, where('status', '==', filters.status));
@@ -270,10 +285,15 @@ class RealtimeService {
    */
   subscribeToConversations(callback, filters = {}) {
     const listenerId = this.generateListenerId('conversations', filters);
-    
+
     try {
+      // Require at least one filter to prevent unfiltered access
+      if (!filters.agentId && !filters.status && !filters.type) {
+        throw new Error('subscribeToConversations requires at least one filter (agentId, status, or type)');
+      }
+
       let conversationsQuery = collection(db, 'conversations');
-      
+
       // Apply filters
       if (filters.agentId) {
         conversationsQuery = query(conversationsQuery, where('agentId', '==', filters.agentId));
@@ -388,10 +408,15 @@ class RealtimeService {
    */
   subscribeToKnowledgeBase(callback, filters = {}) {
     const listenerId = this.generateListenerId('knowledgeBase', filters);
-    
+
     try {
+      // Require at least one filter to prevent unfiltered access
+      if (!filters.category && !filters.status && !filters.type) {
+        throw new Error('subscribeToKnowledgeBase requires at least one filter (category, status, or type)');
+      }
+
       let kbQuery = collection(db, 'knowledgeBase');
-      
+
       // Apply filters
       if (filters.category) {
         kbQuery = query(kbQuery, where('category', '==', filters.category));
@@ -476,13 +501,18 @@ class RealtimeService {
    */
   subscribeToAnalytics(callback, filters = {}) {
     const listenerId = this.generateListenerId('analytics', filters);
-    
+
     try {
+      // Require date filters to prevent unfiltered access to large collections
+      if (!filters.startDate || !filters.endDate) {
+        throw new Error('subscribeToAnalytics requires both startDate and endDate filters');
+      }
+
       // Subscribe to multiple collections for comprehensive analytics
       const collections = ['supportTickets', 'sendHelp', 'receiveHelp', 'users'];
       const unsubscribes = [];
       const analyticsData = {};
-      
+
       collections.forEach(collectionName => {
         let analyticsQuery = collection(db, collectionName);
         

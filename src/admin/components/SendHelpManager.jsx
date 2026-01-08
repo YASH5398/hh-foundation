@@ -54,7 +54,7 @@ const SendHelpManager = () => {
           setAccessDenied(false);
           
           // Fetch SendHelp data
-          const q = query(collection(db, 'sendHelp'), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'sendHelp'), where('status', '!=', null), orderBy('createdAt', 'desc'));
           unsub = onSnapshot(
             q,
             (snap) => {

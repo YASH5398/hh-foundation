@@ -18,7 +18,8 @@ const EnhancedUserManager = () => {
   // Real-time sync for users
   useEffect(() => {
     setLoading(true);
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const q = query(collection(db, 'users'), where('isActivated', '!=', null));
+    const unsub = onSnapshot(q, (snapshot) => {
       const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsers(userList);
       setLoading(false);

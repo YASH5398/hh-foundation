@@ -57,7 +57,7 @@ const EarnFreeEPIN = () => {
     if (!user) return;
     const fetchTestimonialRequest = async () => {
       setLoading(true);
-      const q = query(collection(db, "testimonialRequests"), where("uid", "==", user.uid));
+      const q = query(collection(db, "epinRequests"), where("userId", "==", user.uid));
       const snap = await getDocs(q);
       if (!snap.empty) {
         const docData = snap.docs[0].data();
@@ -173,10 +173,9 @@ const EarnFreeEPIN = () => {
     // Generate unique request ID
     const requestId = `req_${user.uid}_${Date.now()}`;
 
-    const testimonialRequestData = {
+    const epinRequestData = {
       requestId,
-      uid: user.uid,
-      userId: user.userId,
+      userId: user.uid,
       name: user.fullName,
       method,
       videoLink: (method === "youtube" || method === "gdrive") ? videoLink.trim() : "",
@@ -186,8 +185,8 @@ const EarnFreeEPIN = () => {
       createdAt: serverTimestamp(),
     };
 
-    await setDoc(doc(db, "testimonialRequests", requestId), testimonialRequestData);
-    setTestimonial(testimonialRequestData);
+    await setDoc(doc(db, "epinRequests", requestId), epinRequestData);
+    setTestimonial(epinRequestData);
     setTestimonialDocId(requestId);
     setSubmitting(false);
     setSuccess(true);

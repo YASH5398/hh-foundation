@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Award } from 'lucide-react';
@@ -59,17 +59,15 @@ export default function Leaderboard() {
       setLoading(true);
       setError('');
       try {
-        const snap = await getDocs(collection(db, 'users'));
-        let userList = snap.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            referralCount: typeof data.referralCount === 'number' ? data.referralCount : 0,
-            totalEarnings: typeof data.totalEarnings === 'number' ? data.totalEarnings : 0
-          };
-        });
-        userList.sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
+        // Fetch from leaderboard collection for level 1 (default)
+        const q = query(
+          collection(db, "leaderboard"),
+          where("level", "==", 1),
+          orderBy("referralCount", "desc"),
+          limit(100)
+        );
+        const snapshot = await getDocs(q);
+        const userList = snapshot.docs.map(doc => doc.data());
         setUsers(userList);
       } catch (e) {
         setError('Failed to load leaderboard.');

@@ -1,10 +1,11 @@
 import { db } from '../config/firebase';
-import { collection, getDocs, doc, updateDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, onSnapshot, setDoc, serverTimestamp, query, where } from 'firebase/firestore';
 
 const levelsCollectionRef = collection(db, 'levels');
 
 export const getLevels = (callback) => {
-  const unsubscribe = onSnapshot(levelsCollectionRef, (snapshot) => {
+  const q = query(levelsCollectionRef, where('name', '!=', null));
+  const unsubscribe = onSnapshot(q, (snapshot) => {
     const levels = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),

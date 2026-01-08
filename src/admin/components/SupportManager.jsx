@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  addDoc, 
-  serverTimestamp, 
-  getDoc 
-} from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { 
   FiMessageSquare, 
   FiFileText, 
@@ -69,6 +59,7 @@ const SupportManager = () => {
 
     const q = query(
       collection(db, 'chatRooms'),
+      where('status', '!=', null),
       orderBy('createdAt', 'desc')
     );
 
@@ -89,6 +80,7 @@ const SupportManager = () => {
 
     const q = query(
       collection(db, 'chatbotChats'),
+      where('status', '!=', null),
       orderBy('createdAt', 'desc')
     );
 
@@ -109,6 +101,7 @@ const SupportManager = () => {
 
     const q = query(
       collection(db, 'tickets'),
+      where('status', '!=', null),
       orderBy('createdAt', 'desc')
     );
 

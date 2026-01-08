@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { subscribeWithAuth } from '../utils/firestoreHelpers';
 import notificationService from '../services/notificationService';
 import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
@@ -34,10 +35,16 @@ export const NotificationProvider = ({ children }) => {
     }
   });
 
-  // Real-time listener for user notifications
+  // One-time fetch for user notifications
   useEffect(() => {
-    console.log('NotificationContext: Setting up notification listener for user:', user?.uid);
-    
+    if (!auth.currentUser) {
+      console.log('NotificationContext: No auth.currentUser, skipping fetch');
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
     if (!user?.uid) {
       console.log('NotificationContext: No user found, clearing notifications');
       setNotifications([]);
@@ -46,81 +53,66 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    console.log('NotificationContext: Starting notification subscription for user:', user.uid);
+    console.log('NotificationContext: Fetching notifications for user:', user.uid);
     setLoading(true);
-    
-    // Track previous notification count to detect new notifications
-    let previousUnreadCount = 0;
 
-    const unsubscribe = notificationService.subscribeToUserNotifications(
-      user.uid,
-      (notificationsList) => {
-        console.log('NotificationContext: Received notifications update:', notificationsList.length);
+    const fetchNotifications = async () => {
+      try {
+        const userQuery = query(
+          collection(db, 'notifications'),
+          where('uid', '==', user.uid),
+          where('isDeleted', '==', false),
+          orderBy('timestamp', 'desc'),
+          limit(100)
+        );
 
-        // Check for new unread notifications and play sounds
-        const currentUnreadCount = notificationsList.filter(n => !n.isRead).length;
-        if (currentUnreadCount > previousUnreadCount && previousUnreadCount > 0) {
-          // Find new unread notifications
-          const newUnreadNotifications = notificationsList
-            .filter(n => !n.isRead)
-            .slice(0, currentUnreadCount - previousUnreadCount);
+        const snapshot = await getDocs(userQuery);
+        const notificationsList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
 
-          // Play sound for the most recent new notification
-          if (newUnreadNotifications.length > 0 && notificationSettings.playSound) {
-            const latestNotification = newUnreadNotifications[0];
-            // Use the configured sound type for this notification
-            let soundType = 'default';
-            const title = latestNotification.title || '';
-            const category = latestNotification.category || latestNotification.type;
-
-            if (title.includes('Payment') || title.includes('₹') || category === 'payment') {
-              soundType = notificationSettings.sounds?.payment || 'payment';
-            } else if (title.includes('Success') || title.includes('Completed') || title.includes('✅') || category === 'success') {
-              soundType = notificationSettings.sounds?.success || 'success';
-            } else if (title.includes('Alert') || title.includes('Error') || title.includes('Failed') || category === 'warning') {
-              soundType = notificationSettings.sounds?.warning || 'warning';
-            } else if (category === 'admin' || latestNotification.type === 'admin') {
-              soundType = notificationSettings.sounds?.admin || 'admin';
-            } else {
-              soundType = notificationSettings.sounds?.default || 'default';
-            }
-
-            soundService.playNotificationSound(soundType, latestNotification.priority || 'medium');
-          }
-        }
-        previousUnreadCount = currentUnreadCount;
+        console.log('NotificationContext: Fetched notifications:', notificationsList.length);
 
         setNotifications(notificationsList);
+        const currentUnreadCount = notificationsList.filter(n => !n.isRead).length;
         console.log('NotificationContext: Unread count:', currentUnreadCount);
         setUnreadCount(currentUnreadCount);
         setLoading(false);
-      },
-      (error) => {
+      } catch (error) {
         console.error('NotificationContext: Error fetching notifications:', error);
         setLoading(false);
       }
-    );
-
-    return () => {
-      console.log('NotificationContext: Cleaning up notification listener for user:', user.uid);
-      unsubscribe();
     };
+
+    fetchNotifications();
   }, [user?.uid]);
 
   // Listen for notification settings changes
   useEffect(() => {
     if (!user?.uid) return;
 
-    const settingsRef = doc(db, 'notificationSettings', user.uid);
-    const unsubscribeSettings = onSnapshot(settingsRef, (doc) => {
-      if (doc.exists()) {
-        const settings = doc.data();
-        setNotificationSettings(settings);
-        // Sync sound service with Firestore settings
-        soundService.setEnabled(settings.playSound ?? true);
-        setSoundEnabled(settings.playSound ?? true);
-      }
-    });
+    let unsubscribeSettings = () => {};
+
+    const setupSettingsListener = async () => {
+      const settingsRef = doc(db, 'notificationSettings', user.uid);
+      unsubscribeSettings = await subscribeWithAuth(
+        settingsRef,
+        (doc) => {
+          if (doc.exists()) {
+            const settings = doc.data();
+            setNotificationSettings(settings);
+            // Sync sound service with Firestore settings
+            soundService.setEnabled(settings.playSound ?? true);
+            setSoundEnabled(settings.playSound ?? true);
+          }
+        },
+        null,
+        { logPrefix: 'NotificationContext-Settings' }
+      );
+    };
+
+    setupSettingsListener();
 
     return () => unsubscribeSettings();
   }, [user?.uid]);

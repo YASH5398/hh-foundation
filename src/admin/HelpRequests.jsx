@@ -11,7 +11,8 @@ const HelpRequests = () => {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'helpRequests'), async (snap) => {
+    const q = query(collection(db, 'helpRequests'), where('status', '!=', null));
+    const unsub = onSnapshot(q, async (snap) => {
       let reqs = await Promise.all(snap.docs.map(async d => {
         const data = d.data();
         let userName = '';

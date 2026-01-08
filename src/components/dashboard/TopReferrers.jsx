@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { FaCrown, FaFire, FaStar } from 'react-icons/fa';
 
@@ -14,9 +14,10 @@ const TopReferrers = () => {
         setLoading(true);
         setError(null);
 
-        const usersRef = collection(db, 'users');
+        const leaderboardRef = collection(db, 'leaderboard');
         const q = query(
-          usersRef,
+          leaderboardRef,
+          where("level", "==", 1),
           orderBy('referralCount', 'desc'),
           limit(3)
         );

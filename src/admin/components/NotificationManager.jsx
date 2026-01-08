@@ -31,19 +31,34 @@ const NotificationManager = () => {
 
   // Fetch all notifications
   useEffect(() => {
-    const unsubscribe = notificationService.subscribeToAllNotifications(
-      (notificationsList) => {
-        setNotifications(notificationsList);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching notifications:', error);
-        setLoading(false);
-      },
-      filters
-    );
+    let unsubscribe = () => {};
 
-    return () => unsubscribe();
+    const setupListener = async () => {
+      try {
+        unsubscribe = await notificationService.subscribeToAllNotifications(
+          (notificationsList) => {
+            setNotifications(notificationsList);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error fetching notifications:', error);
+            setLoading(false);
+          },
+          filters
+        );
+      } catch (error) {
+        console.error('Failed to setup notifications listener:', error);
+        setLoading(false);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, [filters]);
 
   // Fetch users for notification creation

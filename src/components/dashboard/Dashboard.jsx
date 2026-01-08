@@ -156,69 +156,114 @@ const Dashboard = () => {
 
   // Fetch dashboard metrics
   useEffect(() => {
-    if (!user?.uid) return;
-    console.log('currentUser.uid:', user.uid);
-    console.log('currentUser.userId:', user.userId);
-    // Total Sent Help
-    const sentHelpQ = query(collection(db, 'sendHelp'), where('senderId', '==', user.uid));
-    const unsubSentHelp = onSnapshot(sentHelpQ, snap => {
-      setTotalSentHelp(snap.size);
-      console.log('sendHelp docs:', snap.docs.slice(0,3).map(d=>d.data()));
-    });
-    // Received (AutoPool)
-    const autoPoolQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', user.uid), where('isSponsorHelp', '==', false));
-    const unsubAutoPool = onSnapshot(autoPoolQ, snap => {
-      setReceivedAutoPool(snap.size);
-      console.log('receiveHelp (AutoPool) docs:', snap.docs.slice(0,3).map(d=>d.data()));
-    });
-    // Received (Sponsor)
-    const sponsorQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', user.uid), where('isSponsorHelp', '==', true));
-    const unsubSponsor = onSnapshot(sponsorQ, snap => {
-      setReceivedSponsor(snap.size);
-      console.log('receiveHelp (Sponsor) docs:', snap.docs.slice(0,3).map(d=>d.data()));
-    });
-    // Total Earnings (sum of confirmed received helps)
-    const earningsQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', user.uid), where('status', '==', 'confirmed'));
-    const unsubEarnings = onSnapshot(earningsQ, snap => {
-      let sum = 0;
-      snap.forEach(doc => {
-        const data = doc.data();
-        sum += Number(data.amount) || 0;
-      });
-      setTotalEarnings(sum);
-    });
-    // Pending Helps
-    const pendingQ = query(collection(db, 'receiveHelp'), where('receiverId', '==', user.uid), where('status', '==', 'pending'));
-    const unsubPending = onSnapshot(pendingQ, snap => {
-      setPendingHelps(snap.size);
-    });
-    // Direct Members
-    const directQ = query(collection(db, 'users'), where('sponsorId', '==', user.uid));
-    const unsubDirect = onSnapshot(directQ, snap => {
-      setDirectMembers(snap.size);
-      console.log('users (Direct Members) docs:', snap.docs.slice(0,3).map(d=>d.data()));
-    });
-    // Available E-PINs
-    setAvailableEpins(Array.isArray(currentUser?.epins) ? currentUser.epins.filter(e => e.isUsed === false).length : 0);
-    // Total Team
-    setTotalTeam(Array.isArray(currentUser?.referredUsers) ? currentUser.referredUsers.length : 0);
-    // Upcoming Payment (count of users at your level with higher referral count)
-    async function fetchUpcomingPayment() {
-      if (!user?.level || typeof user.referralCount !== 'number') {
-        setUpcomingPayment(0);
-        return;
+    let unsubSentHelp = () => {};
+    let unsubAutoPool = () => {};
+    let unsubSponsor = () => {};
+    let unsubEarnings = () => {};
+    let unsubPending = () => {};
+    let unsubDirect = () => {};
+
+    const setupListeners = async () => {
+      if (!auth.currentUser) return;
+      if (!user?.uid) return;
+
+      try {
+        // Force token refresh before creating listeners
+        await auth.currentUser.getIdToken(true);
+
+        console.log('currentUser.uid:', user.uid);
+        console.log('currentUser.userId:', user.userId);
+        // Total Sent Help
+        const sentHelpQ = query(collection(db, 'sendHelp'), where('senderUid', '==', user.uid));
+        unsubSentHelp = onSnapshot(sentHelpQ, snap => {
+          setTotalSentHelp(snap.size);
+          console.log('sendHelp docs:', snap.docs.slice(0,3).map(d=>d.data()));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubSentHelp();
+          }
+        });
+        // Received (AutoPool)
+        const autoPoolQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('isSponsorHelp', '==', false));
+        unsubAutoPool = onSnapshot(autoPoolQ, snap => {
+          setReceivedAutoPool(snap.size);
+          console.log('receiveHelp (AutoPool) docs:', snap.docs.slice(0,3).map(d=>d.data()));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubAutoPool();
+          }
+        });
+        // Received (Sponsor)
+        const sponsorQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('isSponsorHelp', '==', true));
+        unsubSponsor = onSnapshot(sponsorQ, snap => {
+          setReceivedSponsor(snap.size);
+          console.log('receiveHelp (Sponsor) docs:', snap.docs.slice(0,3).map(d=>d.data()));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubSponsor();
+          }
+        });
+        // Total Earnings (sum of confirmed received helps)
+        const earningsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('status', '==', 'confirmed'));
+        unsubEarnings = onSnapshot(earningsQ, snap => {
+          let sum = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            sum += Number(data.amount) || 0;
+          });
+          setTotalEarnings(sum);
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubEarnings();
+          }
+        });
+        // Pending Helps
+        const pendingQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('status', '==', 'pending'));
+        unsubPending = onSnapshot(pendingQ, snap => {
+          setPendingHelps(snap.size);
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubPending();
+          }
+        });
+        // Direct Members
+        const directQ = query(collection(db, 'users'), where('sponsorId', '==', user.uid));
+        unsubDirect = onSnapshot(directQ, snap => {
+          setDirectMembers(snap.size);
+          console.log('users (Direct Members) docs:', snap.docs.slice(0,3).map(d=>d.data()));
+        });
+        // Available E-PINs
+        setAvailableEpins(Array.isArray(currentUser?.epins) ? currentUser.epins.filter(e => e.isUsed === false).length : 0);
+        // Total Team
+        setTotalTeam(Array.isArray(currentUser?.referredUsers) ? currentUser.referredUsers.length : 0);
+        // Upcoming Payment (count of users at your level with higher referral count)
+        async function fetchUpcomingPayment() {
+          if (!user?.level || typeof user.referralCount !== 'number') {
+            setUpcomingPayment(0);
+            return;
+          }
+          const q = query(
+            collection(db, 'users'),
+            where('level', '==', user.level),
+            where('isActivated', '==', true)
+          );
+          const snap = await getDocs(q);
+          const higher = snap.docs.filter(doc => (doc.data().referralCount || 0) > user.referralCount);
+          setUpcomingPayment(higher.length);
+        }
+        fetchUpcomingPayment();
+      } catch (error) {
+        console.error('Failed to setup dashboard listeners:', error);
       }
-      const q = query(
-        collection(db, 'users'),
-        where('level', '==', user.level),
-        where('isActivated', '==', true)
-      );
-      const snap = await getDocs(q);
-      const higher = snap.docs.filter(doc => (doc.data().referralCount || 0) > user.referralCount);
-      setUpcomingPayment(higher.length);
-    }
-    fetchUpcomingPayment();
-    // Cleanup
+    };
+
+    setupListeners();
+
     return () => {
       unsubSentHelp();
       unsubAutoPool();
@@ -327,52 +372,69 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (!user?.uid) return;
-    setUpcomingLoading(true);
-    setUpcomingError("");
-    const q = query(
-      collection(db, 'sendHelp'),
-      where('senderId', '==', user.uid),
-      where('status', '==', 'pending'),
-      orderBy('createdAt', 'asc')
-    );
-    const unsub = onSnapshot(q, async (snap) => {
+    let unsub = () => {};
+
+    const setupListener = async () => {
+      if (!auth.currentUser) return;
+      if (!user?.uid) return;
+      setUpcomingLoading(true);
+      setUpcomingError("");
+
       try {
-        let docs = snap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-          .slice(0, 3);
-        // Fetch receiver info for each
-        const receivers = await Promise.all(
-          docs.map(async (doc) => {
-            let receiver = { userId: doc.receiverUserId || doc.receiverId, name: '', profileImage: '', paymentMethod: '' };
-            try {
-              const userResult = await getUserById(doc.receiverUid || doc.receiverId);
-              if (userResult.success && userResult.data) {
-                const user = userResult.data;
-                receiver = {
-                  userId: user.userId || doc.receiverUserId || doc.receiverId,
-                  name: user.fullName || user.name || '',
-                  profileImage: user.profileImage || '',
-                  paymentMethod: user.paymentMethod?.upiId || user.paymentMethod?.phonePeNumber || user.paymentMethod?.googlePayNumber || user.paymentMethod?.method || '',
-                };
-              }
-            } catch (error) {
-              console.error('Error fetching receiver info:', error);
-            }
-            return { ...receiver, status: doc.status };
-          })
+        // Force token refresh before creating listener
+        await auth.currentUser.getIdToken(true);
+
+        const q = query(
+          collection(db, 'sendHelp'),
+          where('senderId', '==', user.uid),
+          where('status', '==', 'pending'),
+          orderBy('createdAt', 'asc')
         );
-        setUpcomingPayments(receivers);
-        setUpcomingLoading(false);
-      } catch (err) {
-        setUpcomingError('Failed to load upcoming payments.');
+        unsub = onSnapshot(q, async (snap) => {
+          try {
+            let docs = snap.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+              .slice(0, 3);
+            // Fetch receiver info for each
+            const receivers = await Promise.all(
+              docs.map(async (doc) => {
+                let receiver = { userId: doc.receiverUserId || doc.receiverId, name: '', profileImage: '', paymentMethod: '' };
+                try {
+                  const userResult = await getUserById(doc.receiverUid || doc.receiverId);
+                  if (userResult.success && userResult.data) {
+                    const user = userResult.data;
+                    receiver = {
+                      userId: user.userId || doc.receiverUserId || doc.receiverId,
+                      name: user.fullName || user.name || '',
+                      profileImage: user.profileImage || '',
+                      paymentMethod: user.paymentMethod?.upiId || user.paymentMethod?.phonePeNumber || user.paymentMethod?.googlePayNumber || user.paymentMethod?.method || '',
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching receiver info:', error);
+                }
+                return { ...receiver, status: doc.status };
+              })
+            );
+            setUpcomingPayments(receivers);
+            setUpcomingLoading(false);
+          } catch (err) {
+            setUpcomingError('Failed to load upcoming payments.');
+            setUpcomingLoading(false);
+          }
+        }, (err) => {
+          setUpcomingError('Failed to load upcoming payments.');
+          setUpcomingLoading(false);
+        });
+      } catch (error) {
+        console.error('Failed to setup upcoming payments listener:', error);
         setUpcomingLoading(false);
       }
-    }, (err) => {
-      setUpcomingError('Failed to load upcoming payments.');
-      setUpcomingLoading(false);
-    });
+    };
+
+    setupListener();
+
     return () => unsub();
   }, [user?.uid]);
 
@@ -383,60 +445,75 @@ const Dashboard = () => {
 
   // Fetch Send Help Reminder
   useEffect(() => {
-    if (!user?.uid) return;
-    
-    setReminderLoading(true);
-    
-    // First, check if user has any existing sendHelp documents
-    const sendHelpQuery = query(
-      collection(db, 'sendHelp'),
-      where('senderId', '==', user.uid),
-      where('status', 'in', ['pending', 'done']),
-      orderBy('createdAt', 'desc'),
-      limit(1)
-    );
-    
-    const unsubscribe = onSnapshot(sendHelpQuery, async (snapshot) => {
+    let unsubscribe = () => {};
+
+    const setupListener = async () => {
+      if (!auth.currentUser) return;
+      if (!user?.uid) return;
+
+      setReminderLoading(true);
+
       try {
-        if (!snapshot.empty) {
-          // User has existing sendHelp - show the latest one
-          const latestSendHelp = snapshot.docs[0].data();
-          setSendHelpReminder(latestSendHelp);
-          
-          // Fetch receiver details
-          if (latestSendHelp.receiverUid) {
-            try {
-              const receiverResult = await getUserById(latestSendHelp.receiverUid);
-              if (receiverResult.success && receiverResult.data) {
-                setReceiver(receiverResult.data);
+        // Force token refresh before creating listener
+        await auth.currentUser.getIdToken(true);
+
+        // First, check if user has any existing sendHelp documents
+        const sendHelpQuery = query(
+          collection(db, 'sendHelp'),
+          where('senderId', '==', user.uid),
+          where('status', 'in', ['pending', 'done']),
+          orderBy('createdAt', 'desc'),
+          limit(1)
+        );
+
+        unsubscribe = onSnapshot(sendHelpQuery, async (snapshot) => {
+          try {
+            if (!snapshot.empty) {
+              // User has existing sendHelp - show the latest one
+              const latestSendHelp = snapshot.docs[0].data();
+              setSendHelpReminder(latestSendHelp);
+
+              // Fetch receiver details
+              if (latestSendHelp.receiverUid) {
+                try {
+                  const receiverResult = await getUserById(latestSendHelp.receiverUid);
+                  if (receiverResult.success && receiverResult.data) {
+                    setReceiver(receiverResult.data);
+                  }
+                } catch (error) {
+                  console.error('Error fetching receiver details:', error);
+                }
               }
-            } catch (error) {
-              console.error('Error fetching receiver details:', error);
+            } else {
+              // No existing sendHelp - find eligible receiver for initial ₹300
+              const eligibleReceiversQuery = query(
+                collection(db, 'users'),
+                where('isActivated', '==', true),
+                where('hasReceivedHelp', '==', false),
+                limit(1)
+              );
+
+              const eligibleSnapshot = await getDocs(eligibleReceiversQuery);
+              if (!eligibleSnapshot.empty) {
+                const eligibleReceiver = eligibleSnapshot.docs[0].data();
+                setReceiver(eligibleReceiver);
+                setSendHelpReminder({ type: 'initial', amount: 300 });
+              }
             }
+          } catch (error) {
+            console.error('Error fetching send help reminder:', error);
+          } finally {
+            setReminderLoading(false);
           }
-        } else {
-          // No existing sendHelp - find eligible receiver for initial ₹300
-          const eligibleReceiversQuery = query(
-            collection(db, 'users'),
-            where('isActivated', '==', true),
-            where('hasReceivedHelp', '==', false),
-            limit(1)
-          );
-          
-          const eligibleSnapshot = await getDocs(eligibleReceiversQuery);
-          if (!eligibleSnapshot.empty) {
-            const eligibleReceiver = eligibleSnapshot.docs[0].data();
-            setReceiver(eligibleReceiver);
-            setSendHelpReminder({ type: 'initial', amount: 300 });
-          }
-        }
+        });
       } catch (error) {
-        console.error('Error fetching send help reminder:', error);
-      } finally {
+        console.error('Failed to setup sendHelp reminder listener:', error);
         setReminderLoading(false);
       }
-    });
-    
+    };
+
+    setupListener();
+
     return () => unsubscribe();
   }, [user?.uid]);
 
