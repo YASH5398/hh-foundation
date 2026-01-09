@@ -19,6 +19,13 @@
         { "fieldPath": "isBlocked", "order": "ASCENDING" },
         { "fieldPath": "referralCount", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "totalEarnings", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

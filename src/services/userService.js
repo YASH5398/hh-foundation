@@ -184,44 +184,40 @@ export async function updateSocialTask(uid, taskKey, username = '') {
 }
 
 export async function updateTelegramTask() {
-  return new Promise((resolve, reject) => {
-    onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser || !currentUser.uid) {
-        console.warn('User not logged in yet. Aborting telegram task update.');
-        return resolve();
-      }
-      const uid = currentUser.uid;
-      console.log('Updating telegram task for UID:', uid);
-      const ref = doc(db, 'socialTasks', uid);
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.uid) {
+    console.warn('User not logged in. Aborting telegram task update.');
+    return;
+  }
+
+  const uid = currentUser.uid;
+  console.log('Updating telegram task for UID:', uid);
+  const ref = doc(db, 'socialTasks', uid);
+  try {
+    await updateDoc(ref, {
+      uid: uid,
+      telegram: true,
+      taskScore: increment(1),
+      'taskDetails.telegram': Timestamp.now(),
+      completedAt: Timestamp.now(),
+    });
+  } catch (err) {
+    if (err.code === 'not-found') {
       try {
-        await updateDoc(ref, {
+        await setDoc(ref, {
           uid: uid,
           telegram: true,
-          taskScore: increment(1),
+          taskScore: 1,
           'taskDetails.telegram': Timestamp.now(),
           completedAt: Timestamp.now(),
-        });
-        resolve();
-      } catch (err) {
-        if (err.code === 'not-found') {
-          try {
-            await setDoc(ref, {
-              uid: uid,
-              telegram: true,
-              taskScore: 1,
-              'taskDetails.telegram': Timestamp.now(),
-              completedAt: Timestamp.now(),
-            }, { merge: true });
-            resolve();
-          } catch (createErr) {
-            console.error('Failed to create telegram task document:', createErr);
-            reject(createErr);
-          }
-        } else {
-          console.error('Failed to update telegram task:', err);
-          reject(err);
-        }
+        }, { merge: true });
+      } catch (createErr) {
+        console.error('Failed to create telegram task document:', createErr);
+        throw createErr;
       }
-    });
-  });
+    } else {
+      console.error('Failed to update telegram task:', err);
+      throw err;
+    }
+  }
 }

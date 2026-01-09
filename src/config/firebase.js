@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging } from "firebase/messaging";
+import { getFunctions } from "firebase/functions";
 import {
   collection,
   query,
@@ -41,6 +42,7 @@ const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 
 const db = getFirestore(app);
+export const functions = getFunctions(app);
 
 // ✅ Initialize messaging (only in browser environment with proper checks)
 let messaging = null;

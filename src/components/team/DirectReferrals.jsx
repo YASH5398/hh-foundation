@@ -18,33 +18,48 @@ export default function DirectReferrals() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.uid) {
+    // BLOCKER: No Firestore call without auth.currentUser
+    if (!auth.currentUser) {
+      console.log("DirectReferral: No auth.currentUser - skipping fetch");
       setReferrals([]);
       setLoading(false);
       return;
     }
+
+    if (!user || !user.userId) {
+      console.log("DirectReferral: No user or user.userId - skipping fetch");
+      setReferrals([]);
+      setLoading(false);
+      return;
+    }
+
+    console.log("DirectReferral fetch start");
+    console.log("Sponsor ID:", user.userId);
+
     setLoading(true);
     setError("");
+
     async function fetchReferrals() {
       try {
-        // Force token refresh before query
-        await auth.currentUser.getIdToken(true);
-
         const q = query(
           collection(db, "users"),
-          where("sponsorId", "==", user.uid)
+          where("sponsorId", "==", user.userId)
         );
         const snap = await getDocs(q);
         const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+
+        console.log("Fetched referrals:", items.length, items);
+
         setReferrals(items);
       } catch (e) {
+        console.error("DirectReferral fetch error:", e);
         setError("❌ Failed to load direct referrals.");
       } finally {
         setLoading(false);
       }
     }
     fetchReferrals();
-  }, [user?.uid]);
+  }, [user?.userId]);
 
   // Stats
   const total = referrals.length;
@@ -61,7 +76,7 @@ export default function DirectReferrals() {
     );
   }
 
-  if (!user?.uid) {
+  if (!user?.userId) {
     return null;
   }
 

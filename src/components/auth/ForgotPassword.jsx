@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { auth, sendPasswordResetEmail } from "../config/firebase";
+import { auth } from "../../config/firebase";
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 
 export default function ForgotPassword() {

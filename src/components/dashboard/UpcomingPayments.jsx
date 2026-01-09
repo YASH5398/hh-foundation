@@ -93,17 +93,25 @@ const UpcomingPayments = () => {
         const filtered = [];
         for (let i = 0; i < referrals.length; i++) {
           const d = referrals[i];
-          // Compose sendHelp docId: {receiverId}_{senderId}_{registrationTime}
-          const regTime = d.registrationTime && d.registrationTime.seconds ? d.registrationTime.seconds : null;
-          if (!d.uid || !regTime) continue; // skip if missing
-          const docId = `${userProfile.uid}_${d.uid}_${regTime}`;
-          // 4. Log sendHelp docId
-          console.log("🔎 Checking sendHelp docId:", docId);
-          const sendHelpDoc = await getDoc(doc(db, 'sendHelp', docId));
-          // 4. Log if sendHelp exists
-          console.log("📄 Does sendHelp exist?", sendHelpDoc.exists());
-          if (!sendHelpDoc.exists()) {
+          if (!d.uid) continue; // skip if missing
+
+          // Query for sendHelp documents where current user is receiver and downline is sender
+          // Use query instead of direct doc lookup since timestamp is unpredictable
+          const sendHelpQuery = query(
+            collection(db, 'sendHelp'),
+            where('receiverId', '==', userProfile.uid),
+            where('senderId', '==', d.uid)
+          );
+
+          console.log("🔎 Checking for sendHelp from", d.uid, "to", userProfile.uid);
+          const sendHelpSnapshot = await getDocs(sendHelpQuery);
+
+          // Include downline if no sendHelp documents exist (they haven't sent help yet)
+          if (sendHelpSnapshot.empty) {
+            console.log("📄 No sendHelp found for", d.uid, "- including in upcoming payments");
             filtered.push(d);
+          } else {
+            console.log("📄 Found existing sendHelp for", d.uid, "- excluding from upcoming payments");
           }
         }
         // 5. Log final eligible users

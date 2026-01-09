@@ -137,26 +137,33 @@ export const AgentAuthProvider = ({ children }) => {
 
   // Auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const isAgentUser = await checkAgentRole(user);
-        if (isAgentUser) {
-          setCurrentUser(user);
-          setIsAgent(true);
-        } else {
-          setCurrentUser(null);
-          setIsAgent(false);
-          await signOut(auth);
-        }
-      } else {
-        setCurrentUser(null);
-        setIsAgent(false);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
+
+  // Check agent role after auth is established
+  useEffect(() => {
+    if (!currentUser) {
+      setIsAgent(false);
+      return;
+    }
+
+    const checkAndSetAgent = async () => {
+      const isAgentUser = await checkAgentRole(currentUser);
+      if (isAgentUser) {
+        setIsAgent(true);
+      } else {
+        setIsAgent(false);
+        await signOut(auth);
+      }
+    };
+
+    checkAndSetAgent();
+  }, [currentUser]);
 
   const value = {
     currentUser,

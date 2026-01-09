@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
-import { subscribeWithAuth } from '../utils/firestoreHelpers';
 import notificationService from '../services/notificationService';
 import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
@@ -88,34 +87,6 @@ export const NotificationProvider = ({ children }) => {
     fetchNotifications();
   }, [user?.uid]);
 
-  // Listen for notification settings changes
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    let unsubscribeSettings = () => {};
-
-    const setupSettingsListener = async () => {
-      const settingsRef = doc(db, 'notificationSettings', user.uid);
-      unsubscribeSettings = await subscribeWithAuth(
-        settingsRef,
-        (doc) => {
-          if (doc.exists()) {
-            const settings = doc.data();
-            setNotificationSettings(settings);
-            // Sync sound service with Firestore settings
-            soundService.setEnabled(settings.playSound ?? true);
-            setSoundEnabled(settings.playSound ?? true);
-          }
-        },
-        null,
-        { logPrefix: 'NotificationContext-Settings' }
-      );
-    };
-
-    setupSettingsListener();
-
-    return () => unsubscribeSettings();
-  }, [user?.uid]);
 
   // Mark notification as read
   const markAsRead = async (notificationId) => {

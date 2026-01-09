@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, increment, writeBatch, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, increment, writeBatch, limit } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../context/AuthContext';
-import { db, auth } from '../../config/firebase';
+import { db, auth, functions } from '../../config/firebase';
 import { 
   Phone, 
   MessageCircle, 
@@ -92,7 +93,16 @@ export default function ReceiveHelp() {
 
   // Fetch receiveHelp data with real-time updates
   useEffect(() => {
+    // BLOCKER: No Firestore call without auth.currentUser
+    if (!auth.currentUser) {
+      console.log("ReceiveHelp: No auth.currentUser - skipping fetch");
+      setReceiveHelps([]);
+      setLoading(false);
+      return;
+    }
+
     if (!user?.uid) {
+      console.log("ReceiveHelp: No user.uid - skipping fetch");
       setReceiveHelps([]);
       setLoading(false);
       return;
@@ -107,31 +117,32 @@ export default function ReceiveHelp() {
       where("receiverId", "==", user.uid),
       limit(3)
     );
-    
-    const unsubscribe = onSnapshot(baseQuery, 
-      (snapshot) => {
+
+    const fetchReceiveHelps = async () => {
+      try {
+        const snapshot = await getDocs(baseQuery);
         const helps = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         // Filter out duplicate entries based on senderId + receiverId and exclude cancelled transactions
         const uniqueHelps = [];
         const seenCombinations = new Set();
-        
+
         helps.forEach(help => {
           // Skip cancelled transactions
           if (normalizeStatus(help.status) === 'cancelled') {
             return;
           }
-          
+
           const combination = `${help.senderId || help.senderUid || 'unknown'}_${help.receiverId || user.uid}`;
           if (!seenCombinations.has(combination)) {
             seenCombinations.add(combination);
             uniqueHelps.push(help);
           }
         });
-        
+
         // Extract cooldown timestamps from Firestore data
         const firestoreCooldowns = {};
         uniqueHelps.forEach(help => {
@@ -139,31 +150,30 @@ export default function ReceiveHelp() {
             firestoreCooldowns[help.id] = help.lastPaymentRequestTimestamp;
           }
         });
-        
+
         // Merge with localStorage cooldowns
         const localCooldowns = JSON.parse(localStorage.getItem('paymentRequestCooldowns') || '{}');
         const mergedCooldowns = { ...localCooldowns, ...firestoreCooldowns };
         setRequestCooldowns(mergedCooldowns);
-        
+
         // Sort manually to handle missing createdAt fields
         const sortedHelps = uniqueHelps.sort((a, b) => {
           const aTime = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
           const bTime = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
           return new Date(bTime) - new Date(aTime); // Descending order
         });
-        
+
         setReceiveHelps(sortedHelps);
         setLoading(false);
-      },
-      (err) => {
+      } catch (err) {
         console.error("Error fetching receive helps:", err);
         toast.error('Failed to load help requests');
         setReceiveHelps([]);
         setLoading(false);
       }
-    );
-    
-    return () => unsubscribe();
+    };
+
+    fetchReceiveHelps();
   }, [user?.uid]);
 
   // Check if request payment is on cooldown (2 hours)
@@ -237,94 +247,80 @@ export default function ReceiveHelp() {
   };
 
   const handlePaymentAccept = (helpId) => {
+    // Prevent confirmation of already confirmed helps
+    const help = receiveHelps.find(h => h.id === helpId);
+    if (!help) return;
+
+    if (isConfirmedStatus(help.status)) {
+      toast.error('This payment has already been confirmed.');
+      return;
+    }
+
     setSelectedHelpId(helpId);
     setShowConfirmModal(true);
   };
 
   const confirmPaymentReceived = async () => {
     if (!selectedHelpId) return;
-    
+
+    // CRITICAL: Check if user is currently blocked before allowing confirmation
+    if (isIncomeBlocked(user)) {
+      toast.error('Your income is currently blocked. Complete required payments to continue.');
+      return;
+    }
+
     setConfirmingId(selectedHelpId);
     try {
-      const batch = writeBatch(db);
-      
-      // Update receiveHelp document
-      const receiveHelpRef = doc(db, "receiveHelp", selectedHelpId);
-      batch.update(receiveHelpRef, {
-        status: "Confirmed",
-        confirmedByReceiver: true,
-        confirmationTime: serverTimestamp()
-      });
-      
-      // Update sendHelp document
-      const sendHelpRef = doc(db, "sendHelp", selectedHelpId);
-      batch.update(sendHelpRef, {
-        status: "Confirmed",
-        confirmedByReceiver: true,
-        confirmationTime: serverTimestamp()
-      });
-      
-      // Increment helpReceived and totalReceived for receiver, and activate if first payment
-      if (user?.uid) {
-        const userRef = doc(db, "users", user.uid);
-        const updateData = {
-          helpReceived: increment(1),
-          totalReceived: increment(300)
-        };
-        
-        // Activate user if this is their first received payment
+      // Use Cloud Function for confirmation to ensure proper transaction handling
+      // and blocking logic application
+      const confirmFunction = httpsCallable(functions, 'confirmHelpReceived');
+      const result = await confirmFunction({ helpId: selectedHelpId });
+
+      if (result.data.success) {
+        // Update local state to reflect confirmation
+        setReceiveHelps(prevHelps =>
+          prevHelps.map(help =>
+            help.id === selectedHelpId
+              ? { ...help, status: 'Confirmed', confirmedByReceiver: true }
+              : help
+          )
+        );
+
+        // Send notification to sender about payment confirmation
+        try {
+          const helpData = receiveHelps.find(h => h.id === selectedHelpId);
+          if (helpData?.senderUid) {
+            const { sendNotification } = await import('../../context/NotificationContext');
+            await sendNotification({
+              title: 'Payment Confirmed',
+              message: `Your payment has been confirmed by ${user.displayName || user.email}`,
+              type: 'success',
+              priority: 'high',
+              actionLink: '/dashboard/send-help',
+              targetUserId: helpData.senderUid
+            });
+          }
+        } catch (notificationError) {
+          console.error('Error sending payment confirmation notification:', notificationError);
+        }
+
+        // Check if level upgrade is required and show appropriate message
         const currentHelpReceived = user.helpReceived || 0;
-        if (currentHelpReceived === 0) {
-          updateData.isActivated = true;
-        }
-        
-        
-        batch.update(userRef, updateData);
-      }
-      
-      // Increment totalSent for sender
-      const helpData = receiveHelps.find(h => h.id === selectedHelpId);
-      if (helpData?.senderId) {
-        const senderRef = doc(db, "users", helpData.senderId);
-        batch.update(senderRef, {
-          totalSent: increment(300)
-        });
-      }
-      
-      await batch.commit();
-      
-      // Send notification to sender about payment confirmation
-      try {
-        const helpData = receiveHelps.find(h => h.id === selectedHelpId);
-        if (helpData?.senderUid) {
-          const { sendNotification } = await import('../../context/NotificationContext');
-          await sendNotification({
-            title: 'Payment Confirmed',
-            message: `Your payment has been confirmed by ${user.displayName || user.email}`,
-            type: 'success',
-            priority: 'high',
-            actionLink: '/dashboard/send-help',
-            targetUserId: helpData.senderUid
+        const newHelpReceived = currentHelpReceived + 1;
+
+        if (newHelpReceived === 3 && user.totalReceived >= 900) {
+          toast.success("Payment confirmed! Level upgrade required (₹600) to continue receiving helps.", {
+            duration: 6000
           });
+        } else {
+          toast.success("Payment confirmed successfully!");
         }
-      } catch (notificationError) {
-        console.error('Error sending payment confirmation notification:', notificationError);
-      }
-      
-      // Check if level upgrade is required and show appropriate message
-      const currentHelpReceived = user.helpReceived || 0;
-      const newHelpReceived = currentHelpReceived + 1;
-      
-      if (newHelpReceived === 3 && user.totalReceived >= 900) {
-        toast.success("Payment confirmed! Level upgrade required (₹600) to continue receiving helps.", {
-          duration: 6000
-        });
       } else {
-        toast.success("Payment confirmed successfully!");
+        throw new Error(result.data.error || 'Confirmation failed');
       }
     } catch (error) {
-      console.error("Error confirming payment:", error);
-      toast.error("Failed to confirm payment");
+      console.error('Error confirming payment:', error);
+      toast.error(error.message || 'Failed to confirm payment');
     } finally {
       setConfirmingId(null);
       setShowConfirmModal(false);

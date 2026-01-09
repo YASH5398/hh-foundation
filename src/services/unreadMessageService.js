@@ -1,5 +1,5 @@
-import { doc, updateDoc, onSnapshot, collection, query, where, orderBy, getDocs, writeBatch } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, updateDoc, onSnapshot, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 import FirebaseChatService from './firebaseChat';
 
 /**
@@ -13,6 +13,12 @@ export class UnreadMessageService {
    * @param {string} userId - The user ID who is reading the messages
    */
   static async markMessagesAsRead(transactionType, transactionId, userId) {
+    // Auth guard
+    if (!auth.currentUser) {
+      console.warn('UnreadMessageService: No authenticated user');
+      return { success: false, error: 'Not authenticated' };
+    }
+
     try {
       const chatRef = collection(db, transactionType, transactionId, 'chat');
       const q = query(
@@ -20,18 +26,21 @@ export class UnreadMessageService {
         where('senderId', '!=', userId),
         where('read', '==', false)
       );
-      
+
       const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      
-      snapshot.forEach((doc) => {
-        batch.update(doc.ref, { read: true });
+
+      // Mark each message individually instead of batch
+      const updatePromises = snapshot.docs.map((doc) => {
+        return updateDoc(doc.ref, { read: true });
       });
-      
-      await batch.commit();
+
+      await Promise.all(updatePromises);
       return { success: true };
     } catch (error) {
       console.error('Error marking messages as read:', error);
+      if (error.code === 'permission-denied') {
+        return { success: false, error: 'Permission denied' };
+      }
       return { success: false, error: error.message };
     }
   }

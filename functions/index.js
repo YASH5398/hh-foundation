@@ -1131,6 +1131,111 @@ exports.onLevelPaymentConfirmed = onDocumentUpdated('levelPayments/{paymentId}',
     return null;
   });
 
+// Cloud Function: Confirm help received (secure frontend endpoint)
+exports.confirmHelpReceived = httpsOnCall(async (data, context) => {
+  // Verify authentication
+  if (!context.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { helpId } = data;
+  if (!helpId) {
+    throw new HttpsError('invalid-argument', 'Help ID is required');
+  }
+
+  const userId = context.auth.uid;
+
+  try {
+    return await db.runTransaction(async (transaction) => {
+      // 1. Get and validate receiveHelp document
+      const receiveHelpRef = db.collection('receiveHelp').doc(helpId);
+      const receiveHelpDoc = await transaction.get(receiveHelpRef);
+
+      if (!receiveHelpDoc.exists) {
+        throw new HttpsError('not-found', 'Help document not found');
+      }
+
+      const receiveHelpData = receiveHelpDoc.data();
+
+      // 2. Verify user is the receiver
+      if (receiveHelpData.receiverId !== userId) {
+        throw new HttpsError('permission-denied', 'You can only confirm your own received help');
+      }
+
+      // 3. Check if already confirmed
+      if (receiveHelpData.confirmedByReceiver === true) {
+        throw new HttpsError('already-exists', 'This help has already been confirmed');
+      }
+
+      // 4. Get current user data for blocking check
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await transaction.get(userRef);
+
+      if (!userDoc.exists) {
+        throw new HttpsError('not-found', 'User document not found');
+      }
+
+      const userData = userDoc.data();
+
+      // 5. Check if user is currently blocked (CRITICAL BUSINESS RULE)
+      if (isIncomeBlocked(userData)) {
+        throw new HttpsError('permission-denied', 'Your income is currently blocked. Complete required payments to continue.');
+      }
+
+      // 6. Update both documents atomically
+      const updateData = {
+        status: 'Confirmed',
+        confirmedByReceiver: true,
+        confirmationTime: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      transaction.update(receiveHelpRef, updateData);
+      transaction.update(db.collection('sendHelp').doc(helpId), updateData);
+
+      // 7. Update receiver stats with blocking logic
+      const newHelpReceived = (userData.helpReceived || 0) + 1;
+      const receiverUpdate = {
+        helpReceived: newHelpReceived,
+        totalReceived: (userData.totalReceived || 0) + receiveHelpData.amount
+      };
+
+      // Apply blocking logic based on MLM rules
+      if (isIncomeBlocked({ ...userData, helpReceived: newHelpReceived })) {
+        receiverUpdate.isReceivingHeld = true;
+        receiverUpdate.isOnHold = true;
+      }
+
+      // Activate user if this is their first confirmation
+      if ((userData.helpReceived || 0) === 0) {
+        receiverUpdate.isActivated = true;
+      }
+
+      transaction.update(userRef, receiverUpdate);
+
+      // 8. Update sender stats
+      if (receiveHelpData.senderId) {
+        const senderRef = db.collection('users').doc(receiveHelpData.senderId);
+        const senderDoc = await transaction.get(senderRef);
+
+        if (senderDoc.exists) {
+          const senderData = senderDoc.data();
+          transaction.update(senderRef, {
+            totalSent: (senderData.totalSent || 0) + receiveHelpData.amount
+          });
+        }
+      }
+
+      return { success: true, message: 'Payment confirmed successfully' };
+    });
+  } catch (error) {
+    console.error('Error in confirmHelpReceived:', error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError('internal', 'Failed to confirm help received');
+  }
+});
+
 // Cloud Function: E-PIN request status notifications
 exports.onEpinRequestUpdate = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
     const requestId = context.params.requestId;

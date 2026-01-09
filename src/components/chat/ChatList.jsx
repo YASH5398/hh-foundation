@@ -1,186 +1,60 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, Users, Clock, Search, X, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import FirebaseChatService from '../../services/firebaseChat';
+import ChatWindow from './ChatWindow';
 
-const ChatList = ({ onChatSelect, selectedChatId }) => {
+const ChatList = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const [chats, setChats] = useState([]);
+  const [filteredChats, setFilteredChats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userCache, setUserCache] = useState({});
-
-  // Fetch user info and cache it
-  const getUserInfo = async (userId) => {
-    if (userCache[userId]) {
-      return userCache[userId];
-    }
-
-    try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setUserCache(prev => ({ ...prev, [userId]: userData }));
-        return userData;
-      }
-    } catch (error) {
-      console.error('Error fetching user info:', error);
-    }
-
-    return { name: 'Unknown User', email: '' };
-  };
-
-  // Fetch user's chats
-  const fetchChats = async () => {
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [unreadCounts, setUnreadCounts] = useState({});
+  // Load chats on component mount
+  useEffect(() => {
     if (!user?.uid) return;
 
-    try {
-      const response = await fetch(`http://localhost:3001/api/user/${user.uid}/chats`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch chats');
+    const loadChats = async () => {
+      try {
+        const userChats = await FirebaseChatService.getUserChats(user.uid);
+        setChats(userChats);
+        setFilteredChats(userChats);
+      } catch (error) {
+        console.error('Error loading chats:', error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const result = await response.json();
-      
-      if (result.success) {
-        // Fetch user info for each chat
-        const chatsWithUserInfo = await Promise.all(
-          result.chats.map(async (chat) => {
-            const otherUserInfo = await getUserInfo(chat.otherParticipantId);
-            return {
-              ...chat,
-              otherUserInfo
-            };
-          })
-        );
-        
-        setChats(chatsWithUserInfo);
-      }
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChats();
-    
-    // Refresh chats every 30 seconds
-    const interval = setInterval(fetchChats, 30000);
-    
-    return () => clearInterval(interval);
+    loadChats();
   }, [user?.uid]);
 
-  // Format timestamp
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    
-    let date;
-    if (timestamp?.toDate) {
-      date = timestamp.toDate();
-    } else if (timestamp?.seconds) {
-      date = new Date(timestamp.seconds * 1000);
-    } else {
-      date = new Date(timestamp);
-    }
-    
-    const now = new Date();
-    const diffInHours = (now - date) / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      return 'Just now';
-    } else if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  };
+  // Subscribe to unread counts for each chat
+  useEffect(() => {
+    if (!user?.uid || chats.length === 0) return;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading chats...</span>
-      </div>
-    );
-  }
+    const unsubscribes = [];
 
-  return (
-    <div className="bg-white rounded-lg shadow-lg">
-      <div className="p-4 border-b">
-        <h2 className="text-xl font-semibold text-gray-800">Messages</h2>
-      </div>
-      
-      <div className="max-h-96 overflow-y-auto">
-        {chats.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <p>No conversations yet</p>
-            <p className="text-sm mt-1">Start a new chat to begin messaging</p>
-          </div>
-        ) : (
-          chats.map((chat) => (
-            <div
-              key={chat.chatId}
-              onClick={() => onChatSelect(chat.chatId, chat.otherParticipantId)}
-              className={`p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors ${
-                selectedChatId === chat.chatId ? 'bg-blue-50 border-blue-200' : ''
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {chat.otherUserInfo?.name 
-                    ? chat.otherUserInfo.name.charAt(0).toUpperCase()
-                    : chat.otherUserInfo?.email 
-                    ? chat.otherUserInfo.email.charAt(0).toUpperCase()
-                    : '?'
-                  }
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                      {chat.otherUserInfo?.name || chat.otherUserInfo?.email || 'Unknown User'}
-                    </h3>
-                    <span className="text-xs text-gray-500">
-                      {formatTime(chat.lastMessageTime)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-gray-600 truncate">
-                      {chat.lastSenderId === user?.uid ? 'You: ' : ''}
-                      {chat.lastMessage || 'No messages yet'}
-                    </p>
-                    
-                    {chat.unreadCount > 0 && (
-                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                        {chat.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ChatList;
-      return FirebaseChatService.subscribeToUnreadCount(
-        otherUserId,
-        user.uid,
-        user.uid,
-        (count) => {
-          setUnreadCounts(prev => ({
-            ...prev,
-            [chat.id]: count
-          }));
-        }
-      );
+    chats.forEach((chat) => {
+      const otherUserId = chat.participants.find(p => p !== user.uid);
+      if (otherUserId) {
+        const unsubscribe = FirebaseChatService.subscribeToUnreadCount(
+          otherUserId,
+          user.uid,
+          user.uid,
+          (count) => {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [chat.id]: count
+            }));
+          }
+        );
+        unsubscribes.push(unsubscribe);
+      }
     });
 
     return () => {
@@ -232,7 +106,7 @@ export default ChatList;
   // Format time for display
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
-    
+
     const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
@@ -250,7 +124,7 @@ export default ChatList;
   // Get message status icon
   const getStatusIcon = (message) => {
     if (!message || message.senderId !== user?.uid) return null;
-    
+
     switch (message.status) {
       case 'sent':
         return <Clock className="w-3 h-3 text-gray-400" />;
@@ -365,7 +239,7 @@ export default ChatList;
                   {searchQuery ? 'No chats found' : 'No chats yet'}
                 </h3>
                 <p className="text-sm text-center">
-                  {searchQuery 
+                  {searchQuery
                     ? 'Try searching with a different name'
                     : 'Start a conversation from the Send Help section'
                   }
@@ -376,7 +250,7 @@ export default ChatList;
                 {filteredChats.map((chat) => {
                   const unreadCount = unreadCounts[chat.id] || 0;
                   const lastMessage = chat.lastMessage;
-                  
+
                   return (
                     <motion.div
                       key={chat.id}
@@ -420,7 +294,7 @@ export default ChatList;
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <p className={`text-sm truncate ${
                               unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'
@@ -438,21 +312,6 @@ export default ChatList;
           </div>
         </motion.div>
       </motion.div>
-
-      {/* Selected Chat Window */}
-      {selectedChat && (
-        <ChatWindow
-          isOpen={true}
-          onClose={handleChatClose}
-          receiverId={selectedChat.receiverId}
-          senderId={selectedChat.senderId}
-          receiverName={selectedChat.receiverName}
-          senderName={selectedChat.senderName}
-          receiverAvatar={selectedChat.receiverAvatar}
-          receiverPhone={selectedChat.receiverPhone}
-          receiverWhatsapp={selectedChat.receiverWhatsapp}
-        />
-      )}
     </AnimatePresence>
   );
 };
