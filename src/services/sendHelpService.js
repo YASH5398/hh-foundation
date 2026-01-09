@@ -75,6 +75,11 @@ export async function getEligibleReceiver(senderUid, senderLevel) {
 export async function assignSendHelp(currentUser) {
   if (!currentUser) throw new Error('Not authenticated');
 
+  // CRITICAL: Check if user is blocked before assignment
+  if (isIncomeBlocked(currentUser)) {
+    throw new Error('Your income is currently blocked. Complete required payments to continue.');
+  }
+
   const userRef = doc(db, 'users', currentUser.uid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) throw new Error('User not found');

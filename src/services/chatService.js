@@ -1,13 +1,14 @@
-import { 
-  db, 
-  collection, 
-  doc, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot, 
+import {
+  db,
+  auth,
+  collection,
+  doc,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
   serverTimestamp,
-  getDoc 
+  getDoc
 } from '../config/firebase.js';
 
 /**
@@ -95,12 +96,19 @@ class ChatService {
    * @returns {function} Unsubscribe function
    */
   subscribeToChat(chatId, callback) {
+    // Only proceed if we have authentication
+    if (!auth.currentUser) {
+      console.warn('ChatService: No authenticated user, skipping chat subscription');
+      callback([]);
+      return () => {}; // Return empty unsubscribe function
+    }
+
     if (this.activeListeners.has(chatId)) {
       this.activeListeners.get(chatId)();
     }
 
     const chatRef = doc(db, 'chats', chatId);
-    
+
     const unsubscribe = onSnapshot(chatRef, (doc) => {
       if (doc.exists()) {
         const chatData = doc.data();
@@ -110,6 +118,9 @@ class ChatService {
       }
     }, (error) => {
       console.error('Error listening to chat:', error);
+      if (error.code === 'permission-denied') {
+        console.warn('ChatService: Permission denied for chat', chatId);
+      }
       callback([]);
     });
 

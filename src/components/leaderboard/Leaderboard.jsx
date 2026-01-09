@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, limit, getDocs, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db, auth } from '../../config/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
 import '../../index.css';
@@ -151,60 +151,87 @@ const Leaderboard = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    let ignore = false;
+    // BLOCKER: No Firestore call without auth.currentUser
+    if (!auth.currentUser) {
+      console.log("Leaderboard: No auth.currentUser - skipping fetch");
+      setLoading(false);
+      setError("Please log in to view leaderboard");
+      return;
+    }
 
     async function fetchLeaderboard() {
+      console.log("Leaderboard fetch start");
       setLoading(true);
       setError(false);
-      
+
       try {
-        // Fetch top 100 from leaderboard collection (level 1)
-        const q = query(
-          collection(db, 'leaderboard'),
-          where("level", "==", 1),
-          orderBy('referralCount', 'desc'),
-          limit(100)
-        );
-        
-        const snapshot = await getDocs(q);
-        if (ignore) return;
-        
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Try ordered query first, fallback to unordered if index missing
+        let data = [];
+        try {
+          const q = query(
+            collection(db, 'users'),
+            orderBy("totalEarnings", "desc"),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (indexError) {
+          console.warn("Index not available, fetching all users and sorting client-side:", indexError);
+          // Fallback: fetch all users and sort client-side
+          const q = query(collection(db, 'users'));
+          const snapshot = await getDocs(q);
+          const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          // Sort by totalEarnings and take top 100
+          data = allUsers
+            .sort((a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0))
+            .slice(0, 100);
+        }
+
+        console.log("Leaderboard fetched users:", data.length);
+
         setUsers(data);
 
-        // Use earnings from leaderboard data
+        // Use totalEarnings from user data directly
         const earningsMap = {};
         data.forEach(user => {
           earningsMap[user.id] = user.totalEarnings || 0;
         });
 
-        if (!ignore) {
-          setUserEarnings(earningsMap);
-        }
-        
+        setUserEarnings(earningsMap);
+
       } catch (e) {
-        console.error("Error fetching leaderboard:", e);
-        if (!ignore) {
-          setError("Failed to load leaderboard. Please check your network or permissions and try again.");
-          setUsers([]);
+        console.error("Leaderboard fetch error:", e);
+        if (e.code === 'permission-denied') {
+          setError("You don't have permission to view the leaderboard. Please contact support.");
+        } else {
+          setError("Failed to load leaderboard. Please try again.");
         }
-      }
-      
-      if (!ignore) {
-      setLoading(false);
+        setUsers([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchLeaderboard();
-    return () => { ignore = true; };
   }, []);
 
   const podium = users.slice(0, 3);
   const rest = users.slice(3, 100);
 
-  // Remove all section-level loading spinners or skeletons
-  // Do not show any loading UI for the leaderboard section
-  // Only render the content directly, or fallback to a minimal placeholder if needed
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-100 via-white to-white flex flex-col items-center px-2 pt-4 sm:pt-8">
+        <h1 className="text-3xl font-bold text-center text-blue-900 mb-6">Leaderboard</h1>
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading leaderboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -214,6 +241,21 @@ const Leaderboard = () => {
           <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl flex items-center gap-2">
             <span className="text-3xl">❌</span>
             <span className="font-bold">Failed to load leaderboard. Please try again later.</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (users.length === 0 && !loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-100 via-white to-white flex flex-col items-center px-2 pt-4 sm:pt-8">
+        <h1 className="text-3xl font-bold text-center text-blue-900 mb-6">Leaderboard</h1>
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🏆</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">No Users Yet</h2>
+            <p className="text-gray-600">The leaderboard will appear once users start participating.</p>
           </div>
         </div>
       </div>

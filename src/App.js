@@ -54,6 +54,7 @@ import MakeAgent from './admin/components/MakeAgent';
 import EarnFreeEPIN from './pages/EarnFreeEPIN';
 import Tasks from './pages/Tasks';
 import ChatbotSupport from './pages/support/ChatbotSupport';
+import UserDetails from './pages/UserDetails';
 import AgentChat from './pages/support/AgentChat';
 import TicketSystem from './pages/support/TicketSystem';
 import AgentDashboard from './pages/agent/AgentDashboard';
@@ -162,6 +163,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <RegisterSuccess />
+      </ProtectedRoute>
+    ),
+  },
+  // User details route (after successful signup)
+  {
+    path: '/user-details',
+    element: (
+      <ProtectedRoute>
+        <UserDetails />
       </ProtectedRoute>
     ),
   },

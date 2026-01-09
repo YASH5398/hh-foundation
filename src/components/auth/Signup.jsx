@@ -310,7 +310,7 @@ const Signup = () => {
       });
 
       await login(email, password);
-      navigate('/register-success');
+      navigate('/user-details');
 
     } catch (error) {
       const errorMessage = getRegistrationErrorMessage(error);
