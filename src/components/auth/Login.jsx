@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+=======
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import toast from 'react-hot-toast';
@@ -47,6 +52,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+<<<<<<< HEAD
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,6 +85,10 @@ const Login = () => {
       console.log("🔍 LOGIN: User not authenticated, staying on login page");
     }
   }, [user, authLoading, navigate, location]);
+=======
+  const { login } = useAuth();
+  const navigate = useNavigate();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const handleForgotPassword = async () => {
     const emailPrompt = prompt("Enter your registered email:");
@@ -93,15 +103,21 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+<<<<<<< HEAD
     console.log("🔍 LOGIN: Submit started");
     setLoading(true);
 
     if (!email || !password) {
       console.log("🔍 LOGIN: Validation failed - missing fields");
+=======
+    setLoading(true);
+    if (!email || !password) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.error("Please fill all required fields");
       setLoading(false);
       return;
     }
+<<<<<<< HEAD
 
     try {
       console.log("🔍 LOGIN: Calling auth context login...");
@@ -130,6 +146,25 @@ const Login = () => {
       }
     } catch (error) {
       console.error("🔍 LOGIN: Exception during login:", error);
+=======
+    try {
+      if (!login) throw new Error('Auth context not initialized');
+      
+      const result = await login(email, password);
+
+      // Handle navigation in the UI component
+      if (result.success) {
+        toast.success("Login successful!");
+        if (result.claims?.admin === true) {
+          navigate("/admin/dashboard", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
+      } else {
+        // Error toast is already handled in the context's login function
+      }
+    } catch (error) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.error('Login failed.');
     } finally {
       setLoading(false);

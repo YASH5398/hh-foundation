@@ -1,0 +1,19 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3002",
+      "https://helpinghandsfoundation.in"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Authorization",
+      "x-goog-meta-*",
+      "x-goog-resumable",
+      "Access-Control-Allow-Origin"
+    ]
+  }
+]

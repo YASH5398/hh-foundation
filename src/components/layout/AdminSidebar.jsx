@@ -3,7 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { MdDashboard, MdPeople, MdLock, MdHelp, MdTrendingUp, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdSupport, MdPersonAdd } from 'react-icons/md';
 import { HiX } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
+<<<<<<< HEAD
 import { Bell, Users, Shield } from 'lucide-react';
+=======
+import { Bell, Users } from 'lucide-react';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // Add custom CSS for animations
 const customStyles = `
@@ -32,11 +36,20 @@ if (typeof document !== 'undefined' && !document.getElementById('admin-sidebar-a
 }
 
 const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
+<<<<<<< HEAD
   const { logout, isAdmin, claimsLoading } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
   
   console.log('AdminSidebar - isAdmin:', isAdmin, 'claimsLoading:', claimsLoading);
+=======
+  const { logout, userClaims, claimsLoading } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = userClaims && userClaims.admin === true;
+  const sidebarRef = useRef(null);
+  
+  console.log('AdminSidebar - userClaims:', userClaims, 'isAdmin:', isAdmin, 'claimsLoading:', claimsLoading);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   useEffect(() => {
     if (!isSidebarOpen) return;
@@ -114,7 +127,10 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     ] : []),
     { name: 'Notifications', icon: Bell, route: '/admin/notifications' },
     { name: 'Document Manager', icon: null, route: '/admin/documents', emoji: '📄' },
+<<<<<<< HEAD
     { name: 'Blocked Users', icon: Shield, route: '/admin/blocked-users' },
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   ];
 
   return (

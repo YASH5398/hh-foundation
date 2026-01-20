@@ -14,8 +14,11 @@ import {
   setDoc,
   onSnapshot
 } from 'firebase/firestore';
+<<<<<<< HEAD
 import { createSendHelpAssignment } from './helpService';
 import { checkSenderEligibility, findEligibleReceiver } from './helpService';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // --- User Management Functions ---
 
@@ -363,6 +366,7 @@ export const setDefaultHoldFlagsForUsers = async () => {
     }
   }
   return { success: true, updatedCount };
+<<<<<<< HEAD
 };
 
 /**
@@ -513,4 +517,6 @@ export const adminUnblockUserWithNewAssignment = async (userUid, adminUid) => {
     console.error('Error in admin unblock with new assignment:', error);
     throw error;
   }
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 };

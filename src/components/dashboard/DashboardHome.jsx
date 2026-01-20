@@ -26,9 +26,12 @@ import { auth } from '../../config/firebase';
 import SkeletonBox from '../common/SkeletonBox';
 import { Send, Twitter, Facebook, Instagram } from 'lucide-react';
 import CountUp from 'react-countup';
+<<<<<<< HEAD
 import { HELP_STATUS } from '../../config/helpStatus';
 import { authGuardService } from '../../services/authGuardService';
 import { firestoreQueryService } from '../../services/firestoreQueryService';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // Icons
 import { FiSend, FiDownload, FiUsers, FiCreditCard, FiArrowUpCircle, FiDollarSign, FiCopy, FiCheck, FiShare2, FiCalendar, FiClock } from 'react-icons/fi';
@@ -171,6 +174,7 @@ function TickerSection() {
   const { user } = useAuth();
 
   React.useEffect(() => {
+<<<<<<< HEAD
     let unsubscribers = [];
 
     const setupListeners = async () => {
@@ -182,6 +186,14 @@ function TickerSection() {
         return;
       }
 
+=======
+    let unsubSettings = () => {};
+    let unsubUser = () => {};
+
+    const setupListeners = async () => {
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       if (!user?.uid) {
         setLoading(false);
         setEnabled(false);
@@ -189,6 +201,7 @@ function TickerSection() {
       }
 
       try {
+<<<<<<< HEAD
         console.log('Setting up ticker listeners');
 
         // Safe listener for app settings
@@ -223,16 +236,61 @@ function TickerSection() {
               setFullName('');
             } else if (documents.length > 0) {
               setFullName(documents[0].fullName || '');
+=======
+        // Force token refresh before creating listeners
+        await auth.currentUser.getIdToken(true);
+
+        // Safe snapshot for appSettings with error handling
+        unsubSettings = onSnapshot(
+          doc(db, 'appSettings', 'tickerStatus'),
+          (docSnap) => {
+            setEnabled(docSnap.exists() ? docSnap.data().enabled !== false : true);
+          },
+          (error) => {
+            // Immediately unsubscribe on permission-denied
+            if (error.code === 'permission-denied') {
+              unsubSettings();
+              setEnabled(true); // Default to enabled
+            } else {
+              console.error('TickerSection settings error:', error);
+            }
+          }
+        );
+
+        // Safe snapshot for user doc with error handling
+        unsubUser = onSnapshot(
+          doc(db, 'users', user.uid),
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setFullName(docSnap.data().fullName || '');
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             } else {
               setFullName('');
             }
             setLoading(false);
+<<<<<<< HEAD
           }
         );
         unsubscribers.push(userUnsubscribe);
 
       } catch (error) {
         console.error('Failed to setup ticker listeners:', error);
+=======
+          },
+          (error) => {
+            // Immediately unsubscribe on permission-denied
+            if (error.code === 'permission-denied') {
+              unsubUser();
+              setFullName('');
+            } else {
+              console.error('TickerSection user error:', error);
+            }
+            setLoading(false);
+          }
+        );
+      } catch (error) {
+        console.error('Failed to setup listeners:', error);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         setEnabled(true);
         setFullName('');
         setLoading(false);
@@ -241,6 +299,7 @@ function TickerSection() {
 
     setupListeners();
 
+<<<<<<< HEAD
     return () => {
       console.log('Cleaning up ticker listeners');
       unsubscribers.forEach(unsubscribe => {
@@ -251,6 +310,9 @@ function TickerSection() {
         }
       });
     };
+=======
+    return () => { unsubSettings(); unsubUser(); };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   }, [user]);
 
   if (!enabled || loading || !fullName) return null;
@@ -290,6 +352,7 @@ const DashboardHome = () => {
   const [error, setError] = useState(null);
   const [isUpgradeRequired, setIsUpgradeRequired] = useState(false);
 
+<<<<<<< HEAD
   // CRITICAL: Check authentication before any Firebase operations
   useEffect(() => {
     if (!authGuardService.isAuthenticated()) {
@@ -302,6 +365,11 @@ const DashboardHome = () => {
   // Debug logging for component lifecycle
   console.log('🚀 DashboardHome component rendered');
   console.log('🔐 Auth state:', { user, loading, authenticated: authGuardService.isAuthenticated() });
+=======
+  // Debug logging for component lifecycle
+  console.log('🚀 DashboardHome component rendered');
+  console.log('🔐 Auth state:', { user, loading });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   console.log('📊 Component state:', { userProfile, error });
 
   // Test mode - set to true to use fixed UID for testing
@@ -348,6 +416,7 @@ const DashboardHome = () => {
     let unsubscribe = () => {};
 
     const setupListener = async () => {
+<<<<<<< HEAD
       // Check authentication before setting up listener
       if (!authGuardService.isAuthenticated()) {
         console.warn('User not authenticated, cannot fetch user profile');
@@ -399,19 +468,59 @@ const DashboardHome = () => {
       } catch (error) {
         console.error('Failed to setup user profile listener:', error);
         setError('Failed to setup user profile listener. Please try refreshing the page.');
+=======
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+      if (!user || !user.uid) return;
+
+      const userId = getUserId();
+      if (!userId) return;
+
+      try {
+        // Force token refresh before creating listener
+        await auth.currentUser.getIdToken(true);
+
+        const docRef = doc(db, 'users', userId);
+        unsubscribe = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const userProfile = docSnap.data();
+            setUserProfile({ ...userProfile, uid: userId });
+            setLocalUserProfile({ ...userProfile, uid: userId });
+            setStats(prev => ({
+              ...prev,
+              totalTeam: userProfile.totalTeam || 0
+            }));
+          } else {
+            setUserProfile(null);
+            setLocalUserProfile(null);
+          }
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubscribe();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to setup user profile listener:', error);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     };
 
     setupListener();
 
+<<<<<<< HEAD
     return () => {
       console.log('Cleaning up user profile listener');
       unsubscribe();
     };
+=======
+    return () => unsubscribe();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   }, [user?.uid]);
 
   // Real-time Firestore listeners for dashboard stats (only for user-owned data)
   useEffect(() => {
+<<<<<<< HEAD
     let unsubscribers = [];
 
     const setupListeners = async () => {
@@ -552,12 +661,134 @@ const DashboardHome = () => {
       } catch (error) {
         console.error('Failed to setup stats listeners:', error);
         setError('Failed to load dashboard statistics. Please try refreshing the page.');
+=======
+    let unsubSentHelp = () => {};
+    let unsubReceivedAutoPool = () => {};
+    let unsubReceivedSponsor = () => {};
+    let unsubEarnings = () => {};
+    let unsubPendingHelps = () => {};
+    let unsubUpcoming = () => {};
+
+    const setupListeners = async () => {
+      // Wait for auth to be ready
+      if (!auth.currentUser) return;
+      if (!user || !user.uid) return;
+      if (!userProfile || !userProfile.userId) return;
+
+      try {
+        // Force token refresh before creating listeners
+        await auth.currentUser.getIdToken(true);
+
+        // 1. Total Sent Help (sum amount for senderUid === currentUser.uid)
+        const sentHelpQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid));
+        unsubSentHelp = onSnapshot(sentHelpQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalSentAmount: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubSentHelp();
+          }
+        });
+
+        // 2. Received (AutoPool): receiveHelp where receiverUid === uid, source === 'autopool', sum amount
+        const receivedAutoPoolQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('source', '==', 'autopool'));
+        unsubReceivedAutoPool = onSnapshot(receivedAutoPoolQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalReceivedAutopool: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubReceivedAutoPool();
+          }
+        });
+
+        // 3. Received (Sponsor): receiveHelp where receiverUid === uid, source === 'sponsor', sum amount
+        const receivedSponsorQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('source', '==', 'sponsor'));
+        unsubReceivedSponsor = onSnapshot(receivedSponsorQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, totalReceivedSponsor: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubReceivedSponsor();
+          }
+        });
+
+        // 4. Total Earnings: receiveHelp where receiverUid === uid, status === 'confirmed' or confirmedByReceiver === true, sum amount
+        const earningsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid));
+        unsubEarnings = onSnapshot(earningsQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'confirmed' || data.confirmedByReceiver === true) {
+              total += Number(data.amount) || 0;
+            }
+          });
+          setStats(prev => ({ ...prev, totalEarnings: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubEarnings();
+          }
+        });
+
+        // 5. Pending Helps: receiveHelp where receiverUid === uid, status === 'pending', sum amount
+        const pendingHelpsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', userProfile.uid), where('status', '==', 'pending'));
+        unsubPendingHelps = onSnapshot(pendingHelpsQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            total += Number(data.amount) || 0;
+          });
+          setStats(prev => ({ ...prev, pendingHelps: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubPendingHelps();
+          }
+        });
+
+        // 6. Upcoming Payments: sendHelp where senderUid === currentUser.uid, status === 'pending' or 'blocked', sum amount
+        const upcomingQ = query(collection(db, 'sendHelp'), where('senderUid', '==', userProfile.uid));
+        unsubUpcoming = onSnapshot(upcomingQ, snap => {
+          let total = 0;
+          snap.forEach(doc => {
+            const data = doc.data();
+            // Filter status on frontend to avoid Firestore permission-denied errors
+            if (data.status === 'pending' || data.status === 'blocked') {
+              total += Number(data.amount) || 0;
+            }
+          });
+          setStats(prev => ({ ...prev, upcomingPayment: total }));
+        }, (error) => {
+          // Immediately unsubscribe on permission-denied
+          if (error.code === 'permission-denied') {
+            unsubUpcoming();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to setup stats listeners:', error);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     };
 
     setupListeners();
 
     return () => {
+<<<<<<< HEAD
       console.log('Cleaning up stats listeners');
       unsubscribers.forEach(unsubscribe => {
         try {
@@ -597,11 +828,40 @@ const DashboardHome = () => {
       } catch (error) {
         console.error('Failed to fetch direct members:', error);
         // Don't set error state for this non-critical data
+=======
+      unsubSentHelp();
+      unsubReceivedAutoPool();
+      unsubReceivedSponsor();
+      unsubPendingHelps();
+      unsubEarnings();
+      unsubUpcoming();
+    };
+  }, [user?.uid, userProfile?.userId]);
+
+  // One-time fetch for Direct Members and Available E-PINs (prevents permission-denied errors)
+  useEffect(() => {
+    // Wait for auth to be ready
+    if (!auth.currentUser) return;
+    if (!user || !user.uid) return;
+    if (!userProfile || !userProfile.userId) return;
+
+    const fetchDirectMembers = async () => {
+      try {
+        // Force token refresh before query
+        await auth.currentUser.getIdToken(true);
+
+        const q = query(collection(db, 'users'), where('sponsorId', '==', userProfile.uid));
+        const snap = await getDocs(q);
+        setStats(prev => ({ ...prev, directReferrals: snap.size }));
+      } catch (e) {
+        console.error('Failed to fetch direct members:', e);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     };
 
     const fetchAvailableEpins = async () => {
       try {
+<<<<<<< HEAD
         console.log('Fetching available E-PINs for user:', userProfile.uid);
         
         const documents = await firestoreQueryService.safeQuery(
@@ -617,10 +877,17 @@ const DashboardHome = () => {
         console.error('Failed to fetch available E-PINs:', error);
         // Don't set error state for this non-critical data
       }
+=======
+        const q = query(collection(db, 'epins'), where('usedBy', '==', null), where('assignedTo', '==', userProfile.uid));
+        const snap = await getDocs(q);
+        setStats(prev => ({ ...prev, availableEpins: snap.size }));
+      } catch (e) {}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     };
 
     fetchDirectMembers();
     fetchAvailableEpins();
+<<<<<<< HEAD
   }, [userProfile?.uid]);
 
   const navigate = useNavigate();
@@ -632,6 +899,12 @@ const DashboardHome = () => {
     return null;
   }
 
+=======
+  }, [user?.uid, userProfile?.userId]);
+
+  const navigate = useNavigate();
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const handleNavigateToUpgrade = () => {
     navigate('/dashboard/upgrade-flow');
   };
@@ -721,7 +994,10 @@ const DashboardHome = () => {
             className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300"
           >
                         <ReferralLink userProfile={userProfile} />
+<<<<<<< HEAD
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             {/* Ticker Below */}
             <div className="mt-4 w-full overflow-hidden rounded-xl px-4 py-2 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border border-blue-800 shadow-2xl">
               <div className="animate-marquee whitespace-nowrap text-white font-bold drop-shadow-lg text-base sm:text-lg">

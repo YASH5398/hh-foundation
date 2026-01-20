@@ -3,8 +3,20 @@ import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/f
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../common/LoadingSpinner';
+<<<<<<< HEAD
 import { getAmountByLevel } from '../../utils/amountUtils';
 
+=======
+
+const LEVELS = ['Star', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+const AMOUNTS = {
+  Star: 300,
+  Silver: 600,
+  Gold: 2000,
+  Platinum: 20000,
+  Diamond: 200000,
+};
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 const BADGES = ['🥇', '🥈', '🥉'];
 
 const UpcomingPayments = () => {
@@ -25,10 +37,17 @@ const UpcomingPayments = () => {
     return levelMap[level] || level || 'Star';
   };
 
+<<<<<<< HEAD
   // Function to get amount based on level (using centralized system)
   const getAmountForUser = (level) => {
     const levelName = getLevelName(level);
     return getAmountByLevel(levelName);
+=======
+  // Function to get amount based on level (number or string)
+  const getAmountByLevel = (level) => {
+    const levelName = getLevelName(level);
+    return AMOUNTS[levelName] || 300;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   useEffect(() => {
@@ -143,7 +162,11 @@ const UpcomingPayments = () => {
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap font-semibold text-blue-700">
+<<<<<<< HEAD
                       ₹{getAmountForUser(u.level)}
+=======
+                      ₹{getAmountByLevel(u.level)}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                     </td>
                   </tr>
                 ))}

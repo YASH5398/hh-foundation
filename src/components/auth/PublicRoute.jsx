@@ -14,7 +14,10 @@ const PublicRoute = ({ children }) => {
     "/forgot-password",
     "/register",
     "/signup",
+<<<<<<< HEAD
     "/user-details",
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   ];
 
   if (loading) {
@@ -30,9 +33,15 @@ const PublicRoute = ({ children }) => {
     return children;
   }
 
+<<<<<<< HEAD
   // If authenticated and not on allowed path, redirect to dashboard for regular users
   if (user) {
     return <Navigate to="/dashboard" replace />;
+=======
+  // If authenticated and not on allowed path, redirect to agent-dashboard
+  if (user) {
+    return <Navigate to="/agent-dashboard" replace />;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   }
 
   // If not authenticated and not on allowed path, redirect to home

@@ -130,7 +130,11 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+<<<<<<< HEAD
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[998]"
+=======
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             onClick={onClose}
           />
 
@@ -140,7 +144,11 @@ const NotificationSettings = ({ isOpen, onClose, userId }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
+<<<<<<< HEAD
             className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[999]"
+=======
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[70]"
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
               {/* Header */}

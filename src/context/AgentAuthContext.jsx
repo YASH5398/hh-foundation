@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
+<<<<<<< HEAD
   signOut,
   signInWithPhoneNumber
 } from 'firebase/auth';
@@ -7,6 +8,15 @@ import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 import { signInWithEmailPassword, signOutUser, checkAgentRole, getAuthErrorMessage } from '../utils/authUtils';
 import { useAuth } from './AuthContext';
+=======
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  signInWithPhoneNumber
+} from 'firebase/auth';
+import { auth, db, doc, getDoc } from '../config/firebase';
+import { toast } from 'react-hot-toast';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const AgentAuthContext = createContext();
 
@@ -19,7 +29,10 @@ export const useAgentAuth = () => {
 };
 
 export const AgentAuthProvider = ({ children }) => {
+<<<<<<< HEAD
   const { user, logout: authLogout } = useAuth();
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAgent, setIsAgent] = useState(false);
@@ -42,6 +55,7 @@ export const AgentAuthProvider = ({ children }) => {
     };
   };
 
+<<<<<<< HEAD
   // Email/Password login
   const loginWithEmail = async (email, password) => {
     try {
@@ -56,6 +70,36 @@ export const AgentAuthProvider = ({ children }) => {
         throw new Error('Access denied. Only agents can access this portal.');
       }
 
+=======
+  // Check if user is an agent
+  const checkAgentRole = async (user) => {
+    if (!user) return false;
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return userData.role === 'agent' || userData.role === 'admin';
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking agent role:', error);
+      return false;
+    }
+  };
+
+  // Email/Password login
+  const loginWithEmail = async (email, password) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const isAgentUser = await checkAgentRole(result.user);
+      
+      if (!isAgentUser) {
+        await signOut(auth);
+        throw new Error('Access denied. Only agents can access this portal.');
+      }
+      
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       return result.user;
     } catch (error) {
       throw error;
@@ -110,6 +154,7 @@ export const AgentAuthProvider = ({ children }) => {
 
   // Logout
   const logout = async () => {
+<<<<<<< HEAD
     console.log("🔍 AGENT AUTH: Agent logout called, using AuthContext logout");
     await authLogout(); // Use AuthContext logout
     setIsAgent(false);
@@ -132,10 +177,38 @@ export const AgentAuthProvider = ({ children }) => {
   useEffect(() => {
     if (!currentUser) {
       console.log("🔍 AGENT AUTH: No currentUser, setting isAgent to false");
+=======
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      setIsAgent(false);
+      setOtpVerified(false);
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Error logging out');
+    }
+  };
+
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Check agent role after auth is established
+  useEffect(() => {
+    if (!currentUser) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setIsAgent(false);
       return;
     }
 
+<<<<<<< HEAD
     console.log("🔍 AGENT AUTH: Checking agent role for user:", currentUser.uid);
 
     const checkAndSetAgent = async () => {
@@ -146,6 +219,15 @@ export const AgentAuthProvider = ({ children }) => {
       } catch (error) {
         console.error('🔍 AGENT AUTH: Error checking agent role:', error);
         setIsAgent(false);
+=======
+    const checkAndSetAgent = async () => {
+      const isAgentUser = await checkAgentRole(currentUser);
+      if (isAgentUser) {
+        setIsAgent(true);
+      } else {
+        setIsAgent(false);
+        await signOut(auth);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     };
 

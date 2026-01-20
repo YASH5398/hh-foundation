@@ -1,5 +1,15 @@
 {
   "projects": {
+<<<<<<< HEAD
     "default": "hh-foundation"
   }
 }
+=======
+    "default": "hh-foundation",
+    "production": "contenthumanizer",
+    "hh": "hh-foundation"
+  },
+  "targets": {},
+  "etags": {}
+}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5

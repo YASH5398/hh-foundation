@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+<<<<<<< HEAD
 import { auth } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import toast from "react-hot-toast";
@@ -11,6 +12,17 @@ import {
   getAuthErrorMessage
 } from "../utils/authUtils";
 import { getReceiveEligibility } from "../services/helpService";
+=======
+import { auth, db } from "../config/firebase";
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  getIdTokenResult,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import toast from "react-hot-toast";
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const AuthContext = createContext();
 
@@ -24,17 +36,22 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [claimsLoading, setClaimsLoading] = useState(true);
+<<<<<<< HEAD
   const [profileLoading, setProfileLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState(null);
   const [blockedAt, setBlockedAt] = useState(null);
   const [receiveEligibility, setReceiveEligibility] = useState(null);
+=======
+  const [authLoading, setAuthLoading] = useState(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // 🔹 Login
   const login = async (email, password) => {
     setAuthLoading(true);
     try {
+<<<<<<< HEAD
       const result = await signInWithEmailPassword(email, password);
       setAuthLoading(false);
 
@@ -49,6 +66,30 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       setAuthLoading(false);
       const errorMessage = getAuthErrorMessage(error.code);
+=======
+      const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+      const tokenResult = await getIdTokenResult(userCredential.user, true);
+      
+      setAuthLoading(false);
+      // Return success and claims for the UI to handle redirection
+      return { success: true, claims: tokenResult.claims || {} };
+    } catch (error) {
+      setAuthLoading(false);
+      let errorMessage = "Failed to login.";
+      if (error.code === "auth/user-not-found") {
+        errorMessage = "User not found. Please register again.";
+      } else if (error.code === "auth/wrong-password") {
+        errorMessage = "Incorrect password.";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled. Contact support.";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "The email address is not valid.";
+      } else {
+        errorMessage = "Network error. Please try again.";
+      }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -58,9 +99,25 @@ export const AuthProvider = ({ children }) => {
   const signup = async (email, password, fullName, phone, whatsapp, sponsorId, epin, paymentMethod, phonepeNumber, googlepayNumber, upiId, accountHolder, accountNumber, ifscCode) => {
     setAuthLoading(true);
     try {
+<<<<<<< HEAD
       const userData = {
         email,
         password,
+=======
+      const { createUserWithEmailAndPassword } = await import("firebase/auth");
+      const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+
+      // Immediately create Firestore user document
+      const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+
+      // Generate user ID
+      const userId = `HHF${Date.now().toString().slice(-6)}${Math.random().toString(36).substr(2, 3).toUpperCase()}`;
+
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        userId: userId,
+        email: email.toLowerCase(),
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         fullName,
         phone,
         whatsapp,
@@ -72,6 +129,7 @@ export const AuthProvider = ({ children }) => {
         upiId,
         accountHolder,
         accountNumber,
+<<<<<<< HEAD
         ifscCode
       };
 
@@ -88,6 +146,33 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       setAuthLoading(false);
       const errorMessage = getAuthErrorMessage(error.code);
+=======
+        ifscCode,
+        createdAt: serverTimestamp(),
+        role: "user",
+        isActivated: false,
+        totalEarnings: 0,
+        referralCount: 0,
+        helpReceived: 0,
+        totalReceived: 0,
+        totalSent: 0
+      });
+
+      setAuthLoading(false);
+      return { success: true, userId: userId };
+    } catch (error) {
+      setAuthLoading(false);
+      let errorMessage = "Failed to create account.";
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "Email already exists. Please login instead.";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "Password should be at least 6 characters.";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Please enter a valid email address.";
+      } else {
+        errorMessage = "Network error. Please try again.";
+      }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -95,6 +180,7 @@ export const AuthProvider = ({ children }) => {
 
   // 🔹 Logout
   const logout = async () => {
+<<<<<<< HEAD
     console.log("🔍 LOGOUT: ===== LOGOUT STARTED =====");
     console.log("🔍 LOGOUT: Current user before logout:", !!user, user?.uid);
     console.log("🔍 LOGOUT: Firebase auth.currentUser before logout:", auth.currentUser?.uid || 'null');
@@ -132,11 +218,25 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("🔍 LOGOUT: Exception during logout:", error);
       setAuthLoading(false); // Reset loading state on exception
+=======
+    setAuthLoading(true);
+    try {
+      await signOut(auth);
+      setUser(null);
+      setUserClaims({});
+      setUserProfile(null);
+      toast.success("Logged out successfully");
+      setAuthLoading(false);
+      return { success: true };
+    } catch (error) {
+      setAuthLoading(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.error("Failed to logout.");
       return { success: false, error: error.message };
     }
   };
 
+<<<<<<< HEAD
   // 🔹 TEMP DEBUG: Comprehensive Logout Verification (remove after fixing)
   const testLogout = async () => {
     console.log("🧪 LOGOUT TEST: ===== COMPREHENSIVE LOGOUT VERIFICATION =====");
@@ -282,6 +382,19 @@ export const AuthProvider = ({ children }) => {
     console.log("🔍 AUTH CONTEXT: User state changed to:", !!user, user?.uid);
   }, [user]);
 
+=======
+  // 🔹 Listen Auth State (NO Firestore access - prevents permission-denied logs)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+      setClaimsLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // 🔹 Fetch claims separately
   useEffect(() => {
     if (!auth.currentUser) {
@@ -308,6 +421,7 @@ export const AuthProvider = ({ children }) => {
 
   // 🔹 Fetch User Profile (only after auth exists)
   useEffect(() => {
+<<<<<<< HEAD
     console.log("🔍 AUTH CONTEXT: Profile fetch effect triggered -", {
       user: !!user,
       uid: user?.uid
@@ -371,15 +485,31 @@ export const AuthProvider = ({ children }) => {
       } finally {
         setProfileLoading(false);
         console.log("🔍 AUTH CONTEXT: Profile loading completed");
+=======
+    if (!user) return;
+
+    const fetchProfile = async () => {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userDocRef);
+        setUserProfile(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      } catch (error) {
+        console.error("AuthContext user profile fetch error:", error);
+        setUserProfile(null);
+        // Don't show toast for permission errors in context
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     };
 
     fetchProfile();
   }, [user]);
 
+<<<<<<< HEAD
   // 🔹 Derive isAdmin from custom claims (single source of truth)
   const isAdmin = userClaims?.role === 'admin';
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // 🔹 Context Value
   const value = {
     user,
@@ -390,6 +520,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     signup,
+<<<<<<< HEAD
     testLogout, // TEMP: Remove after fixing logout
     loading: loading || claimsLoading || profileLoading,
     authLoading,
@@ -401,6 +532,10 @@ export const AuthProvider = ({ children }) => {
     blockedAt,
     isUserBlocked: isBlocked,
     receiveEligibility
+=======
+    loading: loading || claimsLoading,
+    authLoading,
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   return (

@@ -101,7 +101,11 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Real-time listener for E-PINs
+<<<<<<< HEAD
     const epinsQuery = query(collection(db, 'epins'));
+=======
+    const epinsQuery = query(collection(db, 'epins'), where('status', '!=', null));
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     const unsubEpins = onSnapshot(epinsQuery, (epinsSnap) => {
       const epins = epinsSnap.docs.map(doc => doc.data());
       const total = epins.length;
@@ -110,14 +114,22 @@ const AdminDashboard = () => {
       setStats(prev => ({ ...prev, total, used, unused }));
     });
     // Real-time listener for E-PIN Requests
+<<<<<<< HEAD
     const epinReqQuery = query(collection(db, 'epinRequests'));
+=======
+    const epinReqQuery = query(collection(db, 'epinRequests'), where('status', '!=', null));
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     const unsubReqs = onSnapshot(epinReqQuery, (epinReqSnap) => {
       const epinRequests = epinReqSnap.docs.map(doc => doc.data());
       const pending = epinRequests.filter(r => r.status === 'pending').length;
       setStats(prev => ({ ...prev, pending }));
     });
     // Real-time listener for Users (for referral/team stats)
+<<<<<<< HEAD
     const usersQuery = query(collection(db, 'users'));
+=======
+    const usersQuery = query(collection(db, 'users'), where('isActivated', '!=', null));
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     const unsubUsers = onSnapshot(usersQuery, (usersSnap) => {
       const users = usersSnap.docs.map(doc => doc.data());
       // Total Referrals: sum of directReferral.length or count of users with non-empty referrerId

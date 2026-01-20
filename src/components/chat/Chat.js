@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   doc,
+<<<<<<< HEAD
+=======
+  onSnapshot,
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   getDoc
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+<<<<<<< HEAD
 import { ChatService } from '../../services/chatService';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const Chat = ({ chatId, recipientId, onClose }) => {
   const { user } = useAuth();
@@ -47,6 +54,7 @@ const Chat = ({ chatId, recipientId, onClose }) => {
   useEffect(() => {
     if (!chatId) return;
 
+<<<<<<< HEAD
     const unsubscribe = ChatService.subscribeToDirectMessages(chatId, (msgs) => {
       setMessages(msgs || []);
       setLoading(false);
@@ -54,11 +62,66 @@ const Chat = ({ chatId, recipientId, onClose }) => {
       if (user?.uid) {
         ChatService.markDirectMessagesAsRead(chatId, user.uid);
       }
+=======
+    const chatRef = doc(db, 'chats', chatId);
+
+    const unsubscribe = onSnapshot(chatRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const chatData = snapshot.data();
+        const messagesData = chatData.messages || [];
+        
+        // Sort messages by timestamp
+        messagesData.sort((a, b) => {
+          const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp) || new Date(0);
+          const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp) || new Date(0);
+          return aTime - bTime;
+        });
+        
+        setMessages(messagesData);
+        
+        // Mark messages as read if they're from the other user
+        if (user?.uid) {
+          markMessagesAsRead();
+        }
+      } else {
+        setMessages([]);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error('Error listening to messages:', error);
+      setLoading(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     });
 
     return () => unsubscribe();
   }, [chatId, user?.uid]);
 
+<<<<<<< HEAD
+=======
+  // Mark messages as read
+  const markMessagesAsRead = async () => {
+    if (!chatId || !user?.uid) return;
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/chat/${chatId}/mark-read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to mark messages as read');
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // Send message
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -68,6 +131,7 @@ const Chat = ({ chatId, recipientId, onClose }) => {
     setSending(true);
     
     try {
+<<<<<<< HEAD
       const result = await ChatService.sendDirectMessage({
         chatId,
         senderUid: user.uid,
@@ -77,6 +141,32 @@ const Chat = ({ chatId, recipientId, onClose }) => {
       });
 
       if (result?.success) setNewMessage('');
+=======
+      const response = await fetch('http://localhost:3001/api/chat/send-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          senderId: user.uid,
+          receiverId: recipientId,
+          text: newMessage.trim(),
+          senderName: user.displayName || user.email || 'Anonymous'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setNewMessage('');
+      } else {
+        throw new Error(result.error || 'Failed to send message');
+      }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
     } catch (error) {
       console.error('Error sending message:', error);

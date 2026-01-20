@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../config/firebase';
+<<<<<<< HEAD
 import { collection, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
 import { setNotificationRead, deleteNotification as deleteNotificationAction, bulkMarkNotificationsRead } from '../../services/notificationActions';
@@ -22,6 +23,12 @@ import {
   User,
   Calendar
 } from 'lucide-react';
+=======
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
+import { Bell, Send, Eye, CheckCircle, XCircle, Trash2, Search, Filter, RefreshCw, Loader2, AlertTriangle, MessageSquare, Users, TrendingUp, Clock, Check, X, User, Mail, Calendar } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { addNotification } from '../../utils/addNotification';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const Notifications = ({ isAdmin }) => {
   const [notifications, setNotifications] = useState([]);
@@ -103,7 +110,11 @@ const Notifications = ({ isAdmin }) => {
   // Action handlers
   const markAsRead = async (id) => {
     try {
+<<<<<<< HEAD
       await setNotificationRead(id, true);
+=======
+      await updateDoc(doc(db, 'notifications', id), { isRead: true });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('Marked as read');
     } catch (error) {
       console.error('Error marking as read:', error);
@@ -113,7 +124,11 @@ const Notifications = ({ isAdmin }) => {
 
   const markAsUnread = async (id) => {
     try {
+<<<<<<< HEAD
       await setNotificationRead(id, false);
+=======
+      await updateDoc(doc(db, 'notifications', id), { isRead: false });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('Marked as unread');
     } catch (error) {
       console.error('Error marking as unread:', error);
@@ -121,9 +136,15 @@ const Notifications = ({ isAdmin }) => {
     }
   };
 
+<<<<<<< HEAD
   const handleDeleteNotification = async (id) => {
     try {
       await deleteNotificationAction(id);
+=======
+  const deleteNotification = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('Notification deleted');
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -155,6 +176,7 @@ const Notifications = ({ isAdmin }) => {
     }
 
     try {
+<<<<<<< HEAD
       if (action === 'markRead') {
         await bulkMarkNotificationsRead(selectedNotifications);
       }
@@ -165,6 +187,21 @@ const Notifications = ({ isAdmin }) => {
       if (action === 'delete') {
         await Promise.all(selectedNotifications.map(id => deleteNotificationAction(id)));
       }
+=======
+      const batch = writeBatch(db);
+      selectedNotifications.forEach(id => {
+        const notificationRef = doc(db, 'notifications', id);
+        if (action === 'markRead') {
+          batch.update(notificationRef, { isRead: true });
+        } else if (action === 'markUnread') {
+          batch.update(notificationRef, { isRead: false });
+        } else if (action === 'delete') {
+          batch.delete(notificationRef);
+        }
+      });
+
+      await batch.commit();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
       setSelectedNotifications([]);
       toast.success(`${selectedNotifications.length} notifications ${action === 'delete' ? 'deleted' : action === 'markRead' ? 'marked as read' : 'marked as unread'}`);
@@ -679,7 +716,11 @@ const Notifications = ({ isAdmin }) => {
                           </button>
                         )}
                         <button
+<<<<<<< HEAD
                           onClick={() => handleDeleteNotification(notification.id)}
+=======
+                          onClick={() => deleteNotification(notification.id)}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200"
                         >
                           <Trash2 className="w-4 h-4" />

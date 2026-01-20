@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,12 +16,44 @@ import {
   TrendingUp,
   Users,
   Heart,
+=======
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from 'framer-motion';
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, increment, writeBatch, limit } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { useAuth } from '../../context/AuthContext';
+import { db, auth, functions } from '../../config/firebase';
+import { 
+  Phone, 
+  MessageCircle, 
+  DollarSign, 
+  Send, 
+  Eye, 
+  X, 
+  Clock, 
+  CheckCircle, 
+  ExternalLink, 
+  User, 
+  AlertCircle,
+  Filter,
+  ChevronDown,
+  Check,
+  Loader,
+  TrendingUp,
+  Users,
+  Calendar,
+  Star,
+  Heart,
+  Zap,
+  Shield,
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   Gift
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import defaultImage from '../../assets/default-avatar.png';
 import TransactionChat from '../chat/TransactionChat';
 import { getProfileImageUrl } from '../../utils/profileUtils';
+<<<<<<< HEAD
 import { useReceiveHelpFlow } from '../../hooks/useHelpFlow';
 import { useAuth } from '../../context/AuthContext';
 import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
@@ -31,6 +64,16 @@ import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
 export default function ReceiveHelp() {
   const { user } = useAuth();
   const [localError, setLocalError] = useState(null); // Add local error state management
+=======
+import { isIncomeBlocked, getRequiredPaymentForUnblock, getTotalHelpsByLevel, getAmountByLevel } from '../../shared/mlmCore';
+
+export default function ReceiveHelp() {
+  const { user } = useAuth();
+  const [receiveHelps, setReceiveHelps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [selectedProof, setSelectedProof] = useState(null);
   const [showProofModal, setShowProofModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -40,6 +83,7 @@ export default function ReceiveHelp() {
   const [requestCooldowns, setRequestCooldowns] = useState({});
   const [showChat, setShowChat] = useState(false);
   const [selectedChatHelp, setSelectedChatHelp] = useState(null);
+<<<<<<< HEAD
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserHelp, setSelectedUserHelp] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -94,6 +138,133 @@ export default function ReceiveHelp() {
   // All business logic now handled by useReceiveHelpFlow hook
 
   // All data fetching and real-time updates handled by useReceiveHelpFlow hook
+=======
+
+  // Helper function to normalize status for consistent comparison
+  const normalizeStatus = (status) => {
+    if (!status) return 'pending';
+    return status.toLowerCase().trim();
+  };
+
+  // Helper function to check if status is pending
+  const isPendingStatus = (status) => {
+    const normalized = normalizeStatus(status);
+    return normalized === 'pending' || normalized === 'waiting';
+  };
+
+  // Helper function to check if status is payment done
+  const isPaymentDoneStatus = (status) => {
+    const normalized = normalizeStatus(status);
+    return normalized === 'payment done' || normalized === 'payment_done' || normalized === 'paid';
+  };
+
+  // Helper function to check if status is confirmed
+  const isConfirmedStatus = (status) => {
+    const normalized = normalizeStatus(status);
+    return normalized === 'confirmed' || normalized === 'complete' || normalized === 'completed';
+  };
+
+  // Load cooldowns from Firestore on component mount
+  useEffect(() => {
+    if (!user?.uid) return;
+    
+    const loadCooldowns = async () => {
+      try {
+        const cooldownsFromStorage = JSON.parse(localStorage.getItem('paymentRequestCooldowns') || '{}');
+        setRequestCooldowns(cooldownsFromStorage);
+      } catch (error) {
+        console.error('Error loading cooldowns:', error);
+      }
+    };
+    
+    loadCooldowns();
+  }, [user?.uid]);
+
+  // Fetch receiveHelp data with real-time updates
+  useEffect(() => {
+    // BLOCKER: No Firestore call without auth.currentUser
+    if (!auth.currentUser) {
+      console.log("ReceiveHelp: No auth.currentUser - skipping fetch");
+      setReceiveHelps([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!user?.uid) {
+      console.log("ReceiveHelp: No user.uid - skipping fetch");
+      setReceiveHelps([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    // Create query with limit to show maximum 3 receivers
+    const baseQuery = query(
+      collection(db, "receiveHelp"),
+      where("receiverId", "==", user.uid),
+      limit(3)
+    );
+
+    const fetchReceiveHelps = async () => {
+      try {
+        const snapshot = await getDocs(baseQuery);
+        const helps = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // Filter out duplicate entries based on senderId + receiverId and exclude cancelled transactions
+        const uniqueHelps = [];
+        const seenCombinations = new Set();
+
+        helps.forEach(help => {
+          // Skip cancelled transactions
+          if (normalizeStatus(help.status) === 'cancelled') {
+            return;
+          }
+
+          const combination = `${help.senderId || help.senderUid || 'unknown'}_${help.receiverId || user.uid}`;
+          if (!seenCombinations.has(combination)) {
+            seenCombinations.add(combination);
+            uniqueHelps.push(help);
+          }
+        });
+
+        // Extract cooldown timestamps from Firestore data
+        const firestoreCooldowns = {};
+        uniqueHelps.forEach(help => {
+          if (help.lastPaymentRequestTimestamp) {
+            firestoreCooldowns[help.id] = help.lastPaymentRequestTimestamp;
+          }
+        });
+
+        // Merge with localStorage cooldowns
+        const localCooldowns = JSON.parse(localStorage.getItem('paymentRequestCooldowns') || '{}');
+        const mergedCooldowns = { ...localCooldowns, ...firestoreCooldowns };
+        setRequestCooldowns(mergedCooldowns);
+
+        // Sort manually to handle missing createdAt fields
+        const sortedHelps = uniqueHelps.sort((a, b) => {
+          const aTime = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
+          const bTime = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
+          return new Date(bTime) - new Date(aTime); // Descending order
+        });
+
+        setReceiveHelps(sortedHelps);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching receive helps:", err);
+        toast.error('Failed to load help requests');
+        setReceiveHelps([]);
+        setLoading(false);
+      }
+    };
+
+    fetchReceiveHelps();
+  }, [user?.uid]);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Check if request payment is on cooldown (2 hours)
   const isRequestOnCooldown = (helpId) => {
@@ -121,6 +292,52 @@ export default function ReceiveHelp() {
   };
 
   // Action handlers
+<<<<<<< HEAD
+=======
+  const handleRequestPayment = async (help) => {
+    if (isRequestOnCooldown(help.id)) {
+      const remainingTime = formatRemainingTime(help.id);
+      toast.error(`Please wait ${remainingTime} before requesting payment again.`);
+      return;
+    }
+
+    try {
+      const currentTimestamp = Date.now();
+
+      // Ensure the document belongs to the current user before updating
+      if (help.receiverId !== user.uid) {
+        toast.error("You can only update your own receive help requests.");
+        return;
+      }
+
+      // Force token refresh before write operation
+      await auth.currentUser.getIdToken(true);
+
+      // Update Firestore document with request timestamp
+      const receiveHelpRef = doc(db, "receiveHelp", help.id);
+      await updateDoc(receiveHelpRef, {
+        lastPaymentRequest: serverTimestamp(),
+        lastPaymentRequestTimestamp: currentTimestamp
+      });
+      
+      // Update local state
+      setRequestCooldowns(prev => ({
+        ...prev,
+        [help.id]: currentTimestamp
+      }));
+
+      // Store cooldown in localStorage for persistence
+      const cooldowns = JSON.parse(localStorage.getItem('paymentRequestCooldowns') || '{}');
+      cooldowns[help.id] = currentTimestamp;
+      localStorage.setItem('paymentRequestCooldowns', JSON.stringify(cooldowns));
+
+      toast.success(`Payment request sent to ${help.senderName || 'sender'}!`);
+    } catch (error) {
+      console.error('Error requesting payment:', error);
+      toast.error('Failed to send payment request');
+    }
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const handlePaymentAccept = (helpId) => {
     // Prevent confirmation of already confirmed helps
@@ -139,6 +356,7 @@ export default function ReceiveHelp() {
   const confirmPaymentReceived = async () => {
     if (!selectedHelpId) return;
 
+<<<<<<< HEAD
     try {
       await confirmPayment(selectedHelpId);
       // Modal management handled by hook
@@ -147,6 +365,70 @@ export default function ReceiveHelp() {
     } catch (err) {
       console.error('Error confirming payment:', err);
       setLocalError(err.message);
+=======
+    // CRITICAL: Check if user is currently blocked before allowing confirmation
+    if (isIncomeBlocked(user)) {
+      toast.error('Your income is currently blocked. Complete required payments to continue.');
+      return;
+    }
+
+    setConfirmingId(selectedHelpId);
+    try {
+      // Use Cloud Function for confirmation to ensure proper transaction handling
+      // and blocking logic application
+      const confirmFunction = httpsCallable(functions, 'confirmHelpReceived');
+      const result = await confirmFunction({ helpId: selectedHelpId });
+
+      if (result.data.success) {
+        // Update local state to reflect confirmation
+        setReceiveHelps(prevHelps =>
+          prevHelps.map(help =>
+            help.id === selectedHelpId
+              ? { ...help, status: 'Confirmed', confirmedByReceiver: true }
+              : help
+          )
+        );
+
+        // Send notification to sender about payment confirmation
+        try {
+          const helpData = receiveHelps.find(h => h.id === selectedHelpId);
+          if (helpData?.senderUid) {
+            const { sendNotification } = await import('../../context/NotificationContext');
+            await sendNotification({
+              title: 'Payment Confirmed',
+              message: `Your payment has been confirmed by ${user.displayName || user.email}`,
+              type: 'success',
+              priority: 'high',
+              actionLink: '/dashboard/send-help',
+              targetUserId: helpData.senderUid
+            });
+          }
+        } catch (notificationError) {
+          console.error('Error sending payment confirmation notification:', notificationError);
+        }
+
+        // Check if level upgrade is required and show appropriate message
+        const currentHelpReceived = user.helpReceived || 0;
+        const newHelpReceived = currentHelpReceived + 1;
+
+        if (newHelpReceived === 3 && user.totalReceived >= 900) {
+          toast.success("Payment confirmed! Level upgrade required (₹600) to continue receiving helps.", {
+            duration: 6000
+          });
+        } else {
+          toast.success("Payment confirmed successfully!");
+        }
+      } else {
+        throw new Error(result.data.error || 'Confirmation failed');
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      toast.error(error.message || 'Failed to confirm payment');
+    } finally {
+      setConfirmingId(null);
+      setShowConfirmModal(false);
+      setSelectedHelpId(null);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     }
   };
 
@@ -157,6 +439,7 @@ export default function ReceiveHelp() {
 
   const confirmCancelPayment = async () => {
     if (!selectedCancelHelp) return;
+<<<<<<< HEAD
 
     try {
       // Use rejectPaymentRequest for payment rejection (allows re-submission)
@@ -168,6 +451,38 @@ export default function ReceiveHelp() {
     } catch (err) {
       console.error('Error rejecting payment:', err);
       setLocalError(err.message);
+=======
+    
+    try {
+      const batch = writeBatch(db);
+      
+      // Update receiveHelp document
+      const receiveHelpRef = doc(db, "receiveHelp", selectedCancelHelp.id);
+      batch.update(receiveHelpRef, {
+        status: "Cancelled",
+        cancelledByReceiver: true,
+        cancellationTime: serverTimestamp(),
+        cancellationReason: "Payment proof rejected by receiver"
+      });
+      
+      // Update sendHelp document
+      const sendHelpRef = doc(db, "sendHelp", selectedCancelHelp.id);
+      batch.update(sendHelpRef, {
+        status: "Cancelled",
+        cancelledByReceiver: true,
+        cancellationTime: serverTimestamp(),
+        cancellationReason: "Payment proof rejected by receiver"
+      });
+      
+      await batch.commit();
+      toast.success("Payment request cancelled successfully!");
+    } catch (error) {
+      console.error("Error cancelling payment:", error);
+      toast.error("Failed to cancel payment request");
+    } finally {
+      setShowCancelModal(false);
+      setSelectedCancelHelp(null);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     }
   };
 
@@ -196,6 +511,7 @@ export default function ReceiveHelp() {
     return name ? name.charAt(0).toUpperCase() : 'U';
   };
 
+<<<<<<< HEAD
   // User Countdown Component (for user profile popup)
   const UserCountdown = ({ assignedAt }) => {
     const { timeLeft, isExpired, hours, minutes, seconds, formattedTime } = useCountdown(assignedAt);
@@ -306,12 +622,133 @@ export default function ReceiveHelp() {
       <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${config.bg} ${config.text}`}>
         <IconComponent className="w-4 h-4" />
         {label}
+=======
+  // Helper function to check if help request is in cooldown
+  const isInCooldown = (helpId) => {
+    return isRequestOnCooldown(helpId);
+  };
+
+  // Helper function to get status badge configuration
+  const getStatusBadge = (status) => {
+    let config, displayText;
+    
+    if (isPendingStatus(status)) {
+      config = { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock };
+      displayText = 'Pending';
+    } else if (isPaymentDoneStatus(status)) {
+      config = { bg: 'bg-blue-100', text: 'text-blue-800', icon: Send };
+      displayText = 'Paid';
+    } else if (isConfirmedStatus(status)) {
+      config = { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle };
+      displayText = 'Done';
+    } else {
+      config = { bg: 'bg-gray-100', text: 'text-gray-800', icon: Clock };
+      displayText = status || 'Unknown';
+    }
+
+    const IconComponent = config.icon;
+    
+    return (
+      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${config.bg} ${config.text}`}>
+        <IconComponent className="w-4 h-4" />
+        {displayText}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       </span>
     );
   };
 
+<<<<<<< HEAD
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+=======
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Receive Help</h1>
+            <p className="text-gray-600">Manage your incoming help requests</p>
+          </motion.div>
+
+          {/* Loading Skeleton - Responsive Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-lg p-6 animate-pulse">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                </div>
+                <div className="h-8 bg-gray-200 rounded mb-3"></div>
+                <div className="space-y-2">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+              <div className="text-red-600 text-lg font-semibold mb-2">Error Loading Data</div>
+              <p className="text-red-500 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Mobile-First Header */}
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+        <div className="px-4 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Incoming Help</h1>
+            <p className="text-sm text-gray-600">Manage your help requests</p>
+          </motion.div>
+        </div>
+      </div>
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       {/* Mobile Stats Cards */}
       <div className="px-4 py-6">
         <motion.div
@@ -323,7 +760,11 @@ export default function ReceiveHelp() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm">Total Received</p>
+<<<<<<< HEAD
                 <p className="text-2xl font-bold">₹{totalReceived}</p>
+=======
+                <p className="text-2xl font-bold">₹{user?.totalReceived || 0}</p>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
               </div>
               <TrendingUp className="w-8 h-8 text-blue-200" />
             </div>
@@ -333,7 +774,11 @@ export default function ReceiveHelp() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Help Count</p>
+<<<<<<< HEAD
                 <p className="text-2xl font-bold">{helpCount}</p>
+=======
+                <p className="text-2xl font-bold">{user?.helpReceived || 0}</p>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
               </div>
               <Users className="w-8 h-8 text-green-200" />
             </div>
@@ -341,7 +786,11 @@ export default function ReceiveHelp() {
         </motion.div>
 
         {/* Income Blocking Status */}
+<<<<<<< HEAD
         {user && isIncomeBlocked(user) && (
+=======
+        {isIncomeBlocked(user) && (
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -365,6 +814,7 @@ export default function ReceiveHelp() {
                     const requiredPayment = getRequiredPaymentForUnblock(user);
                     if (!requiredPayment) return null;
 
+<<<<<<< HEAD
                     return requiredPayment ? (
                       <div className="bg-white rounded-xl p-4 border border-red-200">
                         <div className="flex items-center justify-between mb-3">
@@ -373,6 +823,16 @@ export default function ReceiveHelp() {
                           </span>
                           <span className="text-2xl font-bold text-red-600">
                             ₹{requiredPayment?.amount?.toLocaleString() || 'N/A'}
+=======
+                    return (
+                      <div className="bg-white rounded-xl p-4 border border-red-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-800">
+                            {requiredPayment.type === 'upgrade' ? 'Upgrade Payment Required' : 'Sponsor Payment Required'}
+                          </span>
+                          <span className="text-2xl font-bold text-red-600">
+                            ₹{requiredPayment.amount?.toLocaleString() || 'N/A'}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           </span>
                         </div>
 
@@ -397,7 +857,11 @@ export default function ReceiveHelp() {
                           </button>
                         </div>
                       </div>
+<<<<<<< HEAD
                     ) : null;
+=======
+                    );
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   })()}
                 </div>
               </div>
@@ -414,6 +878,7 @@ export default function ReceiveHelp() {
         >
           <div className="flex gap-2 overflow-x-auto pb-2">
             {[
+<<<<<<< HEAD
               { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700', activeColor: 'bg-gray-600 text-white' },
               { value: HELP_STATUS.ASSIGNED, label: HELP_STATUS_LABELS[HELP_STATUS.ASSIGNED], icon: Clock, color: 'bg-yellow-100 text-yellow-700', activeColor: 'bg-yellow-600 text-white' },
               { value: HELP_STATUS.PAYMENT_REQUESTED, label: HELP_STATUS_LABELS[HELP_STATUS.PAYMENT_REQUESTED], icon: Send, color: 'bg-indigo-100 text-indigo-700', activeColor: 'bg-indigo-600 text-white' },
@@ -429,6 +894,18 @@ export default function ReceiveHelp() {
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:scale-105 ${
                     isActive ? filter.activeColor : filter.color
                   }`}
+=======
+              { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700' },
+              { value: 'pending', label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
+              { value: 'paid', label: 'Paid', icon: CheckCircle, color: 'bg-blue-100 text-blue-700' },
+              { value: 'confirmed', label: 'Done', icon: CheckCircle, color: 'bg-green-100 text-green-700' }
+            ].map((filter) => {
+              const Icon = filter.icon;
+              return (
+                <button
+                  key={filter.value}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${filter.color} hover:scale-105`}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 >
                   <Icon className="w-4 h-4" />
                   <span>{filter.label}</span>
@@ -439,7 +916,11 @@ export default function ReceiveHelp() {
         </motion.div>
 
         {/* Mobile Empty State */}
+<<<<<<< HEAD
         {filteredReceiveHelps.length === 0 && (
+=======
+        {receiveHelps.length === 0 && (
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -471,10 +952,17 @@ export default function ReceiveHelp() {
         )}
 
         {/* Mobile Help Cards */}
+<<<<<<< HEAD
         {filteredReceiveHelps.length > 0 && (
           <div className="space-y-4 pb-20">
             <AnimatePresence mode="popLayout">
               {filteredReceiveHelps.map((help, index) => (
+=======
+        {receiveHelps.length > 0 && (
+          <div className="space-y-4 pb-20">
+            <AnimatePresence mode="popLayout">
+              {receiveHelps.map((help, index) => (
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 <motion.div
                   key={help.id}
                   layout
@@ -493,6 +981,7 @@ export default function ReceiveHelp() {
                   <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-slate-50">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-4 min-w-0 flex-1">
+<<<<<<< HEAD
                         <div
                           className="cursor-pointer"
                           onClick={() => {
@@ -521,15 +1010,48 @@ export default function ReceiveHelp() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-col gap-1.5">
                             <h3 className="font-bold text-gray-900 text-lg leading-tight">
+=======
+                        {getProfileImage(help) ? (
+                          <img
+                            src={getProfileImage(help)}
+                            alt={help.senderName || help.fullName || 'Sender'}
+                            className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-lg flex-shrink-0"
+                            onError={(e) => {
+                              e.target.src = defaultImage;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white shadow-lg flex-shrink-0">
+                            <span className="text-white font-bold text-xl">
+                              {getFirstLetter(help.senderName || help.fullName || 'Unknown User')}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-1.5">
+                            <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                               {help.senderName || help.fullName || 'Unknown User'}
                             </h3>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <User className="w-4 h-4 flex-shrink-0" />
+<<<<<<< HEAD
                               <span className="font-medium">ID: {help.senderId || help.userId || 'N/A'}</span>
+=======
+                              <span className="truncate font-medium">ID: {help.senderId || help.userId || 'N/A'}</span>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                             </div>
                           </div>
                         </div>
                       </div>
+<<<<<<< HEAD
+=======
+
+                      <div className="flex-shrink-0">
+                        {getStatusBadge(help.status)}
+                      </div>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                     </div>
                   </div>
 
@@ -542,6 +1064,7 @@ export default function ReceiveHelp() {
                         <div className="text-sm font-semibold text-gray-600 mb-1 uppercase tracking-wide">Amount</div>
                         <div className="text-2xl font-bold text-gray-900 leading-tight">₹{help.amount || 300}</div>
                       </div>
+<<<<<<< HEAD
                       <div className={`flex-shrink-0 rounded-xl px-4 py-2 text-sm font-bold border shadow-sm ${
                         (help.status === HELP_STATUS.CONFIRMED || help.status === HELP_STATUS.FORCE_CONFIRMED)
                           ? 'bg-green-100 text-green-800 border-green-300'
@@ -552,6 +1075,10 @@ export default function ReceiveHelp() {
                           : 'bg-gray-100 text-gray-800 border-gray-300'
                       }`}>
                         {HELP_STATUS_LABELS[normalizeStatus(help.status)] || normalizeStatus(help.status)}
+=======
+                      <div className="flex-shrink-0 rounded-xl bg-emerald-100 px-4 py-2 text-emerald-800 text-sm font-bold border border-emerald-300 shadow-sm">
+                        Payment Request
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       </div>
                     </div>
 
@@ -605,6 +1132,7 @@ export default function ReceiveHelp() {
                       );
                     })()}
 
+<<<<<<< HEAD
                     {/* Deadline Countdown */}
                     <DeadlineCountdown help={help} />
 
@@ -680,12 +1208,25 @@ export default function ReceiveHelp() {
                             </div>
                           )}
                         </div>
+=======
+                    {/* UTR Number - Show when paymentDetails.utrNumber exists */}
+                    {(help.paymentDetails?.utrNumber || help.utrNumber || help.utr) && (
+                      <div className="rounded-2xl p-5 border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 shadow-sm">
+                        <div className="flex items-center gap-3 mb-3">
+                          <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                          <span className="text-sm font-bold text-purple-800 uppercase tracking-wide">UTR Number</span>
+                        </div>
+                        <p className="font-mono text-lg font-bold text-purple-900 bg-white px-4 py-3 rounded-xl border border-purple-200 break-all shadow-sm">
+                          {help.paymentDetails?.utrNumber || help.utrNumber || help.utr}
+                        </p>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       </div>
                     )}
 
                     {/* Action Buttons */}
                     <div className="space-y-4">
                       {/* Request Payment */}
+<<<<<<< HEAD
                       {canRequestPayment(help?.status) && user?.uid === help?.receiverUid && (
                         <>
                           <motion.button
@@ -743,6 +1284,57 @@ export default function ReceiveHelp() {
                             )}
                           </motion.button>
                         </>
+=======
+                      {isPendingStatus(help.status) && !(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleRequestPayment(help)}
+                          disabled={isInCooldown(help.id)}
+                          className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] ${
+                            isInCooldown(help.id)
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 active:from-orange-700 active:to-red-700 text-white shadow-lg'
+                          }`}
+                        >
+                          <Send className="w-5 h-5 flex-shrink-0" />
+                          <span className="truncate">
+                            {isInCooldown(help.id)
+                              ? `Wait ${formatRemainingTime(help.id)}`
+                              : 'Request Payment'
+                            }
+                          </span>
+                        </motion.button>
+                      )}
+
+                      {/* Approve Payment */}
+                      {(help.paymentDetails?.utrNumber && help.paymentDetails?.screenshotUrl) && !isConfirmedStatus(help.status) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handlePaymentAccept(help.id)}
+                          disabled={confirmingId === help.id || isIncomeBlocked(user)}
+                          className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 text-sm min-h-[44px] shadow-lg ${
+                            isIncomeBlocked(user)
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 active:from-green-700 active:to-emerald-700 text-white'
+                          }`}
+                        >
+                          {confirmingId === help.id ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                          ) : isIncomeBlocked(user) ? (
+                            <>
+                              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                              <span>Income Blocked</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                              <span>Approve Payment</span>
+                            </>
+                          )}
+                        </motion.button>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       )}
 
                       {/* Confirmed Status */}
@@ -753,12 +1345,21 @@ export default function ReceiveHelp() {
                         </div>
                       )}
 
+<<<<<<< HEAD
                       {/* View Proof Button - Only show when screenshot exists and payment has been submitted */}
                       {help.paymentDetails?.screenshotUrl && help.status === HELP_STATUS.PAYMENT_DONE && (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleViewProof(help.paymentDetails?.screenshotUrl)}
+=======
+                      {/* View Proof Button */}
+                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleViewProof(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot)}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 active:from-purple-700 active:to-indigo-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] shadow-lg"
                         >
                           <Eye className="w-5 h-5 flex-shrink-0" />
@@ -766,8 +1367,14 @@ export default function ReceiveHelp() {
                         </motion.button>
                       )}
 
+<<<<<<< HEAD
                       {/* Reject Payment Button */}
                       {help?.status === HELP_STATUS.PAYMENT_DONE && user?.uid === help?.receiverUid && (
+=======
+                      {/* Cancel Payment Button */}
+                      {(help.paymentDetails?.screenshotUrl || help.proofScreenshot || help.screenshotUrl || help.paymentProof || help.screenshot) &&
+                       normalizeStatus(help.status) !== 'confirmed' && (
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
@@ -775,7 +1382,11 @@ export default function ReceiveHelp() {
                           className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 active:from-red-700 active:to-pink-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] shadow-lg"
                         >
                           <X className="w-5 h-5 flex-shrink-0" />
+<<<<<<< HEAD
                           <span>Reject Payment</span>
+=======
+                          <span>Cancel Payment</span>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                         </motion.button>
                       )}
                     </div>
@@ -935,6 +1546,7 @@ export default function ReceiveHelp() {
         )}
       </AnimatePresence>
 
+<<<<<<< HEAD
       {/* User Profile Modal */}
       <AnimatePresence>
         {showUserProfile && selectedUserHelp && (
@@ -1042,6 +1654,8 @@ export default function ReceiveHelp() {
         )}
       </AnimatePresence>
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       {/* Chat Modal */}
       {showChat && selectedChatHelp && (
         <TransactionChat
@@ -1058,9 +1672,15 @@ export default function ReceiveHelp() {
           }}
         />
       )}
+<<<<<<< HEAD
 
       {/* Payment Journey Motion Icon */}
       <PaymentJourneyMotion mode="icon" user={user} />
     </div>
   );
 }
+=======
+    </div>
+  );
+}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5

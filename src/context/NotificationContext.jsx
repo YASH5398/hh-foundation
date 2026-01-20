@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
+<<<<<<< HEAD
 import {
   createNotification,
   sendToAllUsers,
@@ -11,6 +12,9 @@ import {
   markAllAsRead as markAllNotificationsAsRead,
   deleteNotification as deleteNotificationById
 } from '../services/notificationService';
+=======
+import notificationService from '../services/notificationService';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
 
@@ -31,6 +35,19 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled);
+<<<<<<< HEAD
+=======
+  const [notificationSettings, setNotificationSettings] = useState({
+    playSound: true,
+    sounds: {
+      default: 'default',
+      payment: 'payment',
+      success: 'success',
+      warning: 'warning',
+      admin: 'admin'
+    }
+  });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // One-time fetch for user notifications
   useEffect(() => {
@@ -85,10 +102,18 @@ export const NotificationProvider = ({ children }) => {
     fetchNotifications();
   }, [user?.uid]);
 
+<<<<<<< HEAD
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
       await markNotificationAsRead(notificationId);
+=======
+
+  // Mark notification as read
+  const markAsRead = async (notificationId) => {
+    try {
+      await notificationService.markAsRead(notificationId);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       // The real-time listener will update the state automatically
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -99,7 +124,11 @@ export const NotificationProvider = ({ children }) => {
   const markAllAsRead = async () => {
     try {
       if (user?.uid) {
+<<<<<<< HEAD
         await markAllNotificationsAsRead(user.uid);
+=======
+        await notificationService.markAllAsRead(user.uid);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -109,7 +138,11 @@ export const NotificationProvider = ({ children }) => {
   // Delete notification
   const deleteNotification = async (notificationId) => {
     try {
+<<<<<<< HEAD
       await deleteNotificationById(notificationId);
+=======
+      await notificationService.deleteNotification(notificationId);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       // The real-time listener will update the state automatically
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -155,7 +188,11 @@ export const NotificationProvider = ({ children }) => {
       // Handle different target types for admin notifications
       if (targetType === 'all') {
         // Send to all users - will be handled by service
+<<<<<<< HEAD
         return await sendToAllUsers({
+=======
+        return await notificationService.sendToAllUsers({
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           title,
           message,
           type: notificationType,
@@ -166,7 +203,11 @@ export const NotificationProvider = ({ children }) => {
         });
       } else if (targetType === 'role' && targetRole) {
         // Send to specific role - will be handled by service
+<<<<<<< HEAD
         return await sendToRole(targetRole, {
+=======
+        return await notificationService.sendToRole(targetRole, {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           title,
           message,
           type: notificationType,
@@ -177,7 +218,11 @@ export const NotificationProvider = ({ children }) => {
         });
       } else if (targetType === 'specific' && targetUserId) {
         // Send to specific user
+<<<<<<< HEAD
         const userData = await getUserData(targetUserId);
+=======
+        const userData = await notificationService.getUserData(targetUserId);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         if (!userData) {
           throw new Error('User not found');
         }
@@ -193,7 +238,11 @@ export const NotificationProvider = ({ children }) => {
           ...otherData
         });
 
+<<<<<<< HEAD
         await createNotification(notificationData);
+=======
+        await notificationService.createNotification(notificationData);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         return { success: true };
       } else {
         throw new Error('Invalid target configuration');
@@ -225,7 +274,11 @@ export const NotificationProvider = ({ children }) => {
         ...otherData
       });
 
+<<<<<<< HEAD
       await createNotification(notificationData);
+=======
+      await notificationService.createNotification(notificationData);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       return { success: true };
     } catch (error) {
       console.error('Error sending activity notification:', error);
@@ -249,7 +302,12 @@ export const NotificationProvider = ({ children }) => {
     soundEnabled,
     toggleSound,
     testSound,
+<<<<<<< HEAD
     availableSoundTypes: soundService.getAvailableSoundTypes()
+=======
+    availableSoundTypes: soundService.getAvailableSoundTypes(),
+    notificationSettings
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   return (

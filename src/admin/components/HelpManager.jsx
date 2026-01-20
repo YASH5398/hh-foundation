@@ -3,6 +3,11 @@ import { db } from '../../config/firebase';
 import { collection, onSnapshot, doc, updateDoc, getDoc, query, orderBy } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+<<<<<<< HEAD
+=======
+import { auth } from '../../config/firebase';
+import { getIdTokenResult } from 'firebase/auth';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 /*
 // Utility: Set admin claim using Firebase Admin SDK (run in Node.js, not in client)
@@ -20,7 +25,11 @@ const STATUS_COLORS = {
 };
 
 const HelpManager = () => {
+<<<<<<< HEAD
   const { user, isAdmin, loading: authLoading } = useAuth();
+=======
+  const { user } = useAuth();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -30,10 +39,18 @@ const HelpManager = () => {
   const [adminReply, setAdminReply] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+<<<<<<< HEAD
+=======
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [adminCheckError, setAdminCheckError] = useState(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [permissionError, setPermissionError] = useState(false);
 
   useEffect(() => {
     let unsub = null;
+<<<<<<< HEAD
 
     // Wait for auth and claims to load before deciding
     if (authLoading) return;
@@ -84,6 +101,79 @@ const HelpManager = () => {
     return () => { if (unsub) unsub(); };
     // eslint-disable-next-line
   }, [user, isAdmin, authLoading]);
+=======
+    const verifyAdmin = async () => {
+      setCheckingAdmin(true);
+      setIsAdmin(false);
+      setAccessDenied(false);
+      setAdminCheckError(false);
+      setPermissionError(false);
+      setTickets([]);
+      setLoading(true);
+      setFetchError(false);
+      try {
+        const currentUser = auth.currentUser;
+        if (!user || !currentUser) {
+          setCheckingAdmin(false);
+          setIsAdmin(false);
+          setAccessDenied(true);
+          setLoading(false);
+          return;
+        }
+        const tokenResult = await getIdTokenResult(currentUser, true);
+        console.log('Admin token claims:', tokenResult.claims);
+        if (tokenResult.claims && tokenResult.claims.admin === true) {
+          setIsAdmin(true);
+          setAccessDenied(false);
+          // Only fetch tickets if admin
+          const q = query(collection(db, 'supportTickets'));
+          unsub = onSnapshot(
+            q,
+            (snap) => {
+              try {
+                const list = snap.docs.map(doc => {
+                  const data = doc.data();
+                  if (!data.timestamp) throw new Error('Missing timestamp in support ticket: ' + doc.id);
+                  return { id: doc.id, ...data };
+                });
+                setTickets(list);
+                setLoading(false);
+              } catch (err) {
+                setFetchError(true);
+                setLoading(false);
+                toast.error('One or more support tickets are missing a timestamp.');
+                console.error(err);
+              }
+            },
+            (error) => {
+              setFetchError(true);
+              setLoading(false);
+              setPermissionError(true);
+              toast.error('Permission denied: Unable to fetch support requests.');
+              console.error('Firestore onSnapshot permission error:', error);
+            }
+          );
+        } else {
+          setIsAdmin(false);
+          setAccessDenied(true);
+          setLoading(false);
+        }
+        setCheckingAdmin(false);
+      } catch (err) {
+        setCheckingAdmin(false);
+        setIsAdmin(false);
+        setAccessDenied(true);
+        setLoading(false);
+        setAdminCheckError(true);
+        toast.error(err.message || 'Failed to verify admin status.');
+        console.error('Admin claim check error:', err);
+      }
+    };
+    verifyAdmin();
+    return () => { if (unsub) unsub(); };
+    // eslint-disable-next-line
+  }, [user]);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Fetch user details for modal
   useEffect(() => {
@@ -109,16 +199,33 @@ const HelpManager = () => {
   }, [selectedTicket]);
 
   // Access control and loading
+<<<<<<< HEAD
   if (authLoading || loading) {
+=======
+  if (checkingAdmin || loading) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return <div className="text-center py-8 text-gray-600 font-bold flex flex-col items-center gap-4">
       <svg className="animate-spin h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
       Checking admin access...
     </div>;
   }
+<<<<<<< HEAD
   if (permissionError) {
     return <div className="text-center py-8 text-red-600 font-bold">Permission denied: Unable to fetch support requests. Check Firestore rules and admin claim.</div>;
   }
   if (!user || !isAdmin) {
+=======
+  if (adminCheckError) {
+    return <div className="text-center py-8 text-red-600 font-bold flex flex-col items-center gap-4">
+      Failed to verify admin status.<br />
+      <button onClick={() => window.location.reload()} className="bg-blue-600 text-white px-4 py-2 rounded mt-2">Retry</button>
+    </div>;
+  }
+  if (permissionError) {
+    return <div className="text-center py-8 text-red-600 font-bold">Permission denied: Unable to fetch support requests. Check Firestore rules and admin claim.</div>;
+  }
+  if (accessDenied || !isAdmin) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return <div className="text-center py-8 text-red-600 font-bold">Access Denied. Admins only.</div>;
   }
 

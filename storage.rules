@@ -1,6 +1,7 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+<<<<<<< HEAD
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -45,6 +46,27 @@ service firebase.storage {
 
     match /{allPaths=**} {
       allow read, write: if isAdmin();
+=======
+
+    // E-PIN screenshots - allow authenticated users
+    match /epinScreenshots/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Payment screenshots - allow authenticated users
+    match /payment-screenshots/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // General uploads folder - allow authenticated users
+    match /uploads/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Deny all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     }
   }
 }

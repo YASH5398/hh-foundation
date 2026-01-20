@@ -455,12 +455,17 @@ const UserTransactionSafetyHub = () => {
         isSimulation: true,
         simulatedBy: 'admin'
       };
+<<<<<<< HEAD
 
       await addDoc(collection(db, 'adminSimulations'), {
         type: 'sendHelp',
         payload: sendHelpData,
         createdAt: serverTimestamp()
       });
+=======
+      
+      await addDoc(collection(db, 'sendHelp'), sendHelpData);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setTestResults(prev => [...prev, {
         type: 'Send Help Simulation',
         status: 'success',
@@ -493,12 +498,17 @@ const UserTransactionSafetyHub = () => {
         isSimulation: true,
         simulatedBy: 'admin'
       };
+<<<<<<< HEAD
 
       await addDoc(collection(db, 'adminSimulations'), {
         type: 'receiveHelp',
         payload: receiveHelpData,
         createdAt: serverTimestamp()
       });
+=======
+      
+      await addDoc(collection(db, 'receiveHelp'), receiveHelpData);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setTestResults(prev => [...prev, {
         type: 'Receive Help Simulation',
         status: 'success',
@@ -567,6 +577,58 @@ const UserTransactionSafetyHub = () => {
     }
   };
   
+<<<<<<< HEAD
+=======
+  // Test Scenarios
+  const testMissingReceiver = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      const sendHelpQuery = query(
+        collection(db, 'sendHelp'),
+        where('userId', '==', selectedUser.id),
+        where('status', '==', 'pending'),
+        limit(1)
+      );
+      
+      const sendHelpSnapshot = await getDocs(sendHelpQuery);
+      
+      if (!sendHelpSnapshot.empty) {
+        const helpDoc = sendHelpSnapshot.docs[0];
+        await updateDoc(helpDoc.ref, {
+          receiverId: null,
+          status: 'pending_reassignment',
+          reassignmentReason: 'Testing missing receiver scenario'
+        });
+        
+        setTestResults(prev => [...prev, {
+          type: 'Missing Receiver Test',
+          status: 'success',
+          message: `Removed receiver for ${selectedUser.fullName}'s help request`,
+          timestamp: new Date()
+        }]);
+      } else {
+        setTestResults(prev => [...prev, {
+          type: 'Missing Receiver Test',
+          status: 'warning',
+          message: 'No pending help requests found to test',
+          timestamp: new Date()
+        }]);
+      }
+      
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error testing missing receiver:', error);
+      setTestResults(prev => [...prev, {
+        type: 'Missing Receiver Test',
+        status: 'error',
+        message: 'Failed to test missing receiver scenario',
+        timestamp: new Date()
+      }]);
+    }
+  };
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const testDelayedPayment = async () => {
     if (!selectedUser) return;
     
@@ -583,12 +645,17 @@ const UserTransactionSafetyHub = () => {
         isDelayedTest: true,
         testType: 'delayed_payment'
       };
+<<<<<<< HEAD
 
       await addDoc(collection(db, 'adminSimulations'), {
         type: 'delayedPayment',
         payload: sendHelpData,
         createdAt: serverTimestamp()
       });
+=======
+      
+      await addDoc(collection(db, 'sendHelp'), sendHelpData);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setTestResults(prev => [...prev, {
         type: 'Delayed Payment Test',
         status: 'success',
@@ -1864,6 +1931,27 @@ const UserTransactionSafetyHub = () => {
                    <h3 className="text-lg font-semibold text-gray-900">Test Scenarios</h3>
                    
                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<<<<<<< HEAD
+=======
+                     <button
+                       onClick={testMissingReceiver}
+                       className={`flex items-center bg-yellow-50 hover:bg-yellow-100 rounded-lg border border-yellow-200 transition-colors ${
+                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                       }`}
+                     >
+                       <MdWarning className={`text-yellow-600 ${
+                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                       }`} />
+                       <div className="text-left">
+                         <p className={`font-medium text-yellow-900 ${
+                           isMobile ? 'text-sm' : 'text-base'
+                         }`}>Missing Receiver</p>
+                         <p className={`text-yellow-700 ${
+                           isMobile ? 'text-xs' : 'text-sm'
+                         }`}>Test missing receiver scenario</p>
+                       </div>
+                     </button>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
                      <button
                        onClick={testDelayedPayment}

@@ -1,11 +1,34 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+=======
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard } from 'react-icons/fi';
+import { useAuth } from '../../context/AuthContext';
+import { db, storage } from '../../config/firebase';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  addDoc, 
+  doc, 
+  setDoc,
+  onSnapshot, 
+  orderBy, 
+  limit,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { toast } from 'react-hot-toast';
 import LoginRequired from '../auth/LoginRequired';
 import TransactionChat from '../chat/TransactionChat';
 import ChatWindow from '../chat/ChatWindow';
+<<<<<<< HEAD
 import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
 import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof } from '../../services/helpService';
 import { HELP_STATUS, normalizeStatus } from '../../config/helpStatus';
@@ -13,6 +36,8 @@ import { waitForAuthReady } from '../../services/authReady';
 import { uploadImageResumable } from '../../services/storageUpload';
 import { auth } from '../../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // Step 1: Receiver Card Component
 const ReceiverCard = ({ receiver, onNext }) => {
@@ -160,12 +185,20 @@ const ReceiverCard = ({ receiver, onNext }) => {
 
 // Step 2: Payment Submission Component
 const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
+<<<<<<< HEAD
   const { user } = useAuth();
   const [utr, setUtr] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+=======
+  const [utr, setUtr] = useState('');
+  const [screenshot, setScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -199,11 +232,61 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
   };
 
   const uploadImageToFirebase = async (file) => {
+<<<<<<< HEAD
     return uploadImageResumable(
       file,
       `payment-proofs/${user.uid}`,
       (p) => setUploadProgress(p)
     );
+=======
+    return new Promise((resolve, reject) => {
+      try {
+        // Create unique filename with timestamp
+        const timestamp = Date.now();
+        const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const storageRef = ref(storage, `payment-proofs/${fileName}`);
+        
+        console.log('🔄 Starting upload to Firebase Storage:', fileName);
+        
+        // Create upload task with progress tracking
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        
+        // Track upload progress
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(Math.round(progress));
+            console.log(`📊 Upload progress: ${Math.round(progress)}%`);
+          },
+          (error) => {
+            console.error('❌ Upload failed:', error);
+            setIsUploading(false);
+            setUploadProgress(0);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('✅ Upload completed! Download URL:', downloadURL);
+              setIsUploading(false);
+              setUploadProgress(100);
+              resolve(downloadURL);
+            } catch (error) {
+              console.error('❌ Error getting download URL:', error);
+              setIsUploading(false);
+              setUploadProgress(0);
+              reject(error);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('❌ Error creating upload task:', error);
+        setIsUploading(false);
+        setUploadProgress(0);
+        reject(error);
+      }
+    });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   const handleSubmit = async () => {
@@ -235,19 +318,30 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
       });
       
       // Upload image to Firebase Storage with progress tracking
+<<<<<<< HEAD
       const uploadRes = await uploadImageToFirebase(screenshot);
       setIsUploading(false);
 
       console.log('✅ Image uploaded successfully, submitting payment data...');
       console.log('🔗 Screenshot URL:', uploadRes.downloadURL);
+=======
+      const screenshotUrl = await uploadImageToFirebase(screenshot);
+      
+      console.log('✅ Image uploaded successfully, submitting payment data...');
+      console.log('🔗 Screenshot URL:', screenshotUrl);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       
       // Submit payment data with screenshot URL
       await onSubmit({
         utr: utr.trim(),
+<<<<<<< HEAD
         screenshotUrl: uploadRes.downloadURL,
         screenshotPath: uploadRes.screenshotPath,
         screenshotContentType: uploadRes.screenshotContentType,
         screenshotSize: uploadRes.screenshotSize
+=======
+        screenshotUrl
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       });
       
       console.log('✅ Payment submission completed successfully!');
@@ -349,6 +443,18 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
                   <p className="text-gray-600 font-medium mb-1">Upload payment screenshot</p>
                   <p className="text-sm text-gray-500">PNG, JPG up to 3MB</p>
                 </div>
+<<<<<<< HEAD
+=======
+                {/* Example Screenshot */}
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-2 text-center">Example:</p>
+                  <img
+                    src="https://res.cloudinary.com/dq6hzrfxc/image/upload/v1767681301/Screenshot_2026-01-06-12-03-30-81_944a2809ea1b4cda6ef12d1db9048ed3_wdcjbj.jpg"
+                    alt="Payment screenshot example"
+                    className="max-h-32 mx-auto rounded-lg border border-gray-200 shadow-sm"
+                  />
+                </div>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 <label
                   htmlFor="screenshot-upload"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-600 rounded-lg cursor-pointer hover:bg-indigo-100 transition-colors duration-200 font-medium"
@@ -421,8 +527,13 @@ const PaymentSubmission = ({ receiver, onSubmit, onBack, isSubmitting }) => {
 // Step 3: Waiting State Component
 const WaitingState = ({ receiver, status, showChat, setShowChat, transactionId }) => {
   const getStatusConfig = () => {
+<<<<<<< HEAD
     switch (normalizeStatus(status)) {
       case HELP_STATUS.PAYMENT_DONE:
+=======
+    switch (status) {
+      case 'pending':
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         return {
           icon: FiClock,
           title: '✅ Payment Submitted',
@@ -432,8 +543,12 @@ const WaitingState = ({ receiver, status, showChat, setShowChat, transactionId }
           iconColor: 'text-yellow-600',
           titleColor: 'text-yellow-800'
         };
+<<<<<<< HEAD
       case HELP_STATUS.CONFIRMED:
       case HELP_STATUS.FORCE_CONFIRMED:
+=======
+      case 'confirmed':
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         return {
           icon: FiCheckCircle,
           title: '🎉 Account Activated!',
@@ -534,11 +649,16 @@ const WaitingState = ({ receiver, status, showChat, setShowChat, transactionId }
 
 // Main SendHelp Component
 const SendHelp = () => {
+<<<<<<< HEAD
   const { user: currentUser, userProfile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [noReceiver, setNoReceiver] = useState(false);
   const [initDone, setInitDone] = useState(false);
   const initStartedRef = useRef(false);
+=======
+  const { user: currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [receiver, setReceiver] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: Receiver Card, 2: Payment, 3: Waiting
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -547,6 +667,7 @@ const SendHelp = () => {
   const [showChat, setShowChat] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
 
+<<<<<<< HEAD
   const [unsubHelp, setUnsubHelp] = useState(null);
 
   const attachHelpListener = (helpId) => {
@@ -568,10 +689,94 @@ const SendHelp = () => {
       });
     });
     setUnsubHelp(() => unsub);
+=======
+  // Fetch eligible receiver for new users
+  const fetchEligibleReceiver = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('level', '==', currentUser.level || 1),
+        where('isActivated', '==', true),
+        where('helpVisibility', '==', true),
+        where('isOnHold', '==', false),
+        where('isReceivingHeld', '==', false),
+        where('isBlocked', '==', false),
+        orderBy('referralCount', 'desc'),
+        limit(50)
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const eligibleReceivers = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
+        
+        if (eligibleReceivers.length > 0) {
+          const receiverDoc = eligibleReceivers[0];
+          const receiverData = receiverDoc.data();
+          
+          setReceiver({ 
+            id: receiverDoc.id, 
+            userId: receiverData.userId,
+            name: receiverData.name || receiverData.fullName,
+            whatsapp: receiverData.whatsapp,
+            phone: receiverData.phone,
+            phonePe: receiverData.phonePe,
+            upi: receiverData.upi,
+            googlePay: receiverData.googlePay,
+            bankDetails: receiverData.bankDetails,
+            profileImage: receiverData.profileImage,
+            referralCount: receiverData.referralCount || 0,
+            ...receiverData
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching receiver:', error);
+      toast.error('Failed to load receiver information');
+    }
+  };
+
+  // Check for existing active help
+  const checkActiveHelp = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const q = query(
+        collection(db, 'sendHelp'),
+        where('senderId', '==', currentUser.uid),
+        where('status', 'in', ['pending', 'confirmed'])
+      );
+      
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const helpDoc = snapshot.docs[0];
+        const helpData = helpDoc.data();
+        setActiveHelp({ id: helpDoc.id, ...helpData });
+        setHelpStatus(helpData.status);
+        setTransactionId(helpDoc.id);
+        setCurrentStep(3); // Go to waiting state
+        
+        // Set up real-time listener for status updates
+        const unsubscribe = onSnapshot(doc(db, 'sendHelp', helpDoc.id), (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            setHelpStatus(data.status);
+          }
+        });
+        
+        return unsubscribe;
+      }
+    } catch (error) {
+      console.error('Error checking active help:', error);
+    }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   // Handle payment submission
   const handlePaymentSubmit = async (paymentData) => {
+<<<<<<< HEAD
     if (!transactionId || !currentUser) return;
 
     setIsSubmitting(true);
@@ -588,6 +793,71 @@ const SendHelp = () => {
       toast.success('Payment submitted successfully!');
       setCurrentStep(3);
       
+=======
+    if (!receiver || !currentUser) return;
+
+    setIsSubmitting(true);
+    try {
+      console.log('💾 Creating sendHelp document with payment data...');
+      
+      // Create sendHelp document with custom ID format
+      const timestamp = Date.now();
+      const sendHelpId = `${receiver.userId}_${currentUser.uid}_${timestamp}`;
+      const sendHelpRef = doc(db, 'sendHelp', sendHelpId);
+      const sendHelpData = {
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.name || currentUser.email,
+        senderEmail: currentUser.email,
+        receiverId: receiver.id,
+        receiverName: receiver.name,
+        amount: 300,
+        status: 'pending',
+        utr: paymentData.utr,
+        screenshotUrl: paymentData.screenshotUrl, // This now comes from Firebase Storage
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      console.log('📝 Saving to Firestore:', { ...sendHelpData, screenshotUrl: 'URL_SAVED' });
+      
+      await setDoc(sendHelpRef, sendHelpData);
+      
+      // Create receiveHelp document with same ID
+      const receiveHelpRef = doc(db, 'receiveHelp', sendHelpId);
+      const receiveHelpData = {
+        sendHelpId: sendHelpId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.name || currentUser.email,
+        receiverId: receiver.id,
+        receiverName: receiver.name,
+        amount: 300,
+        status: 'pending',
+        utr: paymentData.utr,
+        screenshotUrl: paymentData.screenshotUrl, // This now comes from Firebase Storage
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      await setDoc(receiveHelpRef, receiveHelpData);
+      
+      console.log('✅ SendHelp and ReceiveHelp documents created successfully with ID:', sendHelpId);
+      
+      setHelpStatus('pending');
+      setActiveHelp({ id: sendHelpId, status: 'pending' });
+      setTransactionId(sendHelpId);
+      setCurrentStep(3);
+      
+      // Set up real-time listener
+      const unsubscribe = onSnapshot(doc(db, 'sendHelp', sendHelpId), (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setHelpStatus(data.status);
+        }
+      });
+      
+      toast.success('Payment submitted successfully!');
+      
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     } catch (error) {
       console.error('❌ Error creating help documents:', error);
       toast.error('Failed to submit payment. Please try again.');
@@ -596,6 +866,7 @@ const SendHelp = () => {
     }
   };
 
+<<<<<<< HEAD
   async function initialize() {
     if (initDone) return;
     if (initStartedRef.current) return;
@@ -724,6 +995,34 @@ const SendHelp = () => {
 
   // Loading state
   if (!initDone || loading) {
+=======
+  // Initialize component
+  useEffect(() => {
+    const initialize = async () => {
+      setLoading(true);
+      
+      if (currentUser && currentUser.uid && currentUser.hasOwnProperty('isActivated')) {
+        // Add a small delay to ensure Firestore connection is ready
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        if (!currentUser.isActivated) {
+          // For new users, fetch eligible receiver
+          await fetchEligibleReceiver();
+        } else {
+          // For activated users, check for active help
+          await checkActiveHelp();
+        }
+      }
+      
+      setLoading(false);
+    };
+    
+    initialize();
+  }, [currentUser]);
+
+  // Loading state
+  if (loading) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
         <motion.div
@@ -739,6 +1038,14 @@ const SendHelp = () => {
     );
   }
 
+<<<<<<< HEAD
+=======
+  // Authentication check
+  if (!currentUser) {
+    return <LoginRequired />;
+  }
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // Main render logic
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center px-0 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
@@ -811,9 +1118,12 @@ const SendHelp = () => {
           )}
         </AnimatePresence>
       </div>
+<<<<<<< HEAD
 
       {/* Payment Journey Motion Icon */}
       <PaymentJourneyMotion mode="icon" user={currentUser} />
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     </div>
   );
 };

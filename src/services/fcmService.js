@@ -480,8 +480,40 @@ class FCMService {
   // Send notification to a specific user
   async sendNotificationToUser(userId, notificationData) {
     try {
+<<<<<<< HEAD
       // Client-side push sending removed. Push must be sent by server/Cloud Functions.
       return false;
+=======
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        console.log('❌ Cannot send notifications from server environment');
+        return false;
+      }
+
+      // Use the backend API to send the notification
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          title: notificationData.title,
+          body: notificationData.body,
+          data: notificationData.data || {}
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Push notification sent successfully:', result);
+        return true;
+      } else {
+        const error = await response.json();
+        console.error('❌ Failed to send push notification:', error);
+        return false;
+      }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     } catch (error) {
       console.error('❌ Error sending push notification:', error);
       return false;
@@ -524,6 +556,36 @@ class FCMService {
     }
   }
 
+<<<<<<< HEAD
+=======
+  setupChatNotificationHandlers() {
+    // Handle notification clicks
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'notification-click') {
+          const { chatId, action } = event.data;
+          
+          if (action === 'reply') {
+            // Open quick reply interface
+            this.handleQuickReply(chatId);
+          } else if (action === 'view' || !action) {
+            // Navigate to chat
+            window.location.href = `/chat/${chatId}`;
+          }
+        }
+      });
+    }
+
+    // Handle foreground message reception
+    this.addMessageListener((payload) => {
+      if (payload.data && payload.data.type === 'chat') {
+        // Show in-app notification for chat messages
+        this.showChatInAppNotification(payload);
+      }
+    });
+  }
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   showChatInAppNotification(payload) {
     const { title, body, data } = payload.notification || {};
     const chatData = payload.data || {};

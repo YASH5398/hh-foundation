@@ -5,7 +5,12 @@ import messagingService from '../config/firebase-messaging';
  * Handles sending push notifications for chat messages
  */
 
+<<<<<<< HEAD
 // Backend API endpoint was removed from frontend. Notifications are server-driven.
+=======
+// Backend API endpoint for sending notifications
+const NOTIFICATION_API_URL = process.env.REACT_APP_NOTIFICATION_API_URL || 'http://localhost:3001/api/notifications';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 /**
  * Send push notification for a new chat message
@@ -18,8 +23,58 @@ import messagingService from '../config/firebase-messaging';
  */
 export const sendChatNotification = async (recipientId, senderId, senderName, messageText, chatId) => {
   try {
+<<<<<<< HEAD
     // Client-side push sending removed. Server should send push notifications.
     return false;
+=======
+    // Get recipient's FCM token
+    const recipientToken = await messagingService.getUserToken(recipientId);
+    
+    if (!recipientToken) {
+      console.warn('No FCM token found for recipient:', recipientId);
+      return false;
+    }
+
+    // Prepare notification payload
+    const notificationPayload = {
+      token: recipientToken,
+      notification: {
+        title: `New message from ${senderName}`,
+        body: messageText.length > 100 ? `${messageText.substring(0, 100)}...` : messageText
+      },
+      data: {
+        type: 'chat_message',
+        chatId: chatId,
+        senderId: senderId,
+        senderName: senderName,
+        messageText: messageText,
+        timestamp: Date.now().toString()
+      },
+      webpush: {
+        fcmOptions: {
+          link: `/dashboard/chat?chatId=${chatId}`
+        }
+      }
+    };
+
+    // Send notification via backend API
+    const response = await fetch(`${NOTIFICATION_API_URL}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(notificationPayload)
+    });
+
+    if (response.ok) {
+      console.log('Chat notification sent successfully');
+      return true;
+    } else {
+      const errorData = await response.json();
+      console.error('Failed to send chat notification:', errorData);
+      return false;
+    }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   } catch (error) {
     console.error('Error sending chat notification:', error);
     return false;
@@ -34,8 +89,41 @@ export const sendChatNotification = async (recipientId, senderId, senderName, me
  */
 export const sendOnlineNotification = async (userId, userName, friendIds) => {
   try {
+<<<<<<< HEAD
     // Client-side push sending removed. Server should send push notifications.
     return;
+=======
+    const notifications = friendIds.map(async (friendId) => {
+      const friendToken = await messagingService.getUserToken(friendId);
+      
+      if (!friendToken) return false;
+
+      const payload = {
+        token: friendToken,
+        notification: {
+          title: 'Friend Online',
+          body: `${userName} is now online`
+        },
+        data: {
+          type: 'user_online',
+          userId: userId,
+          userName: userName
+        }
+      };
+
+      const response = await fetch(`${NOTIFICATION_API_URL}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      return response.ok;
+    });
+
+    await Promise.all(notifications);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   } catch (error) {
     console.error('Error sending online notifications:', error);
   }
@@ -49,8 +137,38 @@ export const sendOnlineNotification = async (userId, userName, friendIds) => {
  */
 export const sendTestNotification = async (token, title = 'Test Notification', body = 'This is a test message') => {
   try {
+<<<<<<< HEAD
     // Client-side push sending removed. Server should send push notifications.
     return false;
+=======
+    const payload = {
+      token: token,
+      notification: {
+        title: title,
+        body: body
+      },
+      data: {
+        type: 'test',
+        timestamp: Date.now().toString()
+      }
+    };
+
+    const response = await fetch(`${NOTIFICATION_API_URL}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      console.log('Test notification sent successfully');
+      return true;
+    } else {
+      console.error('Failed to send test notification');
+      return false;
+    }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   } catch (error) {
     console.error('Error sending test notification:', error);
     return false;

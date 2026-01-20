@@ -1,6 +1,10 @@
 /**
+<<<<<<< HEAD
  * CENTRALIZED DATE FORMATTING UTILITIES
  * Single source of truth for all date formatting operations
+=======
+ * Utility functions for date and time formatting
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
  */
 
 /**
@@ -19,7 +23,11 @@ export const formatDate = (timestamp, options = {}) => {
   if (!timestamp) return 'N/A';
 
   let date;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // Handle Firestore Timestamp
   if (timestamp && typeof timestamp.toDate === 'function') {
     date = timestamp.toDate();
@@ -51,7 +59,11 @@ export const formatDate = (timestamp, options = {}) => {
         day: 'numeric',
         year: 'numeric'
       });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     case 'long':
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
@@ -59,14 +71,22 @@ export const formatDate = (timestamp, options = {}) => {
         month: 'long',
         day: 'numeric'
       });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     case 'time':
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
       });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     case 'datetime':
       return date.toLocaleString('en-US', {
         year: 'numeric',
@@ -76,7 +96,11 @@ export const formatDate = (timestamp, options = {}) => {
         minute: '2-digit',
         hour12: true
       });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     default:
       if (includeTime) {
         return date.toLocaleString('en-US', {
@@ -142,7 +166,11 @@ export const getRelativeTime = (date) => {
  */
 export const getTimeRemaining = (targetDate) => {
   let date;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   if (targetDate && typeof targetDate.toDate === 'function') {
     date = targetDate.toDate();
   } else if (targetDate instanceof Date) {
@@ -210,7 +238,11 @@ export const formatTimeRemaining = (targetDate, options = {}) => {
  */
 export const isToday = (date) => {
   let checkDate;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   if (date && typeof date.toDate === 'function') {
     checkDate = date.toDate();
   } else if (date instanceof Date) {
@@ -230,7 +262,11 @@ export const isToday = (date) => {
  */
 export const isWithin24Hours = (date) => {
   let checkDate;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   if (date && typeof date.toDate === 'function') {
     checkDate = date.toDate();
   } else if (date instanceof Date) {
@@ -252,7 +288,11 @@ export const isWithin24Hours = (date) => {
  */
 export const addHours = (date, hours) => {
   let baseDate;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   if (date && typeof date.toDate === 'function') {
     baseDate = date.toDate();
   } else if (date instanceof Date) {
@@ -272,6 +312,10 @@ export default {
   isToday,
   isWithin24Hours,
   addHours
+<<<<<<< HEAD
 };
 
 
+=======
+};
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5

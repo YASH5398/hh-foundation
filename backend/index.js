@@ -4,6 +4,24 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
+<<<<<<< HEAD
+=======
+// Cloudinary configuration
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Validate Cloudinary credentials
+if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.warn('⚠️ CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET not set in .env file');
+} else {
+  console.log('✅ Cloudinary configured successfully');
+}
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 // Initialize Firebase Admin SDK
 // Service account key automatically fetched from ./serviceAccountKey.json
 const serviceAccount = require('./serviceAccountKey.json');
@@ -34,6 +52,36 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
 });
 
+<<<<<<< HEAD
+=======
+// Cloudinary image upload endpoint (server-side secure upload)
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // Validate Cloudinary credentials are configured
+    if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ error: 'Cloudinary not configured on server' });
+    }
+
+    const result = await cloudinary.uploader.upload(imageBase64, {
+      folder: 'epinScreenshots',
+      resource_type: 'image',
+    });
+
+    console.log('✅ Cloudinary upload successful:', result.public_id);
+    res.json({ url: result.secure_url });
+  } catch (error) {
+    console.error('❌ Cloudinary upload error:', error.message);
+    res.status(500).json({ error: error.message || 'Upload failed' });
+  }
+});
+
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 // Send chat notification endpoint
 app.post('/api/notifications/send', async (req, res) => {
   try {

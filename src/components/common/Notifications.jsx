@@ -1,11 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Bell, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+<<<<<<< HEAD
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 import { bulkMarkNotificationsRead, setNotificationRead } from '../../services/notificationActions';
+=======
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { db, auth } from '../../config/firebase';
+import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from './LoadingSpinner';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
@@ -77,8 +84,14 @@ const Notifications = () => {
   // Mark all as read when dropdown opens
   useEffect(() => {
     if (open && notifications.some(n => !n.isRead)) {
+<<<<<<< HEAD
       const ids = notifications.filter(n => !n.isRead).map(n => n.id);
       bulkMarkNotificationsRead(ids).catch(() => {});
+=======
+      notifications.filter(n => !n.isRead).forEach(n => {
+        updateDoc(doc(db, 'notifications', n.id), { isRead: true });
+      });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     }
   }, [open, notifications]);
 
@@ -129,7 +142,11 @@ const Notifications = () => {
                   key={n.id}
                   className={`w-full text-left flex items-start gap-3 px-4 py-3 transition hover:bg-gray-50 ${!n.isRead ? 'font-bold' : ''}`}
                   onClick={async () => {
+<<<<<<< HEAD
                     if (!n.isRead) await setNotificationRead(n.id, true);
+=======
+                    if (!n.isRead) await updateDoc(doc(db, 'notifications', n.id), { isRead: true });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   }}
                 >
                   <div className="pt-1">

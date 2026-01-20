@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { FiBell, FiCheck, FiTrash2, FiAlertCircle, FiInfo, FiCheckCircle, FiX, FiPlus, FiSend } from 'react-icons/fi';
@@ -6,6 +7,12 @@ import { toast } from 'react-hot-toast';
 import { formatDate } from '../../utils/formatDate';
 import { bulkMarkNotificationsRead, deleteNotification as deleteNotificationAction, setNotificationRead } from '../../services/notificationActions';
 import { createAdminNotification } from '../../services/adminNotificationActions';
+=======
+import { collection, query, orderBy, limit, onSnapshot, updateDoc, doc, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { FiBell, FiCheck, FiTrash2, FiAlertCircle, FiInfo, FiCheckCircle, FiX, FiPlus, FiSend } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -59,7 +66,15 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId) => {
     try {
+<<<<<<< HEAD
       await setNotificationRead(notificationId, true);
+=======
+      await updateDoc(doc(db, 'notifications', notificationId), {
+        read: true,
+        isRead: true,
+        readAt: serverTimestamp()
+      });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('Notification marked as read');
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -69,10 +84,22 @@ const Notifications = () => {
 
   const markAllAsRead = async () => {
     try {
+<<<<<<< HEAD
       const unreadIds = notifications
         .filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted)
         .map(n => n.id);
       await bulkMarkNotificationsRead(unreadIds);
+=======
+      const unreadNotifications = notifications.filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted);
+      const promises = unreadNotifications.map(notification => 
+        updateDoc(doc(db, 'notifications', notification.id), {
+          read: true,
+          isRead: true,
+          readAt: serverTimestamp()
+        })
+      );
+      await Promise.all(promises);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('All notifications marked as read');
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -80,9 +107,19 @@ const Notifications = () => {
     }
   };
 
+<<<<<<< HEAD
   const handleDeleteNotification = async (notificationId) => {
     try {
       await deleteNotificationAction(notificationId);
+=======
+  const deleteNotification = async (notificationId) => {
+    try {
+      await updateDoc(doc(db, 'notifications', notificationId), {
+        deleted: true,
+        isDeleted: true,
+        deletedAt: serverTimestamp()
+      });
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       toast.success('Notification deleted');
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -97,6 +134,7 @@ const Notifications = () => {
     }
 
     try {
+<<<<<<< HEAD
       await createAdminNotification({
         targetUid: newNotification.uid || undefined,
         title: newNotification.title,
@@ -105,6 +143,14 @@ const Notifications = () => {
         category: 'admin',
         priority: 'high',
         eventKey: `agent:${newNotification.type || 'admin'}:${newNotification.title}`
+=======
+      await addDoc(collection(db, 'notifications'), {
+        ...newNotification,
+        createdAt: serverTimestamp(),
+        createdBy: 'agent', // In real app, get from auth context
+        read: false,
+        deleted: false
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       });
 
       setNewNotification({
@@ -139,6 +185,14 @@ const Notifications = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const unreadCount = notifications.filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted).length;
 
@@ -302,7 +356,11 @@ const Notifications = () => {
                           </button>
                         )}
                         <button
+<<<<<<< HEAD
                           onClick={() => handleDeleteNotification(notification.id)}
+=======
+                          onClick={() => deleteNotification(notification.id)}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           className="p-2 text-gray-400 hover:text-red-600 focus:outline-none"
                           title="Delete notification"
                         >

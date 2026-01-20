@@ -1,7 +1,29 @@
 import React from 'react';
+<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
 
 const DashboardProfileCard = ({ userId, name, joiningDate, levelStatus, level, isActivated, referralCount }) => {
+=======
+
+const DashboardProfileCard = ({ userId, name, joiningDate, levelStatus, level, isActivated, referralCount }) => {
+  // Helper function to format dates safely
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === 'N/A') return 'N/A';
+    try {
+      if (dateString.toDate) {
+        return dateString.toDate().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+      return dateString;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Helper function to truncate long text
   const truncateText = (text, maxLength = 20) => {

@@ -6,14 +6,22 @@ import fcmService from '../../services/fcmService';
 import { toast } from 'react-hot-toast';
 
 const NotificationPermissionPopup = () => {
+<<<<<<< HEAD
   const { user, isAdmin, userClaims } = useAuth();
+=======
+  const { user, userClaims } = useAuth();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [showPopup, setShowPopup] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState('default');
 
   useEffect(() => {
     // Don't show popup for admin/system users
+<<<<<<< HEAD
     if (!user || isAdmin || userClaims?.agent || userClaims?.system) {
+=======
+    if (!user || userClaims?.admin || userClaims?.agent || userClaims?.system) {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       return;
     }
 

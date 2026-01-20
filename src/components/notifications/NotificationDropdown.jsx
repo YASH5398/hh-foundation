@@ -2,11 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../../context/NotificationContext';
 import {
+<<<<<<< HEAD
   FiBell, FiX, FiTrash2, FiClock, FiUser, FiInbox,
   FiCheck, FiAlertTriangle, FiDollarSign, FiTrendingUp,
   FiUsers, FiStar, FiShield, FiMessageSquare, FiFilter, FiTool
 } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
+=======
+  FiBell, FiX, FiTrash2, FiClock, FiUser, FiSettings, FiInbox,
+  FiCheck, FiAlertTriangle, FiDollarSign, FiTrendingUp,
+  FiUsers, FiStar, FiShield, FiMessageSquare, FiFilter
+} from 'react-icons/fi';
+import { formatDistanceToNow } from 'date-fns';
+import NotificationSettings from './NotificationSettings';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const NotificationDropdown = () => {
   const {
@@ -23,6 +32,10 @@ const NotificationDropdown = () => {
   const dropdownRef = useRef(null);
   const [filter, setFilter] = useState('all'); // all, unread, payment, system, admin
   const [searchTerm, setSearchTerm] = useState('');
+<<<<<<< HEAD
+=======
+  const [showSettings, setShowSettings] = useState(false);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -72,7 +85,11 @@ const NotificationDropdown = () => {
       case 'admin':
         return <FiUser className="w-4 h-4 text-blue-500" />;
       case 'system':
+<<<<<<< HEAD
         return <FiTool className="w-4 h-4 text-indigo-500" />;
+=======
+        return <FiSettings className="w-4 h-4 text-indigo-500" />;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       case 'activity':
         return <FiTrendingUp className="w-4 h-4 text-emerald-500" />;
       default:
@@ -249,6 +266,7 @@ const NotificationDropdown = () => {
       {/* Dropdown */}
       <AnimatePresence>
         {isDropdownOpen && (
+<<<<<<< HEAD
           <>
             {/* Mobile Backdrop */}
             <motion.div
@@ -265,6 +283,13 @@ const NotificationDropdown = () => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
+=======
+          <motion.div
+        ref={dropdownRef}
+        initial={{ opacity: 0, y: -20, scale: 0.9, transformOrigin: 'top right' }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         transition={{
           type: "spring",
           stiffness: 300,
@@ -273,6 +298,7 @@ const NotificationDropdown = () => {
         }}
         className="
 fixed
+<<<<<<< HEAD
 inset-0
 z-[9999]
 p-4
@@ -280,10 +306,22 @@ top-[10vh]
 
 sm:absolute
 sm:inset-auto
+=======
+top-16
+left-1/2
+-translate-x-1/2
+w-[calc(100vw-24px)]
+max-w-[340px]
+px-3
+z-[9999]
+
+sm:absolute
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 sm:top-full
 sm:right-0
 sm:left-auto
 sm:translate-x-0
+<<<<<<< HEAD
 sm:flex-none
 sm:items-start
 sm:justify-start
@@ -293,6 +331,14 @@ sm:p-0
       >
         {/* Enhanced Glassmorphism Container */}
         <div className="bg-white/98 backdrop-blur-2xl border border-white/40 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-black/5 w-[90vw] max-w-[340px] max-h-[80vh] md:max-h-none md:w-auto md:max-w-none">
+=======
+sm:w-96
+sm:px-0
+"
+      >
+        {/* Enhanced Glassmorphism Container */}
+        <div className="bg-white/98 backdrop-blur-2xl border border-white/40 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-black/5">
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           {/* Enhanced Header with Search */}
           <div className="px-6 py-5 border-b border-gray-200/60 bg-gradient-to-r from-blue-50/60 via-white to-purple-50/60">
             <div className="flex items-center justify-between mb-4">
@@ -314,7 +360,20 @@ sm:p-0
                   </p>
                 </div>
               </div>
+<<<<<<< HEAD
               <div className="flex items-center">
+=======
+              <div className="flex items-center space-x-1">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowSettings(true)}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                  title="Notification Settings"
+                >
+                  <FiSettings className="w-4 h-4 text-gray-500" />
+                </motion.button>
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 <button
                   onClick={closeDropdown}
                   className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
@@ -543,10 +602,21 @@ sm:p-0
           )}
         </div>
           </motion.div>
+<<<<<<< HEAD
           </>
         )}
       </AnimatePresence>
 
+=======
+        )}
+      </AnimatePresence>
+
+      {/* Settings Modal */}
+      <NotificationSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     </div>
   );
 };

@@ -5,7 +5,11 @@ import toast from 'react-hot-toast';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+<<<<<<< HEAD
   const { login, isAdmin, loading: authLoading } = useAuth();
+=======
+  const { login, userClaims, loading: authLoading } = useAuth();
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +25,11 @@ const AdminLogin = () => {
     setLoading(true);
     try {
       const result = await login(email, password);
+<<<<<<< HEAD
       if (result.success && result.claims?.admin === true) {
+=======
+      if (result.success && email === 'hellosuman765@gmail.com') {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         toast.success('Admin login successful!');
         navigate('/admin/dashboard', { replace: true });
       } else if (result.success) {

@@ -3,7 +3,10 @@ import { collection, query, where, getDocs, updateDoc, doc, onSnapshot, orderBy,
 import { db } from '../../config/firebase';
 import { FiSearch, FiCheckCircle, FiXCircle, FiClock, FiDollarSign, FiUser, FiCalendar, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const EpinChecker = () => {
   const [epinCode, setEpinCode] = useState('');
@@ -148,6 +151,14 @@ const EpinChecker = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

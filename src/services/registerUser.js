@@ -13,7 +13,12 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
 import emailjs from 'emailjs-com';
+<<<<<<< HEAD
 import { sendPaymentRequestNotification } from './notificationService';
+=======
+import { assignReceiverToNewUser } from "./assignHelpForActiveUsers";
+import { NotificationService } from './notificationService';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { DEFAULT_PROFILE_IMAGE } from '../utils/profileUtils';
 
 const generateUserId = () => {
@@ -127,8 +132,17 @@ export const registerUser = async (userData) => {
 
     await batch.commit();
 
+<<<<<<< HEAD
     // Note: Help assignment is now done on-demand when user clicks "Send Help"
     // This prevents automatic help creation that could cause issues
+=======
+    // Immediately assign a receiver for Send Help
+    try {
+      await assignReceiverToNewUser(user.uid);
+    } catch (err) {
+      console.error("Error assigning receiver to new user:", err);
+    }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
     // ✅ STEP 4: Send Welcome Email via EmailJS
     try {

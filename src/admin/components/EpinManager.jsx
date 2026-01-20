@@ -13,7 +13,12 @@ function randomEpin() {
 }
 
 const EpinManager = () => {
+<<<<<<< HEAD
   const { user, isAdmin, loading: authLoading } = useAuth();
+=======
+  const { user, userClaims } = useAuth();
+  const isAdmin = userClaims && userClaims.admin === true;
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [epins, setEpins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -68,6 +73,7 @@ const EpinManager = () => {
   }, []);
 
   // Admin-only protection (must be after all hooks)
+<<<<<<< HEAD
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -76,6 +82,8 @@ const EpinManager = () => {
     );
   }
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   if (!user || !isAdmin) {
     return <div className="text-center py-8 text-red-600 font-bold">Access Denied: Admins only</div>;
   }

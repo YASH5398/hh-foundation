@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+<<<<<<< HEAD
 import { useSearchParams } from 'react-router-dom';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, where, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -10,6 +11,14 @@ import { useAgentAuth } from '../../context/AgentAuthContext';
 const AgentChat = () => {
   const [searchParams] = useSearchParams();
   const { currentUser } = useAgentAuth();
+=======
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, where, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { FiSend, FiUser, FiUsers, FiMessageCircle, FiClock, FiSearch } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
+
+const AgentChat = () => {
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -17,13 +26,21 @@ const AgentChat = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
+<<<<<<< HEAD
   const chatIdFromUrl = searchParams.get('chatId');
+=======
+  const currentAgentId = 'agent-001'; // In real app, get from auth context
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   useEffect(() => {
     // Real-time listener for agent chats
     const chatsQuery = query(
       collection(db, 'agentChats'),
+<<<<<<< HEAD
       orderBy('startedAt', 'desc'),
+=======
+      orderBy('lastMessageAt', 'desc'),
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       limit(50)
     );
 
@@ -36,6 +53,7 @@ const AgentChat = () => {
         });
       });
       setChats(chatsData);
+<<<<<<< HEAD
 
       // If we have a chatId from URL and haven't selected a chat yet, find and select it
       if (chatIdFromUrl && !selectedChat) {
@@ -45,6 +63,8 @@ const AgentChat = () => {
         }
       }
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setLoading(false);
     }, (error) => {
       console.error('Error fetching chats:', error);
@@ -53,7 +73,11 @@ const AgentChat = () => {
     });
 
     return () => unsubscribe();
+<<<<<<< HEAD
   }, [chatIdFromUrl, selectedChat]);
+=======
+  }, []);
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   useEffect(() => {
     if (selectedChat) {
@@ -94,9 +118,15 @@ const AgentChat = () => {
       // Add message to messages subcollection
       await addDoc(collection(db, 'agentChats', selectedChat.id, 'messages'), {
         text: newMessage,
+<<<<<<< HEAD
         senderUid: currentUser?.uid,
         senderType: 'agent',
         senderName: currentUser?.displayName || currentUser?.email || 'Agent Support',
+=======
+        senderId: currentAgentId,
+        senderType: 'agent',
+        senderName: 'Agent Support', // In real app, get from auth context
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         timestamp: serverTimestamp(),
         read: false
       });
@@ -137,6 +167,24 @@ const AgentChat = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+<<<<<<< HEAD
+=======
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   if (loading) {
     return (

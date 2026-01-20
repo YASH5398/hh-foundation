@@ -4,7 +4,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { FiUser, FiCalendar, FiStar, FiCheckCircle, FiClock, FiXCircle, FiCreditCard } from 'react-icons/fi';
+<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const UserProfileCard = () => {
   const { currentUser } = useAuth();
@@ -41,6 +44,20 @@ const UserProfileCard = () => {
     fetchUserData();
   }, [currentUser]);
 
+<<<<<<< HEAD
+=======
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    try {
+      // Firebase Timestamp to Date object
+      const date = timestamp.toDate();
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const getStatusConfig = (userData) => {
     if (userData?.isActivated) {
@@ -231,7 +248,11 @@ const UserProfileCard = () => {
                   <p className="text-xs font-bold text-white/90 uppercase tracking-wider">Joined</p>
                 </div>
                 <p className="font-semibold text-orange-300 text-xs leading-tight">
+<<<<<<< HEAD
                   {formatDate(userData.registrationTime || userData.createdAt, { format: 'long' })}
+=======
+                  {formatDate(userData.registrationTime || userData.createdAt)}
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 </p>
               </div>
             </motion.div>

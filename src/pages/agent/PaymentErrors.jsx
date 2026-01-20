@@ -3,7 +3,10 @@ import { collection, query, orderBy, limit, onSnapshot, where, updateDoc, doc } 
 import { db } from '../../config/firebase';
 import { FiDollarSign, FiAlertTriangle, FiCreditCard, FiXCircle, FiCheckCircle, FiClock, FiUser, FiCalendar, FiRefreshCw, FiFilter } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const PaymentErrors = () => {
   const [paymentErrors, setPaymentErrors] = useState([]);
@@ -120,6 +123,14 @@ const PaymentErrors = () => {
     ).join(' ') || 'Unknown';
   };
 
+<<<<<<< HEAD
+=======
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {

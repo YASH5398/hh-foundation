@@ -4,7 +4,11 @@ import { db } from '../../config/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+<<<<<<< HEAD
 import SendHelp from '../help/SendHelp';
+=======
+import SendHelp from './components/help/SendHelp';
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const UplinePayment = () => {
   const { currentUser } = useAuth();

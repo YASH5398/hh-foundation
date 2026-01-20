@@ -1,32 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate, Routes, Route, Outlet } from 'react-router-dom';
+<<<<<<< HEAD
 import {
   FiHome, FiFileText, FiDollarSign, FiMessageSquare, FiBarChart2,
   FiBook, FiTool, FiUsers, FiBell, FiCreditCard, FiShield,
+=======
+import { 
+  FiHome, FiFileText, FiDollarSign, FiMessageSquare, FiBarChart2, 
+  FiBook, FiTool, FiUsers, FiBell, FiCreditCard, FiShield, 
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   FiMenu, FiX, FiSearch, FiUser, FiLogOut, FiSettings,
   FiChevronDown, FiChevronRight, FiAlertTriangle
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { useAgentProfile } from '../../hooks/useAgentProfile';
+<<<<<<< HEAD
 import { useAgentChatRequests } from '../../hooks/useAgentChatRequests';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { toast } from 'react-hot-toast';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import AgentProfile from '../../components/agent/AgentProfile';
 import AgentDashboardOverview from '../../components/agent/AgentDashboardOverview';
+<<<<<<< HEAD
 import AgentChatRequestPopup from '../../components/agent/AgentChatRequestPopup';
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const AgentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+<<<<<<< HEAD
   const [currentChatRequest, setCurrentChatRequest] = useState(null);
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout } = useAgentAuth();
   const { profile, loading: profileLoading } = useAgentProfile();
+<<<<<<< HEAD
   const { pendingRequests } = useAgentChatRequests(profile?.role === 'agent' || currentUser?.role === 'agent');
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   
   // Define user for backward compatibility and null safety
   const user = currentUser || null;
@@ -51,6 +69,7 @@ const AgentDashboard = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
+<<<<<<< HEAD
   // Show chat request popup when new requests arrive
   useEffect(() => {
     if (pendingRequests.length > 0 && !currentChatRequest) {
@@ -59,6 +78,8 @@ const AgentDashboard = () => {
     }
   }, [pendingRequests, currentChatRequest]);
 
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   // Show loading state if profile is still loading
   if (profileLoading) {
     return (
@@ -380,6 +401,7 @@ const AgentDashboard = () => {
           </ErrorBoundary>
         </main>
       </div>
+<<<<<<< HEAD
 
       {/* Chat Request Popup */}
       <AgentChatRequestPopup
@@ -387,6 +409,8 @@ const AgentDashboard = () => {
         onClose={() => setCurrentChatRequest(null)}
         currentAgent={currentUser}
       />
+=======
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     </div>
   );
 };

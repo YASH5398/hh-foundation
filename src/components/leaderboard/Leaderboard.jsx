@@ -165,6 +165,7 @@ const Leaderboard = () => {
       setError(false);
 
       try {
+<<<<<<< HEAD
         // Fetch all users (no ordering to avoid index issues)
         const q = query(collection(db, 'users'));
         const snapshot = await getDocs(q);
@@ -177,6 +178,30 @@ const Leaderboard = () => {
         const data = activatedUsers
           .sort((a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0))
           .slice(0, 100);
+=======
+        // Try ordered query first, fallback to unordered if index missing
+        let data = [];
+        try {
+          const q = query(
+            collection(db, 'users'),
+            orderBy("totalEarnings", "desc"),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (indexError) {
+          console.warn("Index not available, fetching all users and sorting client-side:", indexError);
+          // Fallback: fetch all users and sort client-side
+          const q = query(collection(db, 'users'));
+          const snapshot = await getDocs(q);
+          const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          // Sort by totalEarnings and take top 100
+          data = allUsers
+            .sort((a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0))
+            .slice(0, 100);
+        }
+>>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
         console.log("Leaderboard fetched users:", data.length);
 
