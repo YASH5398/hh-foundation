@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manual Admin Setup</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <h1>Manual Admin Setup</h1>
+    <p>This will manually set the admin role in the user document.</p>
+    
+    <div id="status">Loading...</div>
+    <button id="setupBtn" style="display:none;">Setup Admin Role</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0tKqfEe2Ij3JKZvloHTYrt5Db97YsoUg",
+            authDomain: "hh-foundation.firebaseapp.com",
+            databaseURL: "https://hh-foundation-default-rtdb.firebaseio.com",
+            projectId: "hh-foundation",
+            storageBucket: "hh-foundation.firebasestorage.app",
+            messagingSenderId: "310213307250",
+            appId: "1:310213307250:web:bcd588790c923ddbdb0beb",
+            measurementId: "G-H1J3X51DF0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const TARGET_UID = 'kFhXYjSCO1Pw0qlZc7eCoRJFvEq1';
+        
+        const statusDiv = document.getElementById('status');
+        const setupBtn = document.getElementById('setupBtn');
+        const resultDiv = document.getElementById('result');
+
+        // Try to authenticate anonymously first
+        try {
+            await signInAnonymously(auth);
+            statusDiv.innerHTML = '✅ Anonymous authentication successful';
+            setupBtn.style.display = 'block';
+        } catch (error) {
+            statusDiv.innerHTML = `❌ Authentication failed: ${error.message}`;
+        }
+
+        setupBtn.addEventListener('click', async () => {
+            resultDiv.innerHTML = 'Setting up admin role...';
+
+            try {
+                // First, check if the user document exists
+                const userDocRef = doc(db, 'users', TARGET_UID);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (!userDoc.exists()) {
+                    resultDiv.innerHTML = `❌ User document not found for UID: ${TARGET_UID}`;
+                    return;
+                }
+
+                // Update the user document with admin role
+                await updateDoc(userDocRef, {
+                    role: 'admin',
+                    isAdmin: true,
+                    adminGrantedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+
+                // Verify the update
+                const updatedDoc = await getDoc(userDocRef);
+                const userData = updatedDoc.data();
+
+                resultDiv.innerHTML = `
+                    <h3>✅ Success!</h3>
+                    <p><strong>User Document Updated:</strong></p>
+                    <p>- Role: ${userData.role}</p>
+                    <p>- Is Admin: ${userData.isAdmin}</p>
+                    <p>- UID: ${TARGET_UID}</p>
+                    <p>- Email: ${userData.email || 'Not available'}</p>
+                    <p style="color: orange;"><strong>Note:</strong> This only sets the Firestore document role.</p>
+                    <p style="color: orange;">Custom claims still need to be set for full admin access.</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p><strong>Code:</strong> ${error.code}</p>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                    <p><strong>Details:</strong> This might be due to Firestore security rules.</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

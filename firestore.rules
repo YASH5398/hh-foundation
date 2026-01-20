@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    function isAgent() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+    }
+
+    function isAdminOrAgent() {
+      return isAdmin() || isAgent();
+    }
+
+    match /faqs/{docId} {
+      allow read: if true;
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    match /terms/{docId} {
+      allow read: if true;
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    match /rules/{docId} {
+      allow read: if true;
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if docId in ['faqs', 'terms', 'rules'];
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    // REQUIRED FOR DASHBOARD / LEADERBOARD / REFERRALS
+    match /leaderboard/{docId} {
+      allow read, list: if request.auth != null;
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    match /directReferrals/{docId} {
+      allow read, list: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Users: self read + allow list for dashboard queries
+    match /users/{uid} {
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow list: if request.auth != null;
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // Dashboard reads ticker settings
+    match /appSettings/{docId} {
+      allow read, list: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    // Notifications are read by users; writes happen via Admin SDK in callable
+    match /notifications/{notificationId} {
+      allow read, list: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow write, create, update, delete: if false;
+    }
+
+    // Send/Receive help are read by participants; writes happen via Cloud Functions/Admin
+    match /sendHelp/{helpId} {
+      allow read, list: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    match /receiveHelp/{helpId} {
+      allow read, list: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    // Chatbot chat history is stored per-user
+    match /chatbotChats/{uid} {
+      allow read, create, update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read, create: if isAuthenticated() && request.auth.uid == uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // E-PIN requests are created and viewed by the requesting user
+    match /epinRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /epins/{docId} {
+      allow read, list: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // System configuration (UPI settings, QR images, etc.) - read access for authenticated users
+    match /systemConfig/{docId} {
+      allow read: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    // ADMIN OVERRIDE
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bootstrap Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions.js"></script>
+</head>
+<body>
+    <h1>Bootstrap First Admin</h1>
+    <button id="bootstrapBtn">Create First Admin</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-functions.js';
+
+        // Firebase config (from your project)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0tKqfEe2Ij3JKZvloHTYrt5Db97YsoUg",
+            authDomain: "hh-foundation.firebaseapp.com",
+            databaseURL: "https://hh-foundation-default-rtdb.firebaseio.com",
+            projectId: "hh-foundation",
+            storageBucket: "hh-foundation.firebasestorage.app",
+            messagingSenderId: "310213307250",
+            appId: "1:310213307250:web:bcd588790c923ddbdb0beb",
+            measurementId: "G-H1J3X51DF0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const functions = getFunctions(app);
+
+        document.getElementById('bootstrapBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Creating admin...';
+
+            try {
+                const bootstrapFirstAdmin = httpsCallable(functions, 'bootstrapFirstAdmin');
+                const result = await bootstrapFirstAdmin({
+                    secret: 'bootstrap-admin-2024'
+                });
+
+                resultDiv.innerHTML = `
+                    <h3>✅ Success!</h3>
+                    <p><strong>Message:</strong> ${result.data.message}</p>
+                    <p><strong>UID:</strong> ${result.data.uid}</p>
+                    <p><strong>Email:</strong> ${result.data.email}</p>
+                    <p><strong>Note:</strong> ${result.data.note}</p>
+                    <p style="color: red;"><strong>IMPORTANT:</strong> The user must log out and log in again!</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p><strong>Code:</strong> ${error.code}</p>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+/* StatCard icon glow effect */
+.statcard-glow {
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.7));
+  /* fallback for browsers not supporting filter */
+  box-shadow: 0 0 16px 2px rgba(255,255,255,0.25);
+}
+
+@keyframes statcard-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.group:hover .statcard-float {
+  animation: statcard-float 1.2s ease-in-out infinite;
+} 

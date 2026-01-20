@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Bootstrap Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        button { padding: 15px 30px; font-size: 16px; margin: 10px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Bootstrap Admin via HTTP Function</h1>
+    <p>This will call the deployed HTTP function to set custom claims for the admin user.</p>
+    
+    <button id="bootstrapBtn">🔧 Bootstrap Admin (Custom Claims Only)</button>
+    <button id="testBtn">🧪 Test Function Availability</button>
+    
+    <div id="result"></div>
+
+    <script>
+        const FUNCTION_URL = 'https://us-central1-hh-foundation.cloudfunctions.net/simpleBootstrapAdmin';
+        const SECRET = 'bootstrap-admin-2024';
+        
+        const resultDiv = document.getElementById('result');
+        
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            resultDiv.innerHTML = '<p class="info">Testing function availability...</p>';
+            
+            try {
+                const response = await fetch(FUNCTION_URL, { method: 'OPTIONS' });
+                if (response.ok || response.status === 204) {
+                    resultDiv.innerHTML = '<p class="success">✅ Function is available and responding!</p>';
+                } else {
+                    resultDiv.innerHTML = '<p class="error">❌ Function responded with status: ' + response.status + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">❌ Function not available: ' + error.message + '</p>';
+            }
+        });
+        
+        document.getElementById('bootstrapBtn').addEventListener('click', async () => {
+            resultDiv.innerHTML = '<p class="info">🔧 Calling bootstrap function...</p>';
+            
+            const url = `${FUNCTION_URL}?secret=${SECRET}`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ SUCCESS!</h3>
+                            <p><strong>Message:</strong> ${data.message}</p>
+                            <p><strong>UID:</strong> ${data.uid}</p>
+                            <p><strong>Email:</strong> ${data.email}</p>
+                            <p><strong>Custom Claims:</strong> ${JSON.stringify(data.customClaims)}</p>
+                            <p><strong>Note:</strong> ${data.note}</p>
+                        </div>
+                        <div class="info">
+                            <h4>🚨 CRITICAL NEXT STEPS:</h4>
+                            <ol>
+                                <li>User must <strong>log out completely</strong></li>
+                                <li>User must <strong>log back in</strong></li>
+                                <li>Claims only take effect after re-authentication</li>
+                            </ol>
+                            
+                            <h4>🧪 Verification Code:</h4>
+                            <pre>const idTokenResult = await auth.currentUser.getIdTokenResult(true);
+console.log("Admin role:", idTokenResult.claims.role === "admin");
+console.log("All claims:", idTokenResult.claims);</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Error</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Error:</strong> ${data.error}</p>
+                            <p><strong>Code:</strong> ${data.code}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Message:</strong> ${error.message}</p>
+                        <p><strong>Possible Issues:</strong></p>
+                        <ul>
+                            <li>Function not deployed yet</li>
+                            <li>Network connectivity issues</li>
+                            <li>CORS issues</li>
+                        </ul>
+                        <p><strong>Deploy command:</strong> <code>firebase deploy --only functions:simpleBootstrapAdmin</code></p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

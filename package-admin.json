@@ -1,0 +1,17 @@
+{
+  "name": "firebase-admin-claims",
+  "version": "1.0.0",
+  "description": "Scripts to manage Firebase Auth custom claims",
+  "main": "set-admin-claims.js",
+  "scripts": {
+    "set-admin": "node set-admin-claims.js",
+    "verify-admin": "node verify-admin-claims.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {},
+  "keywords": ["firebase", "admin", "auth", "claims"],
+  "author": "",
+  "license": "ISC"
+}

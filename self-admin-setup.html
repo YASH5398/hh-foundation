@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Self Admin Setup</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <h1>Self Admin Setup</h1>
+    <p>Please log in as the user who should become admin, then click the setup button.</p>
+    
+    <div id="auth-section">
+        <input type="email" id="email" placeholder="Email" style="margin: 5px; padding: 10px; width: 300px;">
+        <input type="password" id="password" placeholder="Password" style="margin: 5px; padding: 10px; width: 300px;">
+        <button id="loginBtn" style="margin: 5px; padding: 10px;">Login</button>
+    </div>
+    
+    <div id="status">Not logged in</div>
+    <button id="setupBtn" style="display:none; margin: 10px; padding: 10px; background: red; color: white;">Make Me Admin</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0tKqfEe2Ij3JKZvloHTYrt5Db97YsoUg",
+            authDomain: "hh-foundation.firebaseapp.com",
+            databaseURL: "https://hh-foundation-default-rtdb.firebaseio.com",
+            projectId: "hh-foundation",
+            storageBucket: "hh-foundation.firebasestorage.app",
+            messagingSenderId: "310213307250",
+            appId: "1:310213307250:web:bcd588790c923ddbdb0beb",
+            measurementId: "G-H1J3X51DF0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const TARGET_UID = 'kFhXYjSCO1Pw0qlZc7eCoRJFvEq1';
+        
+        const statusDiv = document.getElementById('status');
+        const setupBtn = document.getElementById('setupBtn');
+        const resultDiv = document.getElementById('result');
+        const loginBtn = document.getElementById('loginBtn');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                statusDiv.innerHTML = `✅ Logged in as: ${user.email} (UID: ${user.uid})`;
+                if (user.uid === TARGET_UID) {
+                    setupBtn.style.display = 'block';
+                    statusDiv.innerHTML += '<br><strong style="color: green;">✅ This is the target user! You can proceed.</strong>';
+                } else {
+                    statusDiv.innerHTML += '<br><strong style="color: red;">❌ This is not the target user.</strong>';
+                }
+            } else {
+                statusDiv.innerHTML = 'Not logged in';
+                setupBtn.style.display = 'none';
+            }
+        });
+
+        // Login handler
+        loginBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                resultDiv.innerHTML = '✅ Login successful!';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Login failed: ${error.message}`;
+            }
+        });
+
+        // Setup admin handler
+        setupBtn.addEventListener('click', async () => {
+            if (!auth.currentUser || auth.currentUser.uid !== TARGET_UID) {
+                resultDiv.innerHTML = '❌ You must be logged in as the target user';
+                return;
+            }
+
+            resultDiv.innerHTML = 'Setting up admin role...';
+
+            try {
+                const userDocRef = doc(db, 'users', auth.currentUser.uid);
+                
+                // Update the user document with admin role
+                await updateDoc(userDocRef, {
+                    role: 'admin',
+                    isAdmin: true,
+                    adminGrantedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+
+                // Verify the update
+                const updatedDoc = await getDoc(userDocRef);
+                const userData = updatedDoc.data();
+
+                resultDiv.innerHTML = `
+                    <h3>✅ Success!</h3>
+                    <p><strong>User Document Updated:</strong></p>
+                    <p>- Role: ${userData.role}</p>
+                    <p>- Is Admin: ${userData.isAdmin}</p>
+                    <p>- UID: ${auth.currentUser.uid}</p>
+                    <p>- Email: ${auth.currentUser.email}</p>
+                    <p style="color: orange;"><strong>Note:</strong> This sets the Firestore document role.</p>
+                    <p style="color: orange;">Custom claims still need to be set for full admin access.</p>
+                    <p style="color: red;"><strong>IMPORTANT:</strong> Log out and log in again to refresh your session!</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p><strong>Code:</strong> ${error.code}</p>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
