@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-<<<<<<< HEAD
 import { FaEdit, FaUser, FaShieldAlt, FaUserCheck, FaUserTimes, FaSearch, FaTrash } from 'react-icons/fa';
-=======
-import { FaEdit, FaUser, FaShieldAlt, FaUserCheck, FaUserTimes, FaSearch } from 'react-icons/fa';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../config/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { auth } from "../config/firebase";
 import { getIdToken, getIdTokenResult, signOut } from "firebase/auth";
-<<<<<<< HEAD
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 import { requireFreshIdToken } from '../services/authReady';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import AdminProtectedRoute from '../admin/ProtectedRoute';
 import { useAuth } from '../context/AuthContext';
@@ -55,12 +48,9 @@ function UserManager() {
   const [originalUser, setOriginalUser] = useState({});
   const [saving, setSaving] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
-<<<<<<< HEAD
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const { user } = useAuth();
 
   useEffect(() => {
@@ -121,7 +111,6 @@ function UserManager() {
     }
   };
 
-<<<<<<< HEAD
   const handleDeleteUser = (user) => {
     setUserToDelete(user);
     setDeleteConfirm(true);
@@ -154,8 +143,6 @@ function UserManager() {
     }
   };
 
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const handleInputChange = (field, value, nested = null) => {
     if (nested) {
       setEditUser(prev => ({
@@ -324,11 +311,7 @@ function UserManager() {
                         </div>
 
                         {/* Actions */}
-<<<<<<< HEAD
                         <div className="col-span-1 flex items-center space-x-1">
-=======
-                        <div className="col-span-1">
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
@@ -338,7 +321,6 @@ function UserManager() {
                           >
                             <FaEdit className="w-4 h-4" />
                           </motion.button>
-<<<<<<< HEAD
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
@@ -348,8 +330,6 @@ function UserManager() {
                           >
                             <FaTrash className="w-4 h-4" />
                           </motion.button>
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                         </div>
                       </div>
                     </motion.div>
@@ -429,11 +409,7 @@ function UserManager() {
                         const idToken = await getIdToken(auth.currentUser);
                         const idTokenResult = await getIdTokenResult(auth.currentUser);
 
-<<<<<<< HEAD
                         if (!idTokenResult.claims.role || idTokenResult.claims.role !== 'admin') {
-=======
-                        if (!idTokenResult.claims.admin) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           toast.error('Unauthorized: Admin access required');
                           setSaving(false);
                           return;
@@ -715,7 +691,6 @@ function UserManager() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-<<<<<<< HEAD
 
                 {/* Delete Confirmation */}
                 <AnimatePresence>
@@ -770,8 +745,6 @@ function UserManager() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 </div>
               </motion.div>
             </motion.div>

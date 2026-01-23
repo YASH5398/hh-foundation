@@ -2,10 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { FiUser, FiSearch, FiEye, FiArrowLeft, FiSend, FiDownload, FiClock, FiCheck, FiX } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -123,19 +120,6 @@ const EnhancedUserManager = () => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  // Format date
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleString();
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Render user profile details
   const renderUserProfile = () => {

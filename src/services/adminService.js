@@ -14,11 +14,8 @@ import {
   setDoc,
   onSnapshot
 } from 'firebase/firestore';
-<<<<<<< HEAD
 import { createSendHelpAssignment } from './helpService';
 import { checkSenderEligibility, findEligibleReceiver } from './helpService';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // --- User Management Functions ---
 
@@ -67,12 +64,14 @@ export const forceReceiverAssignment = async (userId) => {
     const userDocRef = doc(db, 'users', userDoc.id);
     const userData = userDoc.data();
     
-    // Update user document with required fields
+    // LAYER A: Basic eligibility flags (Admin controllable)
     const updateData = {
       isActivated: true,
+      isBlocked: false, // Clear blocked status
       isOnHold: false,
       isReceivingHeld: false,
       helpVisibility: true,
+      forceReceiveOverride: true, // NEW: Allow one-time MLM override
       updatedAt: serverTimestamp()
     };
     
@@ -87,17 +86,132 @@ export const forceReceiverAssignment = async (userId) => {
     
     await updateDoc(userDocRef, updateData);
     
-    console.log(`Force Receiver Assignment: User ${userId} made eligible for receiving help`);
+    console.log(`Force Receiver Assignment: User ${userId} made eligible for receiving help with MLM override`);
     
     return { 
       success: true, 
-      message: `User ${userId} has been successfully made eligible for receiving help`,
-      userData: { ...userData, ...updateData }
+      message: `User ${userId} has been successfully made eligible for receiving help (with one-time MLM override)`,
+      userData: { ...userData, ...updateData },
+      note: 'forceReceiveOverride will auto-reset after one successful assignment'
     };
   } catch (error) {
     console.error('Error in forceReceiverAssignment:', error);
     return { success: false, message: error.message };
   }
+};
+
+export const checkUserEligibility = async (userId) => {
+  try {
+    // Find user by userId
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return { success: false, message: `User with ID ${userId} not found` };
+    }
+    
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data();
+    const uid = userDoc.id;
+    
+    // LAYER A: Basic eligibility checks
+    const basicEligibility = {
+      isActivated: userData.isActivated === true,
+      isBlocked: userData.isBlocked !== true,
+      isOnHold: userData.isOnHold !== true,
+      isReceivingHeld: userData.isReceivingHeld !== true,
+      helpVisibility: userData.helpVisibility !== false,
+      kycLevelStatus: userData.kycDetails?.levelStatus === 'active'
+    };
+    
+    const basicPassed = Object.values(basicEligibility).every(Boolean);
+    
+    // LAYER B: MLM enforcement checks
+    const mlmStatus = {
+      upgradeRequired: userData.upgradeRequired === true,
+      sponsorPaymentPending: userData.sponsorPaymentPending === true,
+      forceReceiveOverride: userData.forceReceiveOverride === true
+    };
+    
+    // Check receive slot status
+    const currentLevel = userData.levelStatus || userData.level || 'Star';
+    const receiveLimit = getReceiveLimitForLevel(currentLevel);
+    const currentReceiveCount = userData.activeReceiveCount || 0;
+    
+    const slotStatus = {
+      currentLevel,
+      receiveLimit,
+      currentReceiveCount,
+      slotsAvailable: currentReceiveCount < receiveLimit,
+      utilizationPercent: Math.round((currentReceiveCount / receiveLimit) * 100)
+    };
+    
+    // Check for active receive help
+    const activeReceiveQuery = query(
+      collection(db, 'receiveHelp'),
+      where('receiverUid', '==', uid),
+      where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
+    );
+    
+    const activeReceiveSnap = await getDocs(activeReceiveQuery);
+    const hasActiveReceive = !activeReceiveSnap.empty;
+    
+    // Determine overall eligibility
+    const mlmBlocked = mlmStatus.upgradeRequired || mlmStatus.sponsorPaymentPending;
+    const canReceive = basicPassed && !mlmBlocked && slotStatus.slotsAvailable && !hasActiveReceive;
+    const canReceiveWithOverride = basicPassed && slotStatus.slotsAvailable && !hasActiveReceive;
+    
+    // Generate recommendations
+    const recommendations = [];
+    if (!basicPassed) {
+      recommendations.push('Use Force Receiver Assignment to fix basic eligibility flags');
+    }
+    if (mlmBlocked && !mlmStatus.forceReceiveOverride) {
+      recommendations.push('Use Force Receiver Assignment to add one-time MLM override');
+    }
+    if (!slotStatus.slotsAvailable) {
+      recommendations.push(`User has reached receive limit for ${currentLevel} level (${receiveLimit})`);
+    }
+    if (hasActiveReceive) {
+      recommendations.push('User already has active receive help - wait for completion');
+    }
+    
+    return {
+      success: true,
+      userId,
+      uid,
+      eligibility: {
+        canReceive,
+        canReceiveWithOverride,
+        basicEligibility,
+        basicPassed,
+        mlmStatus,
+        mlmBlocked,
+        slotStatus,
+        hasActiveReceive
+      },
+      recommendations,
+      summary: canReceive ? 'User is eligible to receive help' : 
+               canReceiveWithOverride ? 'User needs MLM override to receive help' :
+               'User has blocking issues that prevent receiving help'
+    };
+  } catch (error) {
+    console.error('Error in checkUserEligibility:', error);
+    return { success: false, message: error.message };
+  }
+};
+
+// Helper function to get receive limit by level
+const getReceiveLimitForLevel = (level) => {
+  const limits = {
+    Star: 3,
+    Silver: 9,
+    Gold: 27,
+    Platinum: 81,
+    Diamond: 243
+  };
+  return limits[level] || limits.Star;
 };
 
 export const deleteUser = async (uid) => {
@@ -366,7 +480,6 @@ export const setDefaultHoldFlagsForUsers = async () => {
     }
   }
   return { success: true, updatedCount };
-<<<<<<< HEAD
 };
 
 /**
@@ -517,6 +630,4 @@ export const adminUnblockUserWithNewAssignment = async (userUid, adminUid) => {
     console.error('Error in admin unblock with new assignment:', error);
     throw error;
   }
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 };

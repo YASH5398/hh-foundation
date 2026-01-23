@@ -2,10 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../config/firebase';
 import { collection, getDocs, query, where, doc, updateDoc, deleteDoc, orderBy, writeBatch, Timestamp, getDoc } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { Eye, EyeOff, Users, Target, CheckCircle, AlertTriangle, XCircle, Search, Filter, RefreshCw, Loader2, User, FileText, TrendingUp, Activity, Crown, Award, Diamond, Star, Settings, Zap, BarChart3, ClipboardList, Trash2, X, Send } from 'lucide-react';
 
 const LEVEL_LIMITS = {
@@ -20,18 +17,6 @@ function getMaxAllowed(level) {
   return LEVEL_LIMITS[level] || 3;
 }
 
-<<<<<<< HEAD
-=======
-function formatDate(ts) {
-  if (!ts) return '-';
-  try {
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString();
-  } catch {
-    return '-';
-  }
-}
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 function getLevelIcon(level) {
   switch(level) {

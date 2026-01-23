@@ -2,7 +2,6 @@
 // This is a FULLY CORRECTED, MINIMAL, and ROBUST version of PaymentPage
 // focused on GUARANTEED QR rendering.
 // All business logic remains the same.
-<<<<<<< HEAD
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -14,22 +13,6 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { createNotification } from '../../services/notificationService';
 import { uploadImage } from '../../services/storageUpload';
-=======
-// Uses Cloudinary for image uploads (FREE tier, no Blaze plan required)
-
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FiArrowLeft, FiCreditCard, FiUpload, FiCheck } from 'react-icons/fi';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-hot-toast';
-import notificationService from '../../services/notificationService';
-import { uploadImageToCloudinary } from '../../services/cloudinaryService';
-
-const QR_IMAGE_URL = 'https://res.cloudinary.com/dq6hzrfxc/image/upload/v1767681301/Screenshot_2026-01-06-12-03-30-81_944a2809ea1b4cda6ef12d1db9048ed3_wdcjbj.jpg';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 export default function PaymentPage() {
   const { user } = useAuth();
@@ -41,7 +24,6 @@ export default function PaymentPage() {
   const [utrNumber, setUtrNumber] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
   const [upiQrImageUrl, setUpiQrImageUrl] = useState(null);
   const [qrImageLoading, setQrImageLoading] = useState(true);
 
@@ -85,16 +67,6 @@ export default function PaymentPage() {
   }, [navigate, selectedPackage]);
 
   if (!selectedPackage) return null;
-=======
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const pricePerEpin = 60;
-
-  if (!selectedPackage) {
-    navigate('/dashboard/epins/request');
-    return null;
-  }
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const totalPrice = selectedPackage.paid * pricePerEpin;
 
@@ -108,15 +80,7 @@ export default function PaymentPage() {
     setLoading(true);
 
     try {
-<<<<<<< HEAD
       const paymentScreenshotUrl = await uploadImage(screenshot, `epin-screenshots/${user.uid}`);
-=======
-      // Upload screenshot to Cloudinary (FREE tier, no Firebase Storage)
-      const screenshotUrl = await uploadImageToCloudinary(
-        screenshot,
-        (p) => setUploadProgress(p)
-      );
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
       const docRef = await addDoc(collection(db, 'epinRequests'), {
         userId: user.uid,
@@ -124,21 +88,13 @@ export default function PaymentPage() {
         packageDetails: selectedPackage,
         totalAmount: totalPrice,
         utrNumber: utrNumber.trim(),
-<<<<<<< HEAD
         paymentScreenshotUrl,
-=======
-        screenshotUrl,
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-<<<<<<< HEAD
       await createNotification({
-=======
-      await notificationService.createNotification({
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         uid: user.uid,
         userId: user.userId || user.uid,
         title: 'E-PIN Request Submitted',
@@ -159,16 +115,11 @@ export default function PaymentPage() {
   };
 
   return (
-<<<<<<< HEAD
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100">
-=======
-    <div className="min-h-screen bg-gray-50 p-4">
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="flex items-center gap-3">
-<<<<<<< HEAD
           <button onClick={() => navigate(-1)} className="text-gray-600 dark:text-gray-300"> <FiArrowLeft /> </button>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payment</h1>
         </div>
@@ -177,55 +128,29 @@ export default function PaymentPage() {
         <div className="bg-white dark:bg-gray-900 rounded-xl p-5 shadow">
           <p className="font-semibold text-gray-900 dark:text-white">{selectedPackage.total} E-PINs</p>
           <p className="text-green-600 dark:text-green-400 text-xl font-bold">₹{totalPrice}</p>
-=======
-          <button onClick={() => navigate(-1)} className="text-gray-600"> <FiArrowLeft /> </button>
-          <h1 className="text-2xl font-bold">Payment</h1>
-        </div>
-
-        {/* Summary */}
-        <div className="bg-white rounded-xl p-5 shadow">
-          <p className="font-semibold">{selectedPackage.total} E-PINs</p>
-          <p className="text-green-600 text-xl font-bold">₹{totalPrice}</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         </div>
 
         {!showPaymentForm ? (
           <>
             {/* Payment Methods */}
-<<<<<<< HEAD
             <div className="bg-white dark:bg-gray-900 rounded-xl p-5 shadow space-y-4">
               <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white"> <FiCreditCard /> Payment Methods </h3>
-=======
-            <div className="bg-white rounded-xl p-5 shadow space-y-4">
-              <h3 className="font-bold flex items-center gap-2"> <FiCreditCard /> Payment Methods </h3>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {['PhonePe', 'GPay', 'Paytm'].map((m) => (
                   <div key={m} className="border rounded-lg p-3 text-center">
-<<<<<<< HEAD
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{m}</p>
                     <p className="font-mono text-gray-700 dark:text-gray-200">6299261088</p>
-=======
-                    <p className="text-sm font-semibold">{m}</p>
-                    <p className="font-mono">6299261088</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   </div>
                 ))}
 
                 <div className="border rounded-lg p-3 text-center">
-<<<<<<< HEAD
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">UPI ID</p>
                   <p className="font-mono text-xs text-gray-700 dark:text-gray-200">helpingpin@axl</p>
-=======
-                  <p className="text-sm font-semibold">UPI ID</p>
-                  <p className="font-mono text-xs">helpingpin@axl</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 </div>
 
                 {/* QR – GUARANTEED RENDER */}
                 <div className="col-span-2 sm:col-span-1 border rounded-lg p-3">
-<<<<<<< HEAD
                   <p className="text-sm font-semibold text-center mb-2 text-gray-900 dark:text-gray-100">QR Code</p>
                   <div className="w-full h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
                     {qrImageLoading ? (
@@ -248,17 +173,6 @@ export default function PaymentPage() {
                         QR Code not available
                       </div>
                     )}
-=======
-                  <p className="text-sm font-semibold text-center mb-2">QR Code</p>
-                  <div className="w-full h-40 flex items-center justify-center bg-gray-100">
-                    <img
-                      src={QR_IMAGE_URL}
-                      alt="UPI QR"
-                      className="w-32 h-32 object-contain"
-                      referrerPolicy="no-referrer"
-                      loading="eager"
-                    />
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   </div>
                 </div>
               </div>
@@ -277,21 +191,12 @@ export default function PaymentPage() {
             onSubmit={handleSubmitRequest}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-<<<<<<< HEAD
             className="bg-white dark:bg-gray-900 rounded-xl p-5 shadow space-y-4"
           >
             <div>
               <label className="text-sm font-semibold text-gray-900 dark:text-white">UTR Number</label>
               <input
                 className="w-full border rounded p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border-gray-200 dark:border-gray-700"
-=======
-            className="bg-white rounded-xl p-5 shadow space-y-4"
-          >
-            <div>
-              <label className="text-sm font-semibold">UTR Number</label>
-              <input
-                className="w-full border rounded p-3"
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 value={utrNumber}
                 onChange={(e) => setUtrNumber(e.target.value)}
                 required
@@ -299,19 +204,12 @@ export default function PaymentPage() {
             </div>
 
             <div>
-<<<<<<< HEAD
               <label className="text-sm font-semibold text-gray-900 dark:text-white">Payment Screenshot</label>
-=======
-              <label className="text-sm font-semibold">Payment Screenshot</label>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => setScreenshot(e.target.files[0])}
-<<<<<<< HEAD
                 className="text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 required
               />
             </div>

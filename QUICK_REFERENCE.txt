@@ -1,0 +1,225 @@
+QUICK REFERENCE - SEND HELP LIVE TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+CRITICAL URLS
+──────────────────────────────────────────────────────────────────────────────
+Firestore Console:
+  https://console.firebase.google.com/project/hh-foundation/firestore
+  
+Cloud Function Logs:
+  https://console.firebase.google.com/project/hh-foundation/functions/logs?functionName=startHelpAssignment
+
+Cloud Function Code:
+  backend/functions/index.js (lines 244-780)
+
+Test Files:
+  TEST_EXECUTION_CHECKLIST.txt - Detailed step-by-step guide
+  LIVE_TEST_READY.txt - Summary with expected results
+  LIVE_TEST_EXECUTION.js - Structured test data
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RECEIVER QUERY (FIXED)
+──────────────────────────────────────────────────────────────────────────────
+Location: backend/functions/index.js, lines 393-405
+
+db.collection('users')
+  .where('isActivated', '==', true)
+  .where('isBlocked', '!=', true)          ← Changed from == false
+  .where('isOnHold', '!=', true)           ← Changed from == false
+  .where('isReceivingHeld', '!=', true)    ← Changed from == false
+  .where('helpVisibility', '!=', false)    ← Changed from == true
+  .where('upgradeRequired', '!=', true)    ← Changed from == false
+  .where('sponsorPaymentPending', '!=', true)  ← Changed from == false
+  .where('levelStatus', '==', senderLevel)
+  .orderBy('referralCount', 'desc')
+  .orderBy('lastReceiveAssignedAt', 'asc')
+  .limit(25)
+
+WHY THIS FIX:
+  Old: .where('isBlocked', '==', false)
+    ❌ Matches ONLY documents where isBlocked == false
+    ❌ Excludes documents where isBlocked is missing/undefined
+    ❌ Excludes all old documents that lack this field
+    
+  New: .where('isBlocked', '!=', true)
+    ✅ Matches documents where isBlocked == false
+    ✅ Matches documents where isBlocked is missing/undefined
+    ✅ Includes both old and new documents
+    ✅ Same business logic (exclude only when explicitly true)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+EXPECTED LOG SEQUENCE (SUCCESS)
+──────────────────────────────────────────────────────────────────────────────
+[startHelpAssignment] entry
+[startHelpAssignment] start { senderUid, senderId, idempotencyKey }
+[startHelpAssignment] sender.data { levelStatus }
+[startHelpAssignment] activeSend.count { count: 0 }  ← CRITICAL: 0
+[INVESTIGATION] FIRESTORE_QUERY_CONDITIONS
+[INVESTIGATION] FIRESTORE_QUERY_RESULT { snapshotSize: X, isEmpty: false }  ← X > 0
+[startHelpAssignment] receiverCandidates.count { count: X }  ← X > 0
+[DIAGNOSTIC] ALL_RECEIVERS_BEFORE_FILTERING { totalFetched: X }
+[DIAGNOSTIC] RECEIVER_ELIGIBLE { uid, levelStatus, activeReceiveCount }
+[startHelpAssignment] final.receiver.selected { receiverUid, receiverId }
+[startHelpAssignment] docs.created { helpId }
+[startHelpAssignment] success { helpId, alreadyExists: false }  ✅ SUCCESS
+
+═══════════════════════════════════════════════════════════════════════════════
+
+EXPECTED DOCUMENTS (TEST 1 SUCCESS)
+──────────────────────────────────────────────────────────────────────────────
+sendHelp Collection:
+  Document ID: "{receiverUid}_{senderUid}_{createdAtMs}"
+  
+  Required Fields:
+    ✓ id: [helpId]
+    ✓ status: "assigned"
+    ✓ senderUid: [your sender uid]
+    ✓ senderId: [sender user ID]
+    ✓ senderName: [sender full name]
+    ✓ receiverUid: [receiver uid]
+    ✓ receiverId: [receiver user ID]
+    ✓ receiverName: [receiver full name]
+    ✓ amount: 300
+    ✓ levelStatus or level: [sender's level]
+    ✓ createdAt: [timestamp]
+    ✓ assignedAt: [timestamp]
+    ✓ assignedAtMs: [milliseconds]
+    ✓ nextTimeoutAtMs: [timestamp + 1 hour]
+    ✓ payment: { utr: null, method: null, ... }
+    ✓ dispute: { isDisputed: false, ... }
+
+
+receiveHelp Collection:
+  Document ID: MUST BE SAME AS sendHelp ← CRITICAL!
+  
+  Required Fields:
+    ✓ id: [helpId] (SAME as sendHelp.id)
+    ✓ status: "assigned"
+    ✓ senderUid: [sender uid]
+    ✓ senderId: [sender user ID]
+    ✓ receiverUid: [receiver uid]
+    ✓ receiverId: [receiver user ID]
+    ✓ amount: 300
+    ✓ createdAt: [same as sendHelp]
+    ✓ assignedAt: [same as sendHelp]
+    ✓ All other fields match sendHelp
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RECEIVER ELIGIBILITY REQUIREMENTS
+──────────────────────────────────────────────────────────────────────────────
+Field                     Required Value    How to Fix
+─────────────────────────────────────────────────────────────────────────────
+isActivated               true              Update to true
+isBlocked                 false or missing  Update to false or delete field
+isOnHold                  false or missing  Update to false or delete field
+isReceivingHeld           false or missing  Update to false or delete field
+helpVisibility            true or missing   Update to true or delete field
+upgradeRequired           false or missing  Update to false or delete field
+sponsorPaymentPending     false or missing  Update to false or delete field
+levelStatus               same as sender    Update to match sender level
+activeReceiveCount        < limit           Decrement or reset to 0
+                          (3 for Star)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PAYMENT FLOW STATUS TRANSITIONS
+──────────────────────────────────────────────────────────────────────────────
+STEP 1: Receiver Requests Payment
+  Before: status = "assigned"
+  After:  status = "payment_requested"
+  New Field: paymentRequestedAt (timestamp), paymentRequestedAtMs
+
+STEP 2: Sender Submits Payment Proof
+  Before: status = "payment_requested"
+  After:  status = "payment_done"
+  New Fields: 
+    payment.method (upi/bank)
+    payment.utr (transaction ID)
+    paymentDoneAt (timestamp)
+    paymentDoneAtMs (milliseconds)
+
+STEP 3: Receiver Confirms Payment Received
+  Before: status = "payment_done"
+  After:  status = "confirmed"
+  New Fields:
+    confirmedByReceiver: true
+    confirmedAt (timestamp)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RECEIVE HELP LIMITS BY LEVEL
+──────────────────────────────────────────────────────────────────────────────
+Level       Max Receives    Code Reference
+─────────────────────────────────────────────────────────────────────────────
+Star        3               LEVEL_RECEIVE_LIMITS.Star
+Silver      9               LEVEL_RECEIVE_LIMITS.Silver
+Gold        27              LEVEL_RECEIVE_LIMITS.Gold
+Platinum    81              LEVEL_RECEIVE_LIMITS.Platinum
+Diamond     243             LEVEL_RECEIVE_LIMITS.Diamond
+
+How to check: 
+  In Firestore, user.activeReceiveCount should be < limit for their levelStatus
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DEBUGGING CHECKLIST
+──────────────────────────────────────────────────────────────────────────────
+If Test 1 fails:
+  [ ] Cloud Function logs show exact error message
+  [ ] Error is in which section:
+      - [ ] Sender validation
+      - [ ] Active sendHelp check
+      - [ ] Receiver query
+      - [ ] Receiver filtering
+      - [ ] Document creation
+      
+  [ ] Exact error text: _____________________________________
+  
+  [ ] Firestore state at time of error:
+      - [ ] Check users collection - how many match sender level?
+      - [ ] Check sendHelp collection - does sender have active help?
+      - [ ] Check receiver document - which fields are missing/wrong?
+      
+  [ ] Fix applied: ________________________________________
+  [ ] Re-test after fix
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DECISION TREE
+──────────────────────────────────────────────────────────────────────────────
+START TEST 1
+  │
+  ├─ Cloud Function Returns "No eligible receivers"
+  │  │
+  │  ├─ Check: receiverCandidates.count in logs
+  │  │  │
+  │  │  ├─ Count: 0
+  │  │  │  └─ ACTION: Check Firestore for users with receiver query filters
+  │  │  │     Fix failing conditions (blocked, onHold, limit, etc)
+  │  │  │
+  │  │  └─ Count: > 0
+  │  │     └─ ACTION: Check filtering logic (SELF_USER, RECEIVE_LIMIT_REACHED)
+  │  │        Modify runtime checks if needed
+  │  │
+  │  └─ FIX → RE-TEST
+  │
+  ├─ sendHelp/receiveHelp NOT Created
+  │  │
+  │  └─ ACTION: Check logs for [startHelpAssignment] crash error
+  │     Copy exact error → Identify failing step → Fix code
+  │     RE-TEST
+  │
+  ├─ Documents Created with Different IDs
+  │  │
+  │  └─ ACTION: This is a critical bug in document creation
+  │     Fix buildHelpDocId function → RE-TEST
+  │
+  └─ ✅ TEST 1 PASSES
+     │
+     └─ CONTINUE TO TEST 2 & 3
+
+═══════════════════════════════════════════════════════════════════════════════
+

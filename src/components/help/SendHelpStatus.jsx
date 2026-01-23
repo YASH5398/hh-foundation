@@ -1,17 +1,10 @@
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-<<<<<<< HEAD
 import { db } from "../../config/firebase";
 import { useAuth } from "../../context/AuthContext"; // Corrected path
 import TransactionChat from "../chat/TransactionChat";
 import { FiMessageCircle } from 'react-icons/fi';
 import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus } from '../../config/helpStatus';
-=======
-import { db } from "../config/firebase";
-import { useAuth } from "../../context/AuthContext"; // Corrected path
-import TransactionChat from "../chat/TransactionChat";
-import { FiMessageCircle } from 'react-icons/fi';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const SendHelpStatus = () => {
   const { user } = useAuth(); // 'user' is the key in your context
@@ -64,17 +57,9 @@ const SendHelpStatus = () => {
         </div>
 
         <div className="mt-4">
-<<<<<<< HEAD
           <p className="text-gray-700 font-medium">
             Status: {HELP_STATUS_LABELS[normalizeStatus(sendHelpData.status)] || normalizeStatus(sendHelpData.status)}
           </p>
-=======
-          {sendHelpData.confirmedByReceiver ? (
-            <p className="text-green-600 font-medium">✅ Status: DONE (Receiver has confirmed)</p>
-          ) : (
-            <p className="text-yellow-600 font-medium">⏳ Status: Pending (Waiting for receiver to confirm)</p>
-          )}
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         </div>
         {/* Chat Button */}
         {transactionId && (

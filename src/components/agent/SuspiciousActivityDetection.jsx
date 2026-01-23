@@ -11,10 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const SuspiciousActivityDetection = () => {
   const [loading, setLoading] = useState(false);
@@ -385,14 +382,6 @@ const SuspiciousActivityDetection = () => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  // Format date
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'Unknown';
-    return timestamp.toDate().toLocaleString();
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Handle activity click
   const handleActivityClick = (activity) => {
@@ -410,11 +399,7 @@ const SuspiciousActivityDetection = () => {
         activity.userEmail,
         activity.riskLevel,
         activity.description,
-<<<<<<< HEAD
         formatDate(activity.timestamp, { includeTime: true })
-=======
-        formatDate(activity.timestamp)
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -573,11 +558,7 @@ const SuspiciousActivityDetection = () => {
                         </div>
                         <div className="flex items-center space-x-1">
                           <FiClock className="w-4 h-4" />
-<<<<<<< HEAD
                           <span>{formatDate(activity.timestamp, { includeTime: true })}</span>
-=======
-                          <span>{formatDate(activity.timestamp)}</span>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                         </div>
                       </div>
                     </div>
@@ -652,11 +633,7 @@ const SuspiciousActivityDetection = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Detected At</label>
-<<<<<<< HEAD
                       <p className="text-gray-900">{formatDate(selectedActivity.timestamp, { includeTime: true })}</p>
-=======
-                      <p className="text-gray-900">{formatDate(selectedActivity.timestamp)}</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                     </div>
                   </div>
                   

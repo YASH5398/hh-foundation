@@ -5,10 +5,7 @@ import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, update
 import { FaYoutube, FaGoogleDrive, FaWhatsapp, FaTelegramPlane, FaStar, FaCheckCircle, FaGift, FaVideo } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-<<<<<<< HEAD
 import { setNotificationRead } from "../services/notificationActions";
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const SHARE_METHODS = [
   {
@@ -100,11 +97,7 @@ const EarnFreeEPIN = () => {
           setShowRewardModal(true);
           fetchNewEpins();
           // Mark notification as read
-<<<<<<< HEAD
           setNotificationRead(newRewardNotification.id, true).catch(() => {});
-=======
-          updateDoc(doc(db, "notifications", newRewardNotification.id), { isRead: true });
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         }
       });
 

@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-<<<<<<< HEAD
 import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, orderBy, getDocs, limit, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
 import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus } from '../../config/helpStatus';
-=======
-import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, orderBy, getDocs, limit, serverTimestamp, setDoc, updateDoc, addDoc } from 'firebase/firestore';
-import { useAuth } from '../../context/AuthContext';
-import { db } from '../../config/firebase';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { getUserById } from '../../services/userService';
 import Card from '../ui/Card';
 import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -18,18 +12,11 @@ import { auth } from '../../config/firebase';
 import { getCurrentUserUid } from '../../utils/registrationUtils';
 import UpcomingPayments from './UpcomingPayments';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-=======
-import { addNotification } from '../utils/addNotification';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import ChatModal from '../ui/ChatModal';
 import { useSocialTasks } from '../../hooks/useProfile';
 import { Link } from 'react-router-dom';
 import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
-<<<<<<< HEAD
 import { createNotification } from '../../services/notificationService';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const LEVELS = [
   'Star',
@@ -110,11 +97,7 @@ const ActivationBanner = ({ onSendHelp, onDismiss }) => (
 );
 
 const Dashboard = () => {
-<<<<<<< HEAD
   const { currentUser, user, isAdmin } = useAuth();
-=======
-  const { currentUser, user, userClaims } = useAuth();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState('');
   const [upcomingPayments, setUpcomingPayments] = useState([]);
@@ -170,12 +153,8 @@ const Dashboard = () => {
     setShowBanner(false);
   };
 
-<<<<<<< HEAD
   // Use isAdmin from context (single source of truth)
   const isAdminUser = isAdmin;
-=======
-  const isAdmin = (user && (user.role === 'admin' || user.role === 'superadmin')) || (userClaims && userClaims.admin === true);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Fetch dashboard metrics
   useEffect(() => {
@@ -230,15 +209,11 @@ const Dashboard = () => {
           }
         });
         // Total Earnings (sum of confirmed received helps)
-<<<<<<< HEAD
         const earningsQ = query(
           collection(db, 'receiveHelp'),
           where('receiverUid', '==', user.uid),
           where('status', 'in', [HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED])
         );
-=======
-        const earningsQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('status', '==', 'confirmed'));
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         unsubEarnings = onSnapshot(earningsQ, snap => {
           let sum = 0;
           snap.forEach(doc => {
@@ -253,15 +228,11 @@ const Dashboard = () => {
           }
         });
         // Pending Helps
-<<<<<<< HEAD
         const pendingQ = query(
           collection(db, 'receiveHelp'),
           where('receiverUid', '==', user.uid),
           where('status', 'in', [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE])
         );
-=======
-        const pendingQ = query(collection(db, 'receiveHelp'), where('receiverUid', '==', user.uid), where('status', '==', 'pending'));
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         unsubPending = onSnapshot(pendingQ, snap => {
           setPendingHelps(snap.size);
         }, (error) => {
@@ -370,20 +341,13 @@ const Dashboard = () => {
       // Process send help activities
       sendHelpSnap.docs.forEach(doc => {
         const data = doc.data();
-<<<<<<< HEAD
         const statusKey = normalizeStatus(data.status);
         const statusLabel = HELP_STATUS_LABELS[statusKey] || statusKey;
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         activities.push({
           id: doc.id,
           type: 'send',
           amount: data.amount || 0,
-<<<<<<< HEAD
           status: statusLabel,
-=======
-          status: data.status || 'Pending',
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           createdAt: data.createdAt,
           receiverName: data.receiverName || 'Unknown',
           receiverUserId: data.receiverUserId || 'N/A'
@@ -393,20 +357,13 @@ const Dashboard = () => {
       // Process receive help activities
       receiveHelpSnap.docs.forEach(doc => {
         const data = doc.data();
-<<<<<<< HEAD
         const statusKey = normalizeStatus(data.status);
         const statusLabel = HELP_STATUS_LABELS[statusKey] || statusKey;
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         activities.push({
           id: doc.id,
           type: 'receive',
           amount: data.amount || 0,
-<<<<<<< HEAD
           status: statusLabel,
-=======
-          status: data.status || 'Pending',
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           createdAt: data.createdAt,
           senderName: data.senderName || 'AutoPool',
           senderUserId: data.senderUserId || 'N/A'
@@ -444,11 +401,7 @@ const Dashboard = () => {
         const q = query(
           collection(db, 'sendHelp'),
           where('senderId', '==', user.uid),
-<<<<<<< HEAD
           where('status', 'in', [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE]),
-=======
-          where('status', '==', 'pending'),
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           orderBy('createdAt', 'asc')
         );
         unsub = onSnapshot(q, async (snap) => {
@@ -522,11 +475,7 @@ const Dashboard = () => {
         const sendHelpQuery = query(
           collection(db, 'sendHelp'),
           where('senderId', '==', user.uid),
-<<<<<<< HEAD
           where('status', 'in', [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE]),
-=======
-          where('status', 'in', ['pending', 'done']),
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
           orderBy('createdAt', 'desc'),
           limit(1)
         );
@@ -595,7 +544,6 @@ const Dashboard = () => {
       if (notifSnap.empty) {
         // Not found, create welcome notification
         const firstName = user.fullName.split(' ')[0];
-<<<<<<< HEAD
         await createNotification({
           uid: user.uid,
           userId: user.uid,
@@ -603,15 +551,6 @@ const Dashboard = () => {
           message: "Let’s grow together by helping each other. 💖",
           type: 'welcome',
           preventDuplicates: true
-=======
-        await addDoc(collection(db, 'notifications'), {
-          uid: user.uid,
-          title: `Hi ${firstName}, welcome to Helping Hands Foundation!`,
-          message: "Let’s grow together by helping each other. 💖",
-          type: "welcome",
-          read: false,
-          createdAt: serverTimestamp()
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         });
       }
     }
@@ -977,11 +916,7 @@ const Dashboard = () => {
           transition={{ duration: 0.3 }}
           className="flex justify-center mt-6 px-2"
         >
-<<<<<<< HEAD
           <div className="relative bg-white border border-gray-100 shadow-lg rounded-2xl w-full max-w-md p-6 transition-all duration-300">
-=======
-          <div className="relative bg-white border border-gray-100 shadow-lg rounded-2xl w-full max-w-md p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             {/* Notification Badge */}
             <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
               New
@@ -1047,7 +982,6 @@ const Dashboard = () => {
                 </div>
                 <div className="flex items-center justify-between mb-4">
                   <StatusBadge status={sendHelpReminder.status} />
-<<<<<<< HEAD
                   {[HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE].includes(sendHelpReminder.status) && (
                     <button
                       type="button"
@@ -1058,18 +992,6 @@ const Dashboard = () => {
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                       Complete Payment
-=======
-                  {sendHelpReminder.status === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        navigate('/dashboard/send-help');
-                      }}
-                      className="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700 transition text-sm font-semibold"
-                    >
-                      Payment Done
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                     </button>
                   )}
                 </div>
@@ -1135,7 +1057,6 @@ const Dashboard = () => {
 function StatusBadge({ status }) {
   let color = 'bg-gray-200 text-gray-600';
   let label = status;
-<<<<<<< HEAD
 
   switch (status) {
     case HELP_STATUS.ASSIGNED:
@@ -1166,27 +1087,6 @@ function StatusBadge({ status }) {
     case HELP_STATUS.DISPUTED:
       color = 'bg-orange-100 text-orange-800';
       label = '⚠️ Disputed';
-=======
-  
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      color = 'bg-yellow-100 text-yellow-800';
-      label = '🕒 Pending';
-      break;
-    case 'done':
-    case 'confirmed':
-      color = 'bg-green-100 text-green-800';
-      label = '✅ Done';
-      break;
-    case 'cancelled':
-    case 'rejected':
-      color = 'bg-red-100 text-red-800';
-      label = '❌ Cancelled';
-      break;
-    case 'processing':
-      color = 'bg-blue-100 text-blue-800';
-      label = '⚙️ Processing';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       break;
     default:
       color = 'bg-gray-200 text-gray-600';

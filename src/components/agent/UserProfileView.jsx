@@ -3,10 +3,7 @@ import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, ser
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCreditCard, FiDollarSign, FiCalendar, FiEdit3, FiSave, FiX, FiEye, FiMessageSquare, FiAlertTriangle, FiCheck, FiClock, FiArrowLeft } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProfileImageUrl, PROFILE_IMAGE_CLASSES } from '../../utils/profileUtils';
@@ -115,24 +112,6 @@ const UserProfileView = ({ userId, onClose }) => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -312,11 +291,7 @@ const UserProfileView = ({ userId, onClose }) => {
                         <FiCalendar className="h-5 w-5 text-gray-400" />
                         <div>
                           <p className="text-sm text-gray-600">Joined</p>
-<<<<<<< HEAD
                           <p className="font-medium">{formatDate(userProfile.createdAt, { includeTime: true })}</p>
-=======
-                          <p className="font-medium">{formatDate(userProfile.createdAt)}</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                         </div>
                       </div>
                     </div>
@@ -406,11 +381,7 @@ const UserProfileView = ({ userId, onClose }) => {
                                 {record.status || 'Unknown'}
                               </span>
                             </div>
-<<<<<<< HEAD
                             <span className="text-sm text-gray-500">{formatDate(record.createdAt, { includeTime: true })}</span>
-=======
-                            <span className="text-sm text-gray-500">{formatDate(record.createdAt)}</span>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           </div>
                           <div className="text-sm text-gray-600">
                             <p><span className="font-medium">UTR:</span> {record.utr || 'N/A'}</p>
@@ -449,11 +420,7 @@ const UserProfileView = ({ userId, onClose }) => {
                                 {record.status || 'Unknown'}
                               </span>
                             </div>
-<<<<<<< HEAD
                             <span className="text-sm text-gray-500">{formatDate(record.createdAt, { includeTime: true })}</span>
-=======
-                            <span className="text-sm text-gray-500">{formatDate(record.createdAt)}</span>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           </div>
                           <div className="text-sm text-gray-600">
                             <p><span className="font-medium">UTR:</span> {record.utr || 'N/A'}</p>

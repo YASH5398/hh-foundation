@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
@@ -6,16 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { firebaseStorageService } from '../../services/firebaseStorageService';
 import { authGuardService } from '../../services/authGuardService';
-=======
-import React, { useState } from 'react';
-import { db, storage } from '../../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
-import { createDirectImageUrl } from '../../utils/firebaseStorageUtils';
-import { uploadImage } from '../../utils/uploadImage';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const EpinRequestForm = () => {
   const { user } = useAuth();
@@ -26,11 +15,8 @@ const EpinRequestForm = () => {
   const [utrNumber, setUtrNumber] = useState('');
   const [paymentScreenshot, setPaymentScreenshot] = useState(null);
   const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
   const [upiQrImageUrl, setUpiQrImageUrl] = useState(null);
   const [qrImageLoading, setQrImageLoading] = useState(true);
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const epinPrice = 100; // Assuming 1 E-PIN costs ₹100
 
@@ -41,7 +27,6 @@ const EpinRequestForm = () => {
     50: 10,
   };
 
-<<<<<<< HEAD
   // Fetch admin/system UPI QR image URL from Firestore
   useEffect(() => {
     const fetchSystemConfig = async () => {
@@ -72,8 +57,6 @@ const EpinRequestForm = () => {
     fetchSystemConfig();
   }, []);
 
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const handleQuantityChange = (e) => {
     const qty = parseInt(e.target.value);
     setQuantity(qty);
@@ -101,17 +84,12 @@ const EpinRequestForm = () => {
     }
 
     if (!utrNumber || !paymentScreenshot) {
-<<<<<<< HEAD
       toast.error('Please provide UTR Number and upload payment screenshot.');
-=======
-      toast.error('Please provide UTR Number and upload a payment screenshot.');
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       return;
     }
 
     setLoading(true);
     try {
-<<<<<<< HEAD
       // Check authentication before proceeding
       if (!authGuardService.isAuthenticated()) {
         toast.error('Please log in to submit E-PIN requests.');
@@ -136,14 +114,6 @@ const EpinRequestForm = () => {
           toast.error(`Screenshot upload failed: ${uploadError.message}`);
           return;
         }
-=======
-      let paymentScreenshotUrl = '';
-      if (paymentScreenshot) {
-        const timestamp = Date.now();
-        const fileName = `${timestamp}-${paymentScreenshot.name}`;
-        const path = `epinScreenshots/${user.uid}/${fileName}`;
-        paymentScreenshotUrl = await uploadImage(paymentScreenshot, path);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       }
 
       await addDoc(collection(db, 'epinRequests'), {
@@ -153,16 +123,9 @@ const EpinRequestForm = () => {
         totalEpins: quantity + bonus,
         paymentMethod: 'UPI',
         upiId: 'helpingpin@axl',
-<<<<<<< HEAD
         amountPaid: amountPaid,
         utrNumber: utrNumber,
         paymentScreenshotUrl: paymentScreenshotUrl, // This is now a proper Firebase Storage download URL
-=======
-        qrCodeUrl: 'https://freeimage.host/i/FuYNU3N',
-        amountPaid: amountPaid,
-        utrNumber: utrNumber,
-        paymentScreenshotUrl: paymentScreenshotUrl,
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         status: 'pending',
         createdAt: serverTimestamp(),
       });
@@ -231,7 +194,6 @@ const EpinRequestForm = () => {
             <h3 className="text-lg font-semibold mb-2">Payment Details</h3>
             <p className="text-gray-700">UPI ID: <span className="font-medium">helpingpin@axl</span></p>
             <div className="my-4 flex justify-center">
-<<<<<<< HEAD
               {qrImageLoading ? (
                 <div className="w-48 h-48 flex items-center justify-center bg-gray-100 border border-gray-300 rounded">
                   <span className="text-gray-500">Loading QR Code...</span>
@@ -252,9 +214,6 @@ const EpinRequestForm = () => {
                   QR Code not available
                 </div>
               )}
-=======
-              <img src="https://freeimage.host/i/FuYNU3N" alt="UPI QR Code" className="w-48 h-48 object-contain" />
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             </div>
             <p className="text-gray-700">Total Amount to Pay: <span className="font-medium">₹{(quantity + bonus) * epinPrice}</span></p>
             <input

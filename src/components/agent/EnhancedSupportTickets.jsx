@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { FiMessageSquare, FiUser, FiClock, FiCheck, FiX, FiArrowLeft, FiSend, FiEye, FiAlertCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -158,19 +155,6 @@ const EnhancedSupportTickets = ({ user }) => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  // Format date
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleString();
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Get priority color
   const getPriorityColor = (priority) => {
@@ -259,11 +243,7 @@ const EnhancedSupportTickets = ({ user }) => {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Created</label>
-<<<<<<< HEAD
               <p className="text-gray-900 mt-1">{formatDate(selectedTicket.createdAt, { includeTime: true })}</p>
-=======
-              <p className="text-gray-900 mt-1">{formatDate(selectedTicket.createdAt)}</p>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Category</label>
@@ -310,11 +290,7 @@ const EnhancedSupportTickets = ({ user }) => {
                     <p className={`text-xs mt-1 ${
                       message.sender === 'agent' ? 'text-blue-100' : 'text-gray-500'
                     }`}>
-<<<<<<< HEAD
                       {formatDate(message.timestamp, { includeTime: true })}
-=======
-                      {formatDate(message.timestamp)}
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       {message.sender === 'agent' && message.agentName && (
                         <span className="ml-1">• {message.agentName}</span>
                       )}
@@ -447,11 +423,7 @@ const EnhancedSupportTickets = ({ user }) => {
                     <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500">
                       <div className="flex items-center space-x-1">
                         <FiClock className="flex-shrink-0" />
-<<<<<<< HEAD
                         <span className="truncate">{formatDate(ticket.createdAt, { includeTime: true })}</span>
-=======
-                        <span className="truncate">{formatDate(ticket.createdAt)}</span>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       </div>
                       {ticket.category && (
                         <span className="capitalize truncate">{ticket.category}</span>

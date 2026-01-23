@@ -13,10 +13,7 @@ import {
 import { db } from '../../config/firebase';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const UserBugChecker = () => {
   const { currentUser } = useAgentAuth();
@@ -217,14 +214,6 @@ const UserBugChecker = () => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    const d = date.toDate ? date.toDate() : new Date(date);
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const exportBugTickets = () => {
     try {

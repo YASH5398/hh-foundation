@@ -29,6 +29,7 @@ import { waitForAuthReady } from './authReady';
 
 import { HELP_STATUS, canSubmitPayment, canConfirmPayment } from '../config/helpStatus';
 import { getAmountByLevel, getHelpLimitByLevel, validateAmountForLevel } from '../utils/amountUtils';
+import { checkReceiveHelpEligibility } from '../utils/eligibilityUtils';
 import { isIncomeBlocked, LEVEL_CONFIG } from '../shared/mlmCore';
 import { sendPaymentRequestNotification } from './notificationService';
 
@@ -198,38 +199,15 @@ export async function checkSenderEligibility(currentUser) {
 export async function checkReceiverEligibility(userData) {
   try {
     await waitForAuthReady();
-    // Basic eligibility checks
-    if (!userData.isActivated) {
-      return { eligible: false, reason: 'User not activated' };
+    
+    // Use the single source of truth eligibility function
+    const { eligible, reason } = checkReceiveHelpEligibility(userData);
+    
+    if (!eligible) {
+      return { eligible: false, reason };
     }
 
-    // BLOCKED USER CHECK - Blocked users cannot receive help
-    if (userData.isBlocked || userData.paymentBlocked) {
-      return {
-        eligible: false,
-        reason: 'User is blocked and cannot receive help',
-        isBlocked: true
-      };
-    }
-
-    if (userData.isOnHold) {
-      return { eligible: false, reason: 'User is on hold' };
-    }
-
-    if (userData.isReceivingHeld) {
-      return { eligible: false, reason: 'User is receiving held' };
-    }
-
-    if (userData.paymentBlocked) {
-      return { eligible: false, reason: 'User payment is blocked' };
-    }
-
-    // Income blocking check
-    if (isIncomeBlocked(userData)) {
-      return { eligible: false, reason: 'User income is blocked' };
-    }
-
-    // Help limit check
+    // Additional business logic checks (not covered by basic eligibility)
     const helpLimit = getHelpLimitByLevel(normalizeLevel(userData.levelStatus || userData.level));
     const currentHelpReceived = userData.helpReceived || 0;
 
@@ -303,6 +281,12 @@ export async function createSendHelpAssignment(senderUser) {
     throw new Error('User ID missing from profile');
   }
 
+  // Check sender eligibility before making the call
+  const eligibilityCheck = await checkSenderEligibility(auth.currentUser);
+  if (!eligibilityCheck.eligible) {
+    throw new Error(eligibilityCheck.reason);
+  }
+
   const idempotencyKey = `${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
   try {
     console.log('[startHelpAssignment] Authentication check:', {
@@ -325,42 +309,50 @@ export async function createSendHelpAssignment(senderUser) {
     const res = await startHelpAssignment({ senderUid: senderUser.uid, senderId, idempotencyKey });
     
     return { success: true, helpId: res.data.data.helpId, alreadyExists: res.data.data.alreadyExists };
-    return { success: true, helpId: res.data.data.helpId, alreadyExists: res.data.data.alreadyExists };
   } catch (error) {
-    // Handle specific "no eligible receiver" case
-    if (error?.code === 'functions/failed-precondition' && error?.message === 'NO_ELIGIBLE_RECEIVER') {
+    // Handle specific "no eligible receiver" case - this is a BUSINESS CASE, not an error
+    if (error?.code === 'functions/failed-precondition' && 
+        (error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
       const err = new Error('No eligible receivers available right now.');
       err.code = error.code;
       err.isNoReceiver = true;
+      err.isBusinessCase = true; // Mark as business case, not error
       throw err;
     }
 
     // Handle other "no receiver" cases for backward compatibility
     const isNoReceiver =
       error?.code === 'functions/failed-precondition' ||
-      error?.message?.includes('No eligible receivers');
+      error?.message?.includes('No eligible receivers') ||
+      error?.message?.includes('no eligible receivers');
     
-    if (!isNoReceiver) {
-      console.error('createSendHelpAssignment callable error:', {
-        code: error?.code,
-        message: error?.message,
-        details: error?.details
-      });
+    if (isNoReceiver) {
+      const err = new Error('No eligible receivers available right now.');
+      err.code = error.code;
+      err.isNoReceiver = true;
+      err.isBusinessCase = true; // Mark as business case, not error
+      throw err;
     }
+
+    // Log real errors only
+    console.error('createSendHelpAssignment callable error:', {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details
+    });
 
     const message = error?.details?.message || error?.message || mapFirebaseError(error);
     const err = new Error(message);
     err.code = error?.code;
     err.details = error?.details;
-    err.isNoReceiver = isNoReceiver;
+    err.isNoReceiver = false;
+    err.isBusinessCase = false;
     
-    if (!isNoReceiver) {
-      console.error('createSendHelpAssignment failed:', {
-        code: err.code,
-        message: err.message,
-        details: err.details
-      });
-    }
+    console.error('createSendHelpAssignment failed:', {
+      code: err.code,
+      message: err.message,
+      details: err.details
+    });
     throw err;
   }
 }

@@ -1,9 +1,7 @@
 const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onRequest: httpsOnRequest, onCall: httpsOnCall, HttpsError } = require('firebase-functions/v2/https');
-<<<<<<< HEAD
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
-const functions = require('firebase-functions');
 // const { onUserDeleted } = require('firebase-functions/v2/identity');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
@@ -14,14 +12,6 @@ admin.initializeApp();
 setGlobalOptions({ region: 'us-central1' });
 
 const db = admin.firestore();
-=======
-const admin = require('firebase-admin');
-
-admin.initializeApp();
-
-const db = admin.firestore();
-const messaging = admin.messaging();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 // Import MLM core logic - SINGLE SOURCE OF TRUTH
 const {
@@ -43,7 +33,9 @@ const {
   validateUpgradePayment
 } = require('./shared/mlmCore');
 
-<<<<<<< HEAD
+// Import eligibility utilities - SINGLE SOURCE OF TRUTH
+const { checkReceiveHelpEligibility, getEligibilityMessage } = require('./shared/eligibilityUtils');
+
 // ============================
 // HELP (SEND/RECEIVE) V2 - PRODUCTION FLOW
 // ============================
@@ -116,25 +108,44 @@ const getReceiveLimitForLevel = (levelName) => {
 };
 
 const isReceiverEligibleStrict = (userData) => {
-  // Mandatory strict checks - ALL must be satisfied
-  return (
-    userData?.isActivated === true &&
-    userData?.isBlocked === false &&
-    userData?.isReceivingHeld === false &&
-    userData?.upgradeRequired === false &&
-    userData?.sponsorPaymentPending === false &&
-    (userData?.activeReceiveCount || 0) < getReceiveLimitForLevel(userData?.levelStatus || userData?.level)
-  );
+  // Use the single source of truth eligibility function
+  const { eligible } = checkReceiveHelpEligibility(userData);
+  
+  // Additional business logic checks (not covered by basic eligibility)
+  if (!eligible) return false;
+  
+  // Check upgrade and sponsor payment requirements
+  if (userData?.upgradeRequired === true) return false;
+  if (userData?.sponsorPaymentPending === true) return false;
+  
+  // Check receive limit
+  const limit = getReceiveLimitForLevel(userData?.levelStatus || userData?.level);
+  if ((userData?.activeReceiveCount || 0) >= limit) return false;
+  
+  return true;
 };
 
 const receiverIneligibilityReason = (userData) => {
-  if (userData?.isActivated !== true) return 'not_activated';
-  if (userData?.isBlocked === true) return 'blocked';
-  if (userData?.isReceivingHeld === true) return 'receiving_held';
+  // First check basic eligibility
+  const { eligible, reason } = checkReceiveHelpEligibility(userData);
+  if (!eligible) {
+    // Map our detailed reasons to the existing reason codes
+    if (reason.includes('isActivated')) return 'not_activated';
+    if (reason.includes('isBlocked')) return 'blocked';
+    if (reason.includes('isOnHold')) return 'on_hold';
+    if (reason.includes('isReceivingHeld')) return 'receiving_held';
+    if (reason.includes('paymentBlocked')) return 'payment_blocked';
+    if (reason.includes('helpVisibility')) return 'help_visibility_disabled';
+    if (reason.includes('levelStatus')) return 'level_status_missing';
+    return 'not_eligible';
+  }
+  
+  // Check additional business logic
   if (userData?.upgradeRequired === true) return 'upgrade_required';
   if (userData?.sponsorPaymentPending === true) return 'sponsor_payment_pending';
   const limit = getReceiveLimitForLevel(userData?.levelStatus || userData?.level);
   if ((userData?.activeReceiveCount || 0) >= limit) return 'receive_limit_reached';
+  
   return 'not_eligible';
 };
 
@@ -388,146 +399,206 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         throw new HttpsError('failed-precondition', 'Sender already has an active help');
       }
 
+      // Helper: Normalize boolean field (handle string booleans like "true"/"false")
+      const normalizeBoolean = (value) => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') return value.toLowerCase() === 'true';
+        return !!value;
+      };
+
+      // Helper: Normalize number field (handle string numbers)
+      const normalizeNumber = (value, defaultVal = 0) => {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string' && !isNaN(value)) return Number(value);
+        return defaultVal;
+      };
+
+      // Main query: ONLY essential filters
       const receiverQuery = db
         .collection('users')
+        .where('helpVisibility', '==', true)
         .where('isActivated', '==', true)
+        .where('isBlocked', '==', false)
         .where('isReceivingHeld', '==', false)
-        .where('levelStatus', '==', senderLevel)
-        .orderBy('referralCount', 'desc')
-        .orderBy('lastReceiveAssignedAt', 'asc')
-        .limit(25);
+        .limit(500);
+
+      console.log('[startHelpAssignment] receiver.query.spec', {
+        collection: 'users',
+        filters: {
+          helpVisibility: '== true',
+          isActivated: '== true',
+          isBlocked: '== false',
+          isReceivingHeld: '== false'
+        },
+        limit: 500
+      });
 
       let receiverSnap;
       try {
         receiverSnap = await tx.get(receiverQuery);
       } catch (e) {
-        safeThrowInternal(e, { step: 'tx.get.receiverQuery', senderLevel });
+        safeThrowInternal(e, { step: 'tx.get.receiverQuery', errorMsg: e?.message });
       }
 
-      console.log('[startHelpAssignment] receiverCandidates.count', { senderUid, senderLevel, count: receiverSnap.size });
-      if (receiverSnap.empty) {
-        throw new HttpsError('failed-precondition', 'NO_ELIGIBLE_RECEIVER');
-      }
+      console.log('[startHelpAssignment] receiver.query.result', { 
+        usersFetched: receiverSnap.size,
+        isEmpty: receiverSnap.empty
+      });
+
+      // Post-fetch processing in JavaScript with type normalization
+      let receiversToCheck = receiverSnap.docs
+        .map(doc => ({
+          ref: doc.ref,
+          id: doc.id,
+          data: doc.data(),
+          // Normalize types for reliable filtering
+          _normalized: {
+            helpVisibility: normalizeBoolean(doc.data()?.helpVisibility),
+            isActivated: normalizeBoolean(doc.data()?.isActivated),
+            isBlocked: normalizeBoolean(doc.data()?.isBlocked),
+            isReceivingHeld: normalizeBoolean(doc.data()?.isReceivingHeld),
+            referralCount: normalizeNumber(doc.data()?.referralCount, 0)
+          }
+        }))
+        // RE-VALIDATE: Re-check normalized types (in case Firestore filters weren't exact)
+        .filter(u => 
+          u._normalized.helpVisibility === true &&
+          u._normalized.isActivated === true &&
+          u._normalized.isBlocked === false &&
+          u._normalized.isReceivingHeld === false
+        )
+        // Exclude sender UID
+        .filter(u => u.id !== senderUid)
+        // Exclude system accounts
+        .filter(u => u.data?.isSystemAccount !== true)
+        // Sort by referralCount DESC
+        .sort((a, b) => {
+          const aRef = a._normalized.referralCount;
+          const bRef = b._normalized.referralCount;
+          return bRef - aRef;
+        });
+
+      const afterNormalization = receiversToCheck.length;
+      console.log('[startHelpAssignment] receiver.filtering', { 
+        afterQuery: receiverSnap.size,
+        afterNormalization: afterNormalization,
+        senderExcluded: receiverSnap.docs.some(d => d.id === senderUid) ? true : false
+      });
 
       let chosenReceiverRef = null;
       let chosenReceiver = null;
-      let skippedReceivers = [];
+      let chosenReceiverUid = null;
+      let fallbackUsed = false;
       
-      for (const docSnap of receiverSnap.docs) {
-        const candidate = docSnap.data() || {};
-        const candidateUid = docSnap.id;
+      // Pick first receiver if any
+      if (receiversToCheck.length > 0) {
+        const chosen = receiversToCheck[0];
+        chosenReceiverRef = chosen.ref;
+        chosenReceiver = chosen.data;
+        chosenReceiverUid = chosen.id;
         
-        // Log candidate details for debugging
-        console.log('[startHelpAssignment] evaluating.candidate', {
-          uid: candidateUid,
-          helpReceived: candidate?.helpReceived || 0,
-          level: candidate?.levelStatus || candidate?.level || 'Star',
-          isActivated: candidate?.isActivated,
-          isBlocked: candidate?.isBlocked,
-          isOnHold: candidate?.isOnHold,
-          isReceivingHeld: candidate?.isReceivingHeld,
-          helpVisibility: candidate?.helpVisibility,
-          upgradeRequired: candidate?.upgradeRequired,
-          sponsorPaymentPending: candidate?.sponsorPaymentPending,
-          activeReceiveCount: candidate?.activeReceiveCount || 0
-        });
-        
-        // Skip if same as sender
-        if (candidateUid === senderUid) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'same_as_sender' });
-          continue;
-        }
-        
-        // Check basic eligibility conditions
-        if (candidate?.isActivated !== true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'not_activated' });
-          continue;
-        }
-        
-        if (candidate?.isBlocked === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'blocked' });
-          continue;
-        }
-        
-        if (candidate?.isOnHold === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'on_hold' });
-          continue;
-        }
-        
-        if (candidate?.isReceivingHeld === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'receiving_held' });
-          continue;
-        }
-        
-        if (candidate?.helpVisibility === false) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'help_visibility_false' });
-          continue;
-        }
-        
-        if (candidate?.upgradeRequired === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'upgrade_required' });
-          continue;
-        }
-        
-        if (candidate?.sponsorPaymentPending === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'sponsor_payment_pending' });
-          continue;
-        }
-        
-        // Check receive count limit (this allows helpReceived = 0)
-        const currentLevel = candidate?.levelStatus || candidate?.level || 'Star';
-        const receiveLimit = getReceiveLimitForLevel(currentLevel);
-        const currentReceiveCount = candidate?.activeReceiveCount || 0;
-        
-        if (currentReceiveCount >= receiveLimit) {
-          skippedReceivers.push({ 
-            uid: candidateUid, 
-            reason: 'receive_limit_reached',
-            currentCount: currentReceiveCount,
-            limit: receiveLimit
-          });
-          continue;
-        }
-        
-        // Candidate is eligible - select them
-        chosenReceiverRef = docSnap.ref;
-        chosenReceiver = { uid: candidateUid, ...candidate };
-        
-        console.log('[startHelpAssignment] receiver.selected', {
-          uid: candidateUid,
-          helpReceived: candidate?.helpReceived || 0,
-          level: currentLevel,
-          activeReceiveCount: currentReceiveCount,
-          receiveLimit: receiveLimit,
-          reason: 'eligible'
-        });
-        
-        break;
-      }
-      
-      // Log all skipped receivers for debugging
-      if (skippedReceivers.length > 0) {
-        console.log('[startHelpAssignment] skipped.receivers', {
-          count: skippedReceivers.length,
-          details: skippedReceivers
+        console.log('[startHelpAssignment] receiver.selected', { 
+          selectedUid: chosen.id,
+          userId: chosen.data?.userId || null,
+          referralCount: chosen._normalized.referralCount
         });
       }
 
-      if (!chosenReceiverRef || !chosenReceiver) {
-        console.log('[startHelpAssignment] no.eligible.receivers', {
-          totalCandidates: receiverSnap.size,
-          skippedCount: skippedReceivers.length,
-          skippedReasons: skippedReceivers.reduce((acc, r) => {
-            acc[r.reason] = (acc[r.reason] || 0) + 1;
-            return acc;
-          }, {})
+      // FALLBACK STRATEGY: If zero eligible found, try relaxed query
+      if (!chosenReceiverRef && !chosenReceiver) {
+        console.log('[startHelpAssignment] fallback.trigger', {
+          reason: 'zero_receivers_from_main_query',
+          attempting: 'relaxed_fallback_query'
         });
-        throw new HttpsError('failed-precondition', 'NO_ELIGIBLE_RECEIVER');
+
+        const fallbackQuery = db
+          .collection('users')
+          .where('isActivated', '==', true)
+          .where('isBlocked', '==', false)
+          .limit(500);
+
+        let fallbackSnap;
+        try {
+          fallbackSnap = await tx.get(fallbackQuery);
+        } catch (e) {
+          console.log('[startHelpAssignment] fallback.query.failed', { errorMsg: e?.message });
+          fallbackSnap = { docs: [], empty: true };
+        }
+
+        if (fallbackSnap && !fallbackSnap.empty) {
+          // Apply same normalization and filtering
+          const fallbackCandidates = fallbackSnap.docs
+            .map(doc => ({
+              ref: doc.ref,
+              id: doc.id,
+              data: doc.data(),
+              _normalized: {
+                helpVisibility: normalizeBoolean(doc.data()?.helpVisibility),
+                isActivated: normalizeBoolean(doc.data()?.isActivated),
+                isBlocked: normalizeBoolean(doc.data()?.isBlocked),
+                isReceivingHeld: normalizeBoolean(doc.data()?.isReceivingHeld),
+                referralCount: normalizeNumber(doc.data()?.referralCount, 0)
+              }
+            }))
+            // Apply eligibility filters
+            .filter(u => u._normalized.isActivated === true && u._normalized.isBlocked === false)
+            .filter(u => u.id !== senderUid)
+            .filter(u => u.data?.isSystemAccount !== true)
+            .sort((a, b) => b._normalized.referralCount - a._normalized.referralCount);
+
+          if (fallbackCandidates.length > 0) {
+            const chosen = fallbackCandidates[0];
+            chosenReceiverRef = chosen.ref;
+            chosenReceiver = chosen.data;
+            chosenReceiverUid = chosen.id;
+            fallbackUsed = true;
+
+            console.log('[startHelpAssignment] fallback.success', {
+              selectedUid: chosen.id,
+              userId: chosen.data?.userId || null,
+              candidatesAvailable: fallbackCandidates.length
+            });
+          }
+        }
       }
+
+      // Final check: no receivers found even after fallback
+      if (!chosenReceiverRef || !chosenReceiver) {
+        console.log('[startHelpAssignment] no_eligible_receiver', {
+          mainQuery: receiverSnap.size,
+          afterFiltering: afterNormalization,
+          fallbackUsed: fallbackUsed
+        });
+        
+        return { 
+          success: false, 
+          reason: 'NO_ELIGIBLE_RECEIVER'
+        };
+      }
+
+      // RE-VALIDATE receiver in transaction before assignment (check for concurrent modifications)
+      console.log('[startHelpAssignment] revalidate.receiver', {
+        receiverUid: chosenReceiverUid,
+        step: 'before_assignment'
+      });
+
+      const freshReceiverSnap = await tx.get(chosenReceiverRef);
+      if (!freshReceiverSnap.exists) {
+        throw new HttpsError('failed-precondition', 'Receiver document disappeared during assignment');
+      }
+
+      const freshReceiver = freshReceiverSnap.data();
+      if (normalizeBoolean(freshReceiver?.isBlocked) === true || 
+          normalizeBoolean(freshReceiver?.isReceivingHeld) === true) {
+        throw new HttpsError('failed-precondition', 'Receiver became ineligible during assignment');
+      }
+
+      // Use fresh data for the assignment
+      chosenReceiver = freshReceiver;
 
       console.log('[startHelpAssignment] final.receiver.selected', {
         senderUid,
-        receiverUid: chosenReceiver.uid,
+        receiverUid: chosenReceiverUid,
         receiverUserId: chosenReceiver.userId || null,
         helpReceived: chosenReceiver.helpReceived || 0,
         level: chosenReceiver.levelStatus || chosenReceiver.level || 'Star',
@@ -537,7 +608,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       });
 
       const createdAtMs = Date.now();
-      const helpId = buildHelpDocId({ receiverUid: chosenReceiver.uid, senderUid, createdAtMs });
+      const helpId = buildHelpDocId({ receiverUid: chosenReceiverUid, senderUid, createdAtMs });
       const sendHelpRef = db.collection('sendHelp').doc(helpId);
       const receiveHelpRef = db.collection('receiveHelp').doc(helpId);
 
@@ -562,7 +633,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         senderPhone: sender.phone || null,
         senderLevel,
 
-        receiverUid: chosenReceiver.uid,
+        receiverUid: chosenReceiverUid,
         receiverId: chosenReceiver.userId || null,
         receiverName: chosenReceiver.fullName || chosenReceiver.name || chosenReceiver.displayName || null,
         receiverPhone: chosenReceiver.phone || null,
@@ -632,7 +703,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         safeThrowInternal(e, { step: 'tx.set.idempotency', helpId });
       }
 
-      console.log('[startHelpAssignment] docs.created', { senderUid, helpId, receiverUid: chosenReceiver.uid });
+      console.log('[startHelpAssignment] docs.created', { senderUid, helpId, receiverUid: chosenReceiverUid });
       return { alreadyExists: false, helpId };
     });
 
@@ -643,6 +714,15 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       alreadyExists: result?.alreadyExists === true,
       durationMs: Date.now() - startedAtMs
     });
+
+    // Handle case where no receiver was found
+    if (result.success === false && result.reason === 'NO_ELIGIBLE_RECEIVER') {
+      return {
+        success: false,
+        reason: 'NO_ELIGIBLE_RECEIVER',
+        data: result
+      };
+    }
 
     return {
       success: true,
@@ -1274,8 +1354,6 @@ exports.resumeBlockedReceives = httpsOnCall(async (request) => {
 //
 //  await Promise.allSettled(ops);
 
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 // Helper functions for level management
 const unblockUserIncome = async (userId, level) => {
   const userRef = db.collection('users').doc(userId);
@@ -1373,7 +1451,6 @@ const createActivityNotificationData = (params) => {
   });
 };
 
-<<<<<<< HEAD
 const internalResumeBlockedReceives = async (targetUid) => {
   await db.runTransaction(async (tx) => {
     const userRef = db.collection('users').doc(targetUid);
@@ -1537,1122 +1614,6 @@ exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}
 
 // Cloud Function: E-PIN request status notifications
 exports.onEpinRequestUpdateV2 = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
-=======
-exports.onReceiveHelpConfirmed = onDocumentUpdated('receiveHelp/{docId}', async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
-    if (before.confirmedByReceiver === false && after.confirmedByReceiver === true) {
-      const receiverId = after.receiverId;
-      console.log(`[onReceiveHelpConfirmed] Confirmation detected for receiverId: ${receiverId}`);
-      const usersQuery = db.collection('users').where('userId', '==', receiverId);
-      const usersSnap = await usersQuery.get();
-      if (usersSnap.empty) {
-        console.log(`[onReceiveHelpConfirmed] No user found for receiverId: ${receiverId}`);
-        return null;
-      }
-      const userRef = usersSnap.docs[0].ref;
-      await db.runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        const userData = userDoc.data();
-        let helpReceived = userData.helpReceived || 0;
-        helpReceived += 1; // Idempotent increment - only happens once per confirmation
-        console.log(`[onReceiveHelpConfirmed] Incrementing helpReceived to: ${helpReceived}`);
-
-        const updateData = { helpReceived };
-
-        // Use MLM core logic to check if income should be blocked
-        if (isIncomeBlocked({ ...userData, helpReceived })) {
-          updateData.isReceivingHeld = true;
-          updateData.isOnHold = true;
-          console.log(`[onReceiveHelpConfirmed] helpReceived reached ${helpReceived} for level ${userData.level}. Income BLOCKED.`);
-        }
-
-        // Check if level is completed (hard stop)
-        if (helpReceived >= getTotalHelpsByLevel(userData.level)) {
-          updateData.levelStatus = 'completed';
-          console.log(`[onReceiveHelpConfirmed] Level ${userData.level} completed with ${helpReceived} helps.`);
-        }
-
-        transaction.update(userRef, updateData);
-      });
-      console.log(`[onReceiveHelpConfirmed] Transaction complete for receiverId: ${receiverId}`);
-    } else {
-      console.log('[onReceiveHelpConfirmed] No confirmation change detected.');
-    }
-    return null;
-   });
-
-// Cloud Function: Payment delay reminder notifications
-exports.onReceiveHelpPaymentDelay = onDocumentUpdated('receiveHelp/{receiveHelpId}', async (change, context) => {
-    const receiveHelpId = context.params.receiveHelpId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    try {
-      // Check if receiver was found but payment is still pending
-      if (!beforeData.receiverId && afterData.receiverId && !afterData.paymentConfirmed) {
-        const { senderId, receiverId, amount } = afterData;
-        
-        if (!senderId || !receiverId) {
-          console.log('Missing senderId or receiverId for payment delay reminder');
-          return null;
-        }
-        
-        // Schedule recurring payment reminders every 3 hours
-        const schedulePaymentReminder = async (reminderCount = 1) => {
-          if (reminderCount > 24) { // Stop after 24 reminders (3 days)
-            console.log(`Payment reminder limit reached for receiveHelp: ${receiveHelpId}`);
-            return;
-          }
-          
-          // Check if payment is still pending
-          const currentDoc = await db.collection('receiveHelp').doc(receiveHelpId).get();
-          if (!currentDoc.exists || currentDoc.data().paymentConfirmed) {
-            console.log(`Payment completed or document deleted for receiveHelp: ${receiveHelpId}`);
-            return;
-          }
-          
-          const currentData = currentDoc.data();
-          
-          // Get receiver info for personalized message
-          const receiverDoc = await db.collection('users').doc(receiverId).get();
-          const receiverName = receiverDoc.exists ? receiverDoc.data().fullName || receiverDoc.data().name || 'Receiver' : 'Receiver';
-          
-          const paymentReminderNotification = createActivityNotificationData({
-            title: '⏰ Payment Reminder',
-            message: `Reminder: Please complete your payment of ₹${amount} to ${receiverName}. They are waiting for your help.`,
-            uid: senderId,
-            userId: senderId,
-            priority: 'high',
-            actionLink: '/dashboard/send-help',
-            category: 'reminder',
-            relatedAction: 'payment_reminder',
-            senderName: 'HH Foundation'
-          });
-          
-          await createNotification(senderId, paymentReminderNotification);
-          await sendPushNotification(senderId, paymentReminderNotification);
-          
-          console.log(`Payment reminder ${reminderCount} sent for receiveHelp: ${receiveHelpId}`);
-          
-          // Schedule next reminder in 3 hours (10800000 ms)
-          setTimeout(() => {
-            schedulePaymentReminder(reminderCount + 1);
-          }, 3 * 60 * 60 * 1000);
-        };
-        
-        // Start the first reminder after 3 hours
-        setTimeout(() => {
-          schedulePaymentReminder(1);
-        }, 3 * 60 * 60 * 1000);
-        
-        console.log(`Payment delay reminder scheduled for receiveHelp: ${receiveHelpId}`);
-      }
-      
-    } catch (error) {
-      console.error('Error in onReceiveHelpPaymentDelay notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Leaderboard ranking notifications
-exports.onLeaderboardUpdate = onDocumentUpdated('leaderboard/{leaderboardId}', async (change, context) => {
-    const leaderboardId = context.params.leaderboardId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    try {
-      // Check for upcoming payments leaderboard changes
-      if (leaderboardId === 'upcomingPayments' && afterData.rankings) {
-        const rankings = afterData.rankings;
-        const previousRankings = beforeData.rankings || [];
-        
-        // Check for users entering top 50, 20, 10, or 5
-        const checkRanks = [50, 20, 10, 5];
-        
-        for (const targetRank of checkRanks) {
-          if (rankings.length >= targetRank) {
-            const currentTopUsers = rankings.slice(0, targetRank).map(r => r.userId);
-            const previousTopUsers = previousRankings.slice(0, targetRank).map(r => r.userId);
-            
-            // Find new users in this rank tier
-            const newTopUsers = currentTopUsers.filter(userId => !previousTopUsers.includes(userId));
-            
-            for (const userId of newTopUsers) {
-              const userRanking = rankings.find(r => r.userId === userId);
-              if (userRanking) {
-                const rankingNotification = createActivityNotificationData({
-                  title: `🏆 Top ${targetRank} Upcoming Payments!`,
-                  message: `Congratulations! You've reached rank #${userRanking.rank} in the upcoming payments leaderboard. Keep it up!`,
-                  uid: userId,
-                  userId: userId,
-                  priority: 'high',
-                  actionLink: '/dashboard/leaderboard',
-                  category: 'achievement',
-                  relatedAction: 'leaderboard_rank',
-                  senderName: 'HH Foundation'
-                });
-                
-                await createNotification(userId, rankingNotification);
-                await sendPushNotification(userId, rankingNotification);
-                
-                console.log(`Upcoming payments leaderboard notification sent for user: ${userId}, rank: ${userRanking.rank}`);
-              }
-            }
-          }
-        }
-      }
-      
-      // Check for main leaderboard top 10 changes
-      if (leaderboardId === 'main' && afterData.rankings) {
-        const rankings = afterData.rankings;
-        const previousRankings = beforeData.rankings || [];
-        
-        if (rankings.length >= 10) {
-          const currentTop10 = rankings.slice(0, 10).map(r => r.userId);
-          const previousTop10 = previousRankings.slice(0, 10).map(r => r.userId);
-          
-          // Find new users in top 10
-          const newTop10Users = currentTop10.filter(userId => !previousTop10.includes(userId));
-          
-          for (const userId of newTop10Users) {
-            const userRanking = rankings.find(r => r.userId === userId);
-            if (userRanking) {
-              const top10Notification = createActivityNotificationData({
-                title: '🌟 Top 10 Main Leaderboard!',
-                message: `Amazing! You've reached rank #${userRanking.rank} in the main leaderboard. You're among the top performers!`,
-                uid: userId,
-                userId: userId,
-                priority: 'high',
-                actionLink: '/dashboard/leaderboard',
-                category: 'achievement',
-                relatedAction: 'top_10_main',
-                senderName: 'HH Foundation'
-              });
-              
-              await createNotification(userId, top10Notification);
-              await sendPushNotification(userId, top10Notification);
-              
-              console.log(`Main leaderboard top 10 notification sent for user: ${userId}, rank: ${userRanking.rank}`);
-            }
-          }
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error in onLeaderboardUpdate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Testimonial approval notification (Earn Free E-PIN)
-exports.onTestimonialUpdate = onDocumentUpdated('testimonials/{testimonialId}', async (change, context) => {
-    const testimonialId = context.params.testimonialId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    try {
-      // Check if testimonial was approved
-      if (beforeData.status !== 'approved' && afterData.status === 'approved') {
-        const { userId, videoTitle } = afterData;
-        
-        if (!userId) {
-          console.log('No userId found for testimonial approval notification');
-          return null;
-        }
-        
-        // Award 5 E-PINs to user (this would typically be handled by another function)
-        // For now, just send notification
-        const testimonialApprovedNotification = createActivityNotificationData({
-          title: '🎉 Testimonial Approved - 5 E-PINs Earned!',
-          message: `Congratulations! Your testimonial video "${videoTitle || 'Your testimonial'}" has been approved. You've earned 5 free E-PINs!`,
-          uid: userId,
-          userId: userId,
-          priority: 'high',
-          actionLink: '/dashboard/testimonials',
-          category: 'reward',
-          relatedAction: 'testimonial_approved',
-          senderName: 'HH Foundation'
-        });
-        
-        await createNotification(userId, testimonialApprovedNotification);
-        await sendPushNotification(userId, testimonialApprovedNotification);
-        
-        console.log(`Testimonial approval notification sent for user: ${userId}`);
-      }
-      
-      // Check if testimonial was rejected
-      if (beforeData.status !== 'rejected' && afterData.status === 'rejected') {
-        const { userId, videoTitle, rejectionReason } = afterData;
-        
-        if (!userId) {
-          console.log('No userId found for testimonial rejection notification');
-          return null;
-        }
-        
-        const testimonialRejectedNotification = createActivityNotificationData({
-          title: '❌ Testimonial Not Approved',
-          message: `Your testimonial video "${videoTitle || 'Your testimonial'}" was not approved. ${rejectionReason ? `Reason: ${rejectionReason}` : 'Please review our guidelines and try again.'}`,
-          uid: userId,
-          userId: userId,
-          priority: 'medium',
-          actionLink: '/dashboard/testimonials',
-          category: 'update',
-          relatedAction: 'testimonial_rejected',
-          senderName: 'HH Foundation'
-        });
-        
-        await createNotification(userId, testimonialRejectedNotification);
-        await sendPushNotification(userId, testimonialRejectedNotification);
-        
-        console.log(`Testimonial rejection notification sent for user: ${userId}`);
-      }
-      
-    } catch (error) {
-      console.error('Error in onTestimonialUpdate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Support ticket creation notification
-exports.onSupportTicketCreate = onDocumentCreated('supportTickets/{ticketId}', async (snap, context) => {
-    const ticketId = context.params.ticketId;
-    const ticketData = snap.data();
-    
-    try {
-      const { userId, subject, priority } = ticketData;
-      
-      if (!userId) {
-        console.log('No userId found for support ticket notification');
-        return null;
-      }
-      
-      // Send confirmation to user
-      const userNotification = createActivityNotificationData({
-        title: '🎫 Support Ticket Created',
-        message: `Your support ticket "${subject}" has been created successfully. Our team will respond soon.`,
-        uid: userId,
-        userId: userId,
-        priority: 'medium',
-        actionLink: '/dashboard/support/tickets',
-        category: 'support',
-        relatedAction: 'ticket_created',
-        senderName: 'Support System'
-      });
-      
-      await createNotification(userId, userNotification);
-      await sendPushNotification(userId, userNotification);
-      
-      console.log(`Support ticket creation notification sent for ticket: ${ticketId}`);
-      
-    } catch (error) {
-      console.error('Error in onSupportTicketCreate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Support ticket agent assignment notification
-exports.onSupportTicketUpdate = onDocumentUpdated('supportTickets/{ticketId}', async (change, context) => {
-    const ticketId = context.params.ticketId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    try {
-      // Check if agent was assigned
-      if (!beforeData.agentId && afterData.agentId) {
-        const { userId, agentId, subject } = afterData;
-        
-        if (!userId) {
-          console.log('No userId found for agent assignment notification');
-          return null;
-        }
-        
-        // Get agent info
-        const agentDoc = await db.collection('users').doc(agentId).get();
-        const agentName = agentDoc.exists ? agentDoc.data().fullName || agentDoc.data().name || 'Support Agent' : 'Support Agent';
-        
-        const agentAssignmentNotification = createActivityNotificationData({
-          title: '👨‍💼 Agent Assigned to Your Ticket',
-          message: `${agentName} has been assigned to your support ticket "${subject}". They will connect with you soon.`,
-          uid: userId,
-          userId: userId,
-          priority: 'high',
-          actionLink: '/dashboard/support/tickets',
-          category: 'support',
-          relatedAction: 'agent_assigned',
-          senderName: 'Support System'
-        });
-        
-        await createNotification(userId, agentAssignmentNotification);
-        await sendPushNotification(userId, agentAssignmentNotification);
-        
-        console.log(`Agent assignment notification sent for ticket: ${ticketId}`);
-      }
-      
-      // Check if status changed to 'in_progress' (agent connected)
-      if (beforeData.status !== 'in_progress' && afterData.status === 'in_progress') {
-        const { userId, agentId } = afterData;
-        
-        if (!userId) {
-          console.log('No userId found for agent connection notification');
-          return null;
-        }
-        
-        // Get agent info
-        const agentDoc = await db.collection('users').doc(agentId).get();
-        const agentName = agentDoc.exists ? agentDoc.data().fullName || agentDoc.data().name || 'Support Agent' : 'Support Agent';
-        
-        const agentConnectedNotification = createActivityNotificationData({
-          title: '🟢 Agent Available Now',
-          message: `${agentName} is now available and ready to help you with your support ticket.`,
-          uid: userId,
-          userId: userId,
-          priority: 'high',
-          actionLink: '/dashboard/support/live-agent',
-          category: 'support',
-          relatedAction: 'agent_available',
-          senderName: 'Support System'
-        });
-        
-        await createNotification(userId, agentConnectedNotification);
-        await sendPushNotification(userId, agentConnectedNotification);
-        
-        console.log(`Agent connection notification sent for ticket: ${ticketId}`);
-      }
-      
-    } catch (error) {
-      console.error('Error in onSupportTicketUpdate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Helper function to create notification
-const createNotification = async (userId, notificationData) => {
-  try {
-    const notificationId = `${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    await db.collection('notifications').doc(notificationId).set(notificationData);
-    
-    console.log(`Notification created for user ${userId}:`, notificationData.title);
-    return notificationId;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    throw error;
-  }
-};
-
-// Helper function to send FCM push notification
-const sendPushNotification = async (userId, notificationData) => {
-  try {
-    // Get user's FCM token from fcmTokens collection (new structure)
-    let fcmToken = null;
-    
-    // First try the new fcmTokens collection
-    const tokenDoc = await db.collection('fcmTokens').doc(userId).get();
-    if (tokenDoc.exists && tokenDoc.data().token) {
-      fcmToken = tokenDoc.data().token;
-    } else {
-      // Fallback to users collection for backward compatibility
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (userDoc.exists && userDoc.data().fcmToken) {
-        fcmToken = userDoc.data().fcmToken;
-      }
-    }
-
-    if (!fcmToken) {
-      console.log(`No FCM token found for user ${userId}`);
-      return { success: false, error: 'No FCM token found' };
-    }
-    
-    const message = {
-      token: fcmToken,
-      notification: {
-        title: notificationData.title,
-        body: notificationData.message,
-        icon: notificationData.iconUrl || '/logo192.png'
-      },
-      data: {
-        notificationId: notificationData.uid || '',
-        actionLink: notificationData.actionLink || '/dashboard',
-        type: notificationData.type || 'activity',
-        priority: notificationData.priority || 'medium',
-        userId: userId,
-        category: notificationData.category || 'general',
-        timestamp: new Date().toISOString()
-      },
-      android: {
-        notification: {
-          sound: 'default',
-          priority: 'high',
-          channelId: 'hh_foundation_notifications'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1
-          }
-        }
-      },
-      webpush: {
-        notification: {
-          icon: '/logo192.png',
-          badge: '/logo192.png',
-          requireInteraction: true
-        },
-        fcmOptions: {
-          link: notificationData.actionLink || '/dashboard'
-        }
-      }
-    };
-    
-    const response = await messaging.send(message);
-    console.log(`Push notification sent to user ${userId}:`, response);
-    return { success: true, messageId: response };
-  } catch (error) {
-    console.error('Error sending push notification:', error);
-    
-    // Handle invalid token
-    if (error.code === 'messaging/registration-token-not-registered') {
-      try {
-        // Remove invalid token from both collections
-        await db.collection('fcmTokens').doc(userId).delete();
-        await db.collection('users').doc(userId).update({
-          fcmToken: admin.firestore.FieldValue.delete()
-        });
-        console.log(`Removed invalid token for user: ${userId}`);
-      } catch (deleteError) {
-        console.error('Error removing invalid token:', deleteError);
-      }
-    }
-    
-    return { success: false, error: error.message };
-  }
-};
-
-// HTTP Cloud Function: Send notification
-// HTTP Cloud Function for backward compatibility
-/*
-exports.sendNotification = httpsOnRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    res.status(200).send();
-    return;
-  }
-  
-  if (req.method !== 'POST') {
-    res.status(405).send('Method Not Allowed');
-    return;
-  }
-  
-  try {
-    const { userId, title, body, data, sound, priority } = req.body;
-    
-    if (!userId || !title || !body) {
-      res.status(400).send('Missing required fields: userId, title, body');
-      return;
-    }
-    
-    // Create notification in Firestore
-    const notificationData = createActivityNotificationData({
-      title,
-      message: body,
-      uid: userId,
-      userId: userId,
-      priority: priority || 'medium',
-      actionLink: data?.actionLink || '/dashboard',
-      category: data?.category || 'system',
-      relatedAction: data?.relatedAction,
-      relatedHelpId: data?.helpId || null,
-      senderName: 'System'
-    });
-    
-    await createNotification(userId, notificationData);
-    await sendPushNotification(userId, notificationData);
-    
-    res.status(200).json({ success: true, message: 'Notification sent successfully' });
-  } catch (error) {
-    console.error('Error in sendNotification function:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Callable Cloud Function (secure, recommended)
-exports.sendNotificationCallable = httpsOnCall(async (data, context) => {
-  try {
-    const { token, title, body, data: notificationData } = data || {};
-    
-    if (!token && !data.userId) {
-      throw new HttpsError('invalid-argument', 'Missing token or userId');
-    }
-    
-    if (!title || !body) {
-      throw new HttpsError('invalid-argument', 'Missing title or body');
-    }
-
-    // If token is provided, send directly to that token
-    if (token) {
-      const message = {
-        token,
-        notification: { title, body },
-        data: notificationData || {},
-        android: {
-          notification: {
-            sound: 'default',
-            priority: 'high'
-          }
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1
-            }
-          }
-        }
-      };
-      
-      const response = await admin.messaging().send(message);
-      console.log('FCM message sent successfully:', response);
-      return { success: true, response };
-    }
-    
-    // If userId is provided, use existing notification system
-    if (data.userId) {
-      const notificationPayload = createActivityNotificationData({
-        title,
-        message: body,
-        uid: data.userId,
-        userId: data.userId,
-        priority: notificationData?.priority || 'medium',
-        actionLink: notificationData?.actionLink || '/dashboard',
-        category: notificationData?.category || 'system',
-        relatedAction: notificationData?.relatedAction,
-        relatedHelpId: notificationData?.helpId || null,
-        senderName: 'System'
-      });
-      
-      await createNotification(data.userId, notificationPayload);
-      await sendPushNotification(data.userId, notificationPayload);
-      
-      return { success: true, message: 'Notification sent successfully' };
-    }
-    
-  } catch (error) {
-    console.error('sendNotificationCallable error:', error);
-    throw new HttpsError('internal', 'Failed to send notification', { error: error.message });
-  }
-});
-*/
-
-// Cloud Function: New user joined notification
-exports.onUserCreate = onDocumentCreated('users/{userId}', async (snap, context) => {
-    const userId = context.params.userId;
-    const userData = snap.data();
-    
-    try {
-      // Send welcome notification to the new user
-      const welcomeNotification = createActivityNotificationData({
-        title: '🎉 Welcome to Helping Hands Foundation!',
-        message: 'Thank you for joining our community. Start helping others and making a difference today!',
-        uid: userId,
-        userId: userId,
-        priority: 'high',
-        actionLink: '/dashboard',
-        category: 'welcome',
-        relatedAction: 'user_registration',
-        senderName: 'Helping Hands Foundation'
-      });
-      
-      await createNotification(userId, welcomeNotification);
-      await sendPushNotification(userId, welcomeNotification);
-      
-      // Send referral notification to sponsor if user joined via referral
-      if (userData.sponsorId && userData.sponsorId !== userId) {
-        try {
-          // Get sponsor's user document
-          const sponsorQuery = await db.collection('users')
-            .where('userId', '==', userData.sponsorId)
-            .limit(1)
-            .get();
-          
-          if (!sponsorQuery.empty) {
-            const sponsorDoc = sponsorQuery.docs[0];
-            const sponsorData = sponsorDoc.data();
-            const sponsorUid = sponsorDoc.id;
-            
-            const referralNotification = createActivityNotificationData({
-              title: '🎯 New Referral Joined!',
-              message: `${userData.fullName || userData.name || 'Someone'} joined using your referral link. You've earned referral rewards!`,
-              uid: sponsorUid,
-              userId: sponsorUid,
-              priority: 'high',
-              actionLink: '/dashboard/direct-referral',
-              category: 'referral',
-              relatedAction: 'new_referral',
-              relatedUserId: userId,
-              senderName: 'Referral System'
-            });
-            
-            await createNotification(sponsorUid, referralNotification);
-            await sendPushNotification(sponsorUid, referralNotification);
-            
-            console.log(`Referral notification sent to sponsor: ${userData.sponsorId}`);
-          }
-        } catch (referralError) {
-          console.error('Error sending referral notification:', referralError);
-        }
-      }
-      
-      // Notify all admins about new user
-      const adminsSnapshot = await db.collection('users')
-        .where('role', '==', 'admin')
-        .get();
-      
-      const adminNotification = createActivityNotificationData({
-        title: '👥 New User Joined',
-        message: `${userData.name || 'A new user'} has joined Helping Hands Foundation.`,
-        priority: 'medium',
-        actionLink: '/admin/users',
-        category: 'admin',
-        relatedAction: 'user_registration',
-        relatedUserId: userId
-      });
-      
-      const adminPromises = adminsSnapshot.docs.map(adminDoc => {
-        const adminNotificationWithUid = {
-          ...adminNotification,
-          uid: adminDoc.id,
-          userId: adminDoc.id
-        };
-        return Promise.all([
-          createNotification(adminDoc.id, adminNotificationWithUid),
-          sendPushNotification(adminDoc.id, adminNotificationWithUid)
-        ]);
-      });
-      
-      await Promise.all(adminPromises);
-      console.log(`New user notifications sent for user: ${userId}`);
-      
-    } catch (error) {
-      console.error('Error in onUserCreate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Send Help notification
-exports.onSendHelpCreate = onDocumentCreated('sendHelp/{helpId}', async (snap, context) => {
-    const helpId = context.params.helpId;
-    const helpData = snap.data();
-    
-    try {
-      if (!helpData.receiverUid) {
-        console.log('No receiver UID found for send help notification');
-        return null;
-      }
-      
-      // Get sender info
-      const senderDoc = await db.collection('users').doc(helpData.senderUid).get();
-      const senderName = senderDoc.exists ? senderDoc.data().name || 'Someone' : 'Someone';
-      
-      // Notify receiver
-      const receiverNotification = createActivityNotificationData({
-        title: '💰 New Help Assignment',
-        message: `You have been assigned to receive help from ${senderName}. Check your dashboard for details.`,
-        uid: helpData.receiverUid,
-        userId: helpData.receiverUid,
-        priority: 'high',
-        actionLink: '/dashboard',
-        category: 'help',
-        relatedAction: 'receive_help',
-        relatedHelpId: helpId,
-        senderName: senderName
-      });
-      
-      await createNotification(helpData.receiverUid, receiverNotification);
-      await sendPushNotification(helpData.receiverUid, receiverNotification);
-      
-      console.log(`Send help notification sent for help: ${helpId}`);
-      
-    } catch (error) {
-      console.error('Error in onSendHelpCreate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Receive Help notification
-exports.onReceiveHelpCreate = onDocumentCreated('receiveHelp/{helpId}', async (snap, context) => {
-    const helpId = context.params.helpId;
-    const helpData = snap.data();
-    
-    try {
-      if (!helpData.senderUid) {
-        console.log('No sender UID found for receive help notification');
-        return null;
-      }
-      
-      // Get receiver info
-      const receiverDoc = await db.collection('users').doc(helpData.receiverUid).get();
-      const receiverName = receiverDoc.exists ? receiverDoc.data().name || 'Someone' : 'Someone';
-      
-      // Notify sender
-      const senderNotification = createActivityNotificationData({
-        title: '✅ Help Request Confirmed!',
-        message: `${receiverName} has confirmed your help request. Great job helping others!`,
-        uid: helpData.senderUid,
-        userId: helpData.senderUid,
-        priority: 'high',
-        actionLink: '/dashboard',
-        category: 'help',
-        relatedAction: 'help_confirmed',
-        relatedHelpId: helpId,
-        senderName: receiverName
-      });
-      
-      await createNotification(helpData.senderUid, senderNotification);
-      await sendPushNotification(helpData.senderUid, senderNotification);
-      
-      console.log(`Receive help notification sent for help: ${helpId}`);
-      
-    } catch (error) {
-      console.error('Error in onReceiveHelpCreate notification:', error);
-    }
-    
-    return null;
-  });
-
-// Cloud Function: Payment confirmation notification
-exports.onPaymentConfirm = onDocumentUpdated('epinTransfers/{transferId}', async (change, context) => {
-    const transferId = context.params.transferId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    // Check if payment status changed to confirmed
-    if (beforeData.status !== 'confirmed' && afterData.status === 'confirmed') {
-      try {
-        const { senderUid, receiverUid, amount, relatedHelpId } = afterData;
-        
-        if (!senderUid || !receiverUid) {
-          console.log('Missing sender or receiver UID for payment notification');
-          return null;
-        }
-        
-        // Get user info
-        const [senderDoc, receiverDoc] = await Promise.all([
-          db.collection('users').doc(senderUid).get(),
-          db.collection('users').doc(receiverUid).get()
-        ]);
-        
-        const senderName = senderDoc.exists ? senderDoc.data().name || 'Someone' : 'Someone';
-        const receiverName = receiverDoc.exists ? receiverDoc.data().name || 'Someone' : 'Someone';
-        
-        // Notify sender
-        const senderNotification = createActivityNotificationData({
-          title: '💳 Payment Confirmed!',
-          message: `Your payment of ₹${amount} to ${receiverName} has been confirmed successfully.`,
-          uid: senderUid,
-          userId: senderUid,
-          priority: 'high',
-          actionLink: '/dashboard',
-          category: 'payment',
-          relatedAction: 'payment_confirmed',
-          relatedHelpId: relatedHelpId || null,
-          senderName: 'Payment System'
-        });
-        
-        // Notify receiver
-        const receiverNotification = createActivityNotificationData({
-          title: '💰 Payment Received!',
-          message: `You have received ₹${amount} from ${senderName}. Payment confirmed successfully.`,
-          uid: receiverUid,
-          userId: receiverUid,
-          priority: 'high',
-          actionLink: '/dashboard',
-          category: 'payment',
-          relatedAction: 'payment_received',
-          relatedHelpId: relatedHelpId || null,
-          senderName: 'Payment System'
-        });
-        
-        // Send notifications to both users
-        await Promise.all([
-          createNotification(senderUid, senderNotification),
-          sendPushNotification(senderUid, senderNotification),
-          createNotification(receiverUid, receiverNotification),
-          sendPushNotification(receiverUid, receiverNotification)
-        ]);
-        
-        console.log(`Payment confirmation notifications sent for transfer: ${transferId}`);
-        
-      } catch (error) {
-        console.error('Error in onPaymentConfirm notification:', error);
-      }
-    }
-    
-    return null;
-  });
-
-
-
-// Cloud Function: Level payment confirmation (upgrade or sponsor payment)
-exports.onLevelPaymentConfirmed = onDocumentUpdated('levelPayments/{paymentId}', async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
-
-    // Only process if status changed to confirmed
-    if (before.status !== 'confirmed' && after.status === 'confirmed') {
-      const { userId, paymentType, amount } = after;
-
-      if (!userId || !paymentType) {
-        console.log('[onLevelPaymentConfirmed] Missing userId or paymentType');
-        return null;
-      }
-
-      console.log(`[onLevelPaymentConfirmed] Processing ${paymentType} payment of ₹${amount} for user: ${userId}`);
-
-      const userRef = db.collection('users').doc(userId);
-
-      try {
-        await db.runTransaction(async (transaction) => {
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists) {
-            throw new Error(`User ${userId} not found`);
-          }
-
-          const userData = userDoc.data();
-          const updateData = {};
-
-          if (paymentType === 'upgrade') {
-            // UPGRADE PAYMENT: Upgrade level and reset counters
-            const nextLevel = getNextLevel(userData.level);
-            if (!nextLevel) {
-              throw new Error(`No next level available for ${userData.level}`);
-            }
-
-            // Validate upgrade payment
-            const upgradeValidation = validateUpgradePayment(userData);
-            if (!upgradeValidation.valid) {
-              throw new Error(`Invalid upgrade payment: ${upgradeValidation.reason}`);
-            }
-
-            if (upgradeValidation.amount !== amount) {
-              throw new Error(`Upgrade amount mismatch: expected ₹${upgradeValidation.amount}, got ₹${amount}`);
-            }
-
-            updateData.level = nextLevel;
-            updateData.helpReceived = 0; // Reset counter for new level
-            updateData.isReceivingHeld = false;
-            updateData.isOnHold = false;
-            updateData.levelStatus = 'active';
-            updateData.lastUpgradeTime = admin.firestore.FieldValue.serverTimestamp();
-
-            console.log(`[onLevelPaymentConfirmed] Upgraded user ${userId} from ${userData.level} to ${nextLevel}`);
-
-          } else if (paymentType === 'sponsor') {
-            // SPONSOR PAYMENT: Only unblock income, NEVER upgrade
-            const sponsorValidation = validateSponsorPayment(userData, after.sponsorId);
-            if (!sponsorValidation.valid) {
-              throw new Error(`Invalid sponsor payment: ${sponsorValidation.reason}`);
-            }
-
-            if (sponsorValidation.amount !== amount) {
-              throw new Error(`Sponsor amount mismatch: expected ₹${sponsorValidation.amount}, got ₹${amount}`);
-            }
-
-            // Only unblock - no level change
-            updateData.isReceivingHeld = false;
-            updateData.isOnHold = false;
-            updateData.lastUnblockTime = admin.firestore.FieldValue.serverTimestamp();
-
-            console.log(`[onLevelPaymentConfirmed] Unblocked income for user ${userId} after sponsor payment`);
-
-          } else {
-            throw new Error(`Unknown payment type: ${paymentType}`);
-          }
-
-          transaction.update(userRef, updateData);
-
-          // Send appropriate notification
-          const notificationTitle = paymentType === 'upgrade'
-            ? `🎉 Level Upgraded to ${updateData.level || userData.level}!`
-            : '✅ Income Unblocked!';
-
-          const notificationMessage = paymentType === 'upgrade'
-            ? `Congratulations! Your level has been upgraded. You can now continue receiving help.`
-            : `Your income has been unblocked. You can now continue receiving help.`;
-
-          try {
-            const paymentNotification = createActivityNotificationData({
-              title: notificationTitle,
-              message: notificationMessage,
-              uid: userId,
-              userId: userId,
-              priority: 'high',
-              actionLink: '/dashboard',
-              category: 'level',
-              relatedAction: paymentType === 'upgrade' ? 'level_upgrade' : 'income_unblock',
-              senderName: 'Level System'
-            });
-
-            await createNotification(userId, paymentNotification);
-            await sendPushNotification(userId, paymentNotification);
-          } catch (notificationError) {
-            console.error('Error sending level payment notification:', notificationError);
-          }
-        });
-
-        console.log(`[onLevelPaymentConfirmed] Successfully processed ${paymentType} payment for user: ${userId}`);
-
-      } catch (error) {
-        console.error(`[onLevelPaymentConfirmed] Error processing ${paymentType} payment:`, error);
-
-        // Send error notification
-        try {
-          const errorNotification = createActivityNotificationData({
-            title: '❌ Payment Processing Error',
-            message: `There was an error processing your ${paymentType} payment. Please contact support.`,
-            uid: userId,
-            userId: userId,
-            priority: 'high',
-            actionLink: '/dashboard/support',
-            category: 'error',
-            relatedAction: 'payment_error',
-            senderName: 'System'
-          });
-
-          await createNotification(userId, errorNotification);
-          await sendPushNotification(userId, errorNotification);
-        } catch (notificationError) {
-          console.error('Error sending error notification:', notificationError);
-        }
-
-        throw error; // Re-throw to fail the function
-      }
-    }
-
-    return null;
-  });
-
-// Cloud Function: Confirm help received (secure frontend endpoint)
-exports.confirmHelpReceived = httpsOnCall(async (data, context) => {
-  // Verify authentication
-  if (!context.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const { helpId } = data;
-  if (!helpId) {
-    throw new HttpsError('invalid-argument', 'Help ID is required');
-  }
-
-  const userId = context.auth.uid;
-
-  try {
-    return await db.runTransaction(async (transaction) => {
-      // 1. Get and validate receiveHelp document
-      const receiveHelpRef = db.collection('receiveHelp').doc(helpId);
-      const receiveHelpDoc = await transaction.get(receiveHelpRef);
-
-      if (!receiveHelpDoc.exists) {
-        throw new HttpsError('not-found', 'Help document not found');
-      }
-
-      const receiveHelpData = receiveHelpDoc.data();
-
-      // 2. Verify user is the receiver
-      if (receiveHelpData.receiverId !== userId) {
-        throw new HttpsError('permission-denied', 'You can only confirm your own received help');
-      }
-
-      // 3. Check if already confirmed
-      if (receiveHelpData.confirmedByReceiver === true) {
-        throw new HttpsError('already-exists', 'This help has already been confirmed');
-      }
-
-      // 4. Get current user data for blocking check
-      const userRef = db.collection('users').doc(userId);
-      const userDoc = await transaction.get(userRef);
-
-      if (!userDoc.exists) {
-        throw new HttpsError('not-found', 'User document not found');
-      }
-
-      const userData = userDoc.data();
-
-      // 5. Check if user is currently blocked (CRITICAL BUSINESS RULE)
-      if (isIncomeBlocked(userData)) {
-        throw new HttpsError('permission-denied', 'Your income is currently blocked. Complete required payments to continue.');
-      }
-
-      // 6. Update both documents atomically
-      const updateData = {
-        status: 'Confirmed',
-        confirmedByReceiver: true,
-        confirmationTime: admin.firestore.FieldValue.serverTimestamp()
-      };
-
-      transaction.update(receiveHelpRef, updateData);
-      transaction.update(db.collection('sendHelp').doc(helpId), updateData);
-
-      // 7. Update receiver stats with blocking logic
-      const newHelpReceived = (userData.helpReceived || 0) + 1;
-      const receiverUpdate = {
-        helpReceived: newHelpReceived,
-        totalReceived: (userData.totalReceived || 0) + receiveHelpData.amount
-      };
-
-      // Apply blocking logic based on MLM rules
-      if (isIncomeBlocked({ ...userData, helpReceived: newHelpReceived })) {
-        receiverUpdate.isReceivingHeld = true;
-        receiverUpdate.isOnHold = true;
-      }
-
-      // Activate user if this is their first confirmation
-      if ((userData.helpReceived || 0) === 0) {
-        receiverUpdate.isActivated = true;
-      }
-
-      transaction.update(userRef, receiverUpdate);
-
-      // 8. Update sender stats
-      if (receiveHelpData.senderId) {
-        const senderRef = db.collection('users').doc(receiveHelpData.senderId);
-        const senderDoc = await transaction.get(senderRef);
-
-        if (senderDoc.exists) {
-          const senderData = senderDoc.data();
-          transaction.update(senderRef, {
-            totalSent: (senderData.totalSent || 0) + receiveHelpData.amount
-          });
-        }
-      }
-
-      return { success: true, message: 'Payment confirmed successfully' };
-    });
-  } catch (error) {
-    console.error('Error in confirmHelpReceived:', error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError('internal', 'Failed to confirm help received');
-  }
-});
-
-// Cloud Function: E-PIN request status notifications
-exports.onEpinRequestUpdate = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     const requestId = context.params.requestId;
     const beforeData = change.before.data();
     const afterData = change.after.data();
@@ -2710,1261 +1671,152 @@ exports.onEpinRequestUpdate = onDocumentUpdated('epinRequests/{requestId}', asyn
         console.error('Error in onEpinRequestUpdate notification:', error);
       }
     }
-<<<<<<< HEAD
 
     return null;
   });
 
-// ============================================
-// 24-HOUR PAYMENT DEADLINE SYSTEM
-// ============================================
-
-/**
- * SCHEDULED FUNCTION: Check for expired payment deadlines
- * Runs every 5 minutes to process expired helps
- */
-exports.checkExpiredPaymentDeadlines = onSchedule('every 5 minutes', async (event) => {
-  console.log('🔍 Starting deadline check for expired payments...');
-
-  try {
-    const db = admin.firestore();
-    const now = admin.firestore.Timestamp.now();
-
-    // Query for pending helps that haven't expired yet
-    const expiredHelpsQuery = db.collection('sendHelp')
-      .where('status', 'in', ['assigned', 'pending', 'payment_submitted'])
-      .where('deadlineExpired', '==', false);
-
-    const snapshot = await expiredHelpsQuery.get();
-
-    if (snapshot.empty) {
-      console.log('✅ No expired helps found');
-      return null;
-    }
-
-    let processedCount = 0;
-    let errorCount = 0;
-
-    // Process each expired help
-    for (const doc of snapshot.docs) {
-      try {
-        const helpData = doc.data();
-        const expiresAt = helpData.expiresAt;
-
-        // Check if deadline has actually expired
-        if (!expiresAt || expiresAt.toMillis() > now.toMillis()) {
-          continue; // Not expired yet
-        }
-
-        const helpId = doc.id;
-        console.log(`⏰ Processing expired help: ${helpId}, sender: ${helpData.senderUid}`);
-
-        // Use transaction to atomically block sender and update help
-        await db.runTransaction(async (transaction) => {
-          // Double-check the help is still pending (race condition protection)
-          const currentHelpDoc = await transaction.get(db.collection('sendHelp').doc(helpId));
-          if (!currentHelpDoc.exists) return;
-
-          const currentHelpData = currentHelpDoc.data();
-          if (!['assigned', 'pending', 'payment_submitted'].includes(currentHelpData.status) || currentHelpData.deadlineExpired || currentHelpData.autoBlocked) {
-            return; // Already processed or not eligible for expiry
-          }
-
-          // Update help documents to blocked status
-          const blockUpdate = {
-            status: 'blocked',
-            deadlineExpired: true,
-            autoBlocked: true,
-            blockedAt: now,
-            blockReason: 'Payment deadline expired - 24 hours passed without payment completion',
-            updatedAt: now
-          };
-
-          transaction.update(db.collection('sendHelp').doc(helpId), blockUpdate);
-          transaction.update(db.collection('receiveHelp').doc(helpId), blockUpdate);
-
-          // Block the sender account
-          transaction.update(db.collection('users').doc(helpData.senderUid), {
-            isBlocked: true,
-            blockReason: 'Payment not completed within 24 hours - help assignment expired',
-            blockedAt: now,
-            paymentBlocked: true,
-            blockedBySystem: true,
-            blockedHelpId: helpId
-          });
-
-          // RELEASE the receiver - clear all hold flags so they become eligible again
-          transaction.update(db.collection('users').doc(helpData.receiverUid), {
-            isReceivingHeld: false,
-            isOnHold: false,
-            updatedAt: now
-          });
-
-          console.log(`🚫 Blocked sender ${helpData.senderUid} for expired help ${helpId}`);
-        });
-
-        processedCount++;
-
-        // Send notification to sender about being blocked
-        try {
-          const blockNotification = {
-            title: 'Account Blocked - Payment Deadline Expired',
-            message: 'Your payment deadline has expired. Your account has been temporarily blocked. Please contact support to resolve this issue.',
-            type: 'warning',
-            priority: 'high',
-            uid: helpData.senderUid,
-            userId: helpData.senderId,
-            actionLink: '/support',
-            category: 'block',
-            relatedAction: 'deadline_expired',
-            relatedHelpId: helpId,
-            senderName: 'System'
-          };
-
-          await createNotification(helpData.senderUid, blockNotification);
-          console.log(`📧 Block notification sent to sender ${helpData.senderUid}`);
-        } catch (notificationError) {
-          console.error('Error sending block notification:', notificationError);
-        }
-
-      } catch (error) {
-        console.error(`❌ Error processing expired help ${doc.id}:`, error);
-        errorCount++;
-      }
-    }
-
-    console.log(`✅ Deadline check completed: ${processedCount} processed, ${errorCount} errors`);
-    return { processed: processedCount, errors: errorCount };
-
-  } catch (error) {
-    console.error('❌ Error in checkExpiredPaymentDeadlines:', error);
-    throw error;
-  }
-});
-
-/**
- * HTTP FUNCTION: Manually trigger deadline check (for testing/admin)
- */
-exports.triggerDeadlineCheck = httpsOnCall(async (request) => {
-  assertAuth(request);
-  console.log('🔧 Manual deadline check triggered by:', request.auth.uid);
-
-  try {
-    const db = admin.firestore();
-    const now = admin.firestore.Timestamp.now();
-
-    const expiredHelpsQuery = db.collection('sendHelp')
-      .where('status', 'in', ['assigned', 'pending', 'payment_submitted'])
-      .where('deadlineExpired', '==', false);
-
-    const snapshot = await expiredHelpsQuery.get();
-    const expiredHelps = [];
-
-    snapshot.forEach(doc => {
-      const helpData = doc.data();
-      const expiresAt = helpData.expiresAt;
-
-      if (expiresAt && expiresAt.toMillis() <= now.toMillis()) {
-        expiredHelps.push({
-          id: doc.id,
-          senderUid: helpData.senderUid,
-          senderId: helpData.senderId,
-          expiresAt: expiresAt.toDate(),
-          createdAt: helpData.createdAt?.toDate()
-        });
-      }
-    });
-
-    return {
-      success: true,
-      expiredHelps: expiredHelps,
-      count: expiredHelps.length,
-      checkedAt: now.toDate()
-    };
-
-  } catch (error) {
-    console.error('Error in triggerDeadlineCheck:', error);
-    throw new HttpsError('internal', 'Failed to check deadlines');
-  }
-});
-
-/**
- * SCHEDULED FUNCTION: Check for expired payment deadlines and auto-block users
- * Runs every 5 minutes to process expired helps
- */
-exports.checkExpiredPaymentDeadlines = onSchedule('every 5 minutes', async (event) => {
-  console.log('[SCHEDULED] Starting deadline check for expired payments...');
-
-  try {
-    const db = admin.firestore();
-    const now = admin.firestore.Timestamp.now();
-
-    // Query for pending helps that haven't expired yet
-    const expiredHelpsQuery = db.collection('sendHelp')
-      .where('status', 'in', ['assigned', 'pending', 'payment_submitted'])
-      .where('deadlineExpired', '==', false);
-
-    const snapshot = await expiredHelpsQuery.get();
-
-    if (snapshot.empty) {
-      console.log('[SCHEDULED] ✅ No expired helps found');
-      return null;
-    }
-
-    let processedCount = 0;
-    let errorCount = 0;
-
-    // Process each expired help
-    for (const doc of snapshot.docs) {
-      try {
-        const helpData = doc.data();
-        const expiresAt = helpData.expiresAt;
-
-        // Check if deadline has actually expired
-        if (!expiresAt || expiresAt.toMillis() > now.toMillis()) {
-          continue; // Not expired yet
-        }
-
-        const helpId = doc.id;
-        console.log(`[SCHEDULED] ⏰ Processing expired help: ${helpId}, sender: ${helpData.senderUid}`);
-
-        // Use transaction to atomically block sender and update help
-        await db.runTransaction(async (transaction) => {
-          // Double-check the help is still pending (race condition protection)
-          const currentHelpDoc = await transaction.get(db.collection('sendHelp').doc(helpId));
-          if (!currentHelpDoc.exists) return;
-
-          const currentHelpData = currentHelpDoc.data();
-          if (!['assigned', 'pending', 'payment_submitted'].includes(currentHelpData.status) || currentHelpData.deadlineExpired || currentHelpData.autoBlocked) {
-            return; // Already processed or not eligible for expiry
-          }
-
-          // Update help documents to blocked status
-          const blockUpdate = {
-            status: 'blocked',
-            deadlineExpired: true,
-            autoBlocked: true,
-            blockedAt: now,
-            blockReason: 'Payment deadline expired - 24 hours passed without payment completion',
-            updatedAt: now
-          };
-
-          transaction.update(db.collection('sendHelp').doc(helpId), blockUpdate);
-          transaction.update(db.collection('receiveHelp').doc(helpId), blockUpdate);
-
-          // Block the sender account
-          transaction.update(db.collection('users').doc(helpData.senderUid), {
-            isBlocked: true,
-            blockReason: 'Payment not completed within 24 hours - help assignment expired',
-            blockedAt: now,
-            paymentBlocked: true,
-            blockedBySystem: true,
-            blockedHelpId: helpId,
-            updatedAt: now
-          });
-
-          // RELEASE the receiver - clear all hold flags so they become eligible again
-          transaction.update(db.collection('users').doc(helpData.receiverUid), {
-            isReceivingHeld: false,
-            isOnHold: false,
-            updatedAt: now
-          });
-
-          console.log(`[SCHEDULED] 🚫 Blocked sender ${helpData.senderUid} for expired help ${helpId}`);
-        });
-
-        processedCount++;
-
-        // Send notification to sender about being blocked
-        try {
-          const blockNotification = createActivityNotificationData({
-            title: 'Account Blocked - Payment Deadline Expired',
-            message: 'Your payment deadline has expired. Your account has been temporarily blocked. Please contact support to resolve this issue.',
-            uid: helpData.senderUid,
-            userId: helpData.senderId,
-            priority: 'high',
-            actionLink: '/support',
-            category: 'block',
-            relatedAction: 'deadline_expired',
-            relatedHelpId: helpId,
-            senderName: 'System'
-          });
-
-          await createNotification(helpData.senderUid, blockNotification);
-          console.log(`[SCHEDULED] 📧 Block notification sent to sender ${helpData.senderUid}`);
-        } catch (notificationError) {
-          console.error('[SCHEDULED] Error sending block notification:', notificationError);
-        }
-
-      } catch (error) {
-        console.error(`[SCHEDULED] ❌ Error processing expired help ${doc.id}:`, error);
-        errorCount++;
-      }
-    }
-
-    console.log(`[SCHEDULED] ✅ Deadline check completed: ${processedCount} processed, ${errorCount} errors`);
-    return { processed: processedCount, errors: errorCount };
-
-  } catch (error) {
-    console.error('[SCHEDULED] ❌ Error in checkExpiredPaymentDeadlines:', error);
-    throw error;
-  }
-});
-
-/**
- * HTTP FUNCTION: Unblock user (admin only)
- */
-exports.unblockUser = httpsOnCall(async (request) => {
-  assertAdmin(request);
-  const { userUid, reason } = request.data || {};
-
-  if (!userUid) {
-    throw new HttpsError('invalid-argument', 'User UID is required');
-  }
-
-  try {
-    const db = admin.firestore();
-
-    let userData = null;
-
-    await db.runTransaction(async (transaction) => {
-      const userRef = db.collection('users').doc(userUid);
-      const userDoc = await transaction.get(userRef);
-
-      if (!userDoc.exists) {
-        throw new HttpsError('not-found', 'User not found');
-      }
-
-      userData = userDoc.data();
-
-      if (!userData.isBlocked) {
-        throw new HttpsError('failed-precondition', 'User is not blocked');
-      }
-
-      // Unblock the user
-      transaction.update(userRef, {
-        isBlocked: false,
-        blockReason: null,
-        blockedAt: null,
-        paymentBlocked: false,
-        blockedBySystem: false,
-        unblockedAt: admin.firestore.Timestamp.now(),
-        unblockedBy: request.auth.uid,
-        unblockReason: reason || 'Manually unblocked by admin'
-      });
-
-      console.log(`✅ Unblocked user ${userUid} by admin ${request.auth.uid}`);
-    });
-
-    // Send notification to unblocked user
-    try {
-      const unblockNotification = {
-        title: 'Account Unblocked',
-        message: 'Your account has been unblocked. You can now continue using the platform.',
-        type: 'success',
-        priority: 'high',
-        uid: userUid,
-        userId: userData?.userId || userUid,
-        actionLink: '/dashboard',
-        category: 'unblock',
-        relatedAction: 'admin_unblock',
-        senderName: 'Admin'
-      };
-
-      await createNotification(userUid, unblockNotification);
-    } catch (notificationError) {
-      console.error('Error sending unblock notification:', notificationError);
-    }
-
-    return { success: true, message: 'User unblocked successfully' };
-
-  } catch (error) {
-    console.error('Error unblocking user:', error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError('internal', 'Failed to unblock user');
-  }
-});
-
-/**
- * HTTP FUNCTION: Delete user completely (admin only)
- * Permanently deletes user and all associated data
- */
-exports.adminDeleteUser = httpsOnCall(async (request) => {
-  assertAdmin(request);
-  console.log(`🗑️ Admin delete user requested by: ${request.auth.uid}`);
-
-  const { userId } = request.data || {};
-  if (!userId) {
-    throw new HttpsError('invalid-argument', 'User ID is required');
-  }
-
-  try {
-    console.log(`🗑️ Starting deletion of user: ${userId}`);
-
-    // Get user document to verify it exists
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      throw new HttpsError('not-found', 'User not found');
-    }
-
-    const userData = userDoc.data();
-    console.log(`🗑️ User found: ${userData.fullName} (${userData.userId})`);
-
-    // 1. Delete all related documents in parallel
-    const deletePromises = [];
-
-    // Delete sendHelp documents
-    const sendHelpQuery = db.collection('sendHelp')
-      .where('senderUid', '==', userId);
-    const sendHelpSnapshot = await sendHelpQuery.get();
-    sendHelpSnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting sendHelp: ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete sendHelp documents where user is receiver
-    const sendHelpReceiverQuery = db.collection('sendHelp')
-      .where('receiverUid', '==', userId);
-    const sendHelpReceiverSnapshot = await sendHelpReceiverQuery.get();
-    sendHelpReceiverSnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting sendHelp (as receiver): ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete receiveHelp documents
-    const receiveHelpQuery = db.collection('receiveHelp')
-      .where('senderUid', '==', userId);
-    const receiveHelpSnapshot = await receiveHelpQuery.get();
-    receiveHelpSnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting receiveHelp: ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete receiveHelp documents where user is receiver
-    const receiveHelpReceiverQuery = db.collection('receiveHelp')
-      .where('receiverUid', '==', userId);
-    const receiveHelpReceiverSnapshot = await receiveHelpReceiverQuery.get();
-    receiveHelpReceiverSnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting receiveHelp (as receiver): ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete helpHistory documents
-    const helpHistoryQuery = db.collection('helpHistory')
-      .where('userId', '==', userId);
-    const helpHistorySnapshot = await helpHistoryQuery.get();
-    helpHistorySnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting helpHistory: ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete notifications
-    const notificationsQuery = db.collection('notifications')
-      .where('userId', '==', userId);
-    const notificationsSnapshot = await notificationsQuery.get();
-    notificationsSnapshot.forEach(doc => {
-      console.log(`🗑️ Deleting notification: ${doc.id}`);
-      deletePromises.push(doc.ref.delete());
-    });
-
-    // Delete FCM tokens
-    const fcmTokenRef = db.collection('fcmTokens').doc(userId);
-    deletePromises.push(fcmTokenRef.delete());
-
-    // Delete user document
-    const userRef = db.collection('users').doc(userId);
-    deletePromises.push(userRef.delete());
-
-    // Execute all deletions
-    console.log(`🗑️ Executing ${deletePromises.length} delete operations...`);
-    await Promise.all(deletePromises);
-
-    // 3. Delete Firebase Auth user (this must be done by admin SDK)
-    try {
-      console.log(`🗑️ Deleting Firebase Auth user: ${userId}`);
-      await admin.auth().deleteUser(userId);
-      console.log(`✅ Firebase Auth user deleted: ${userId}`);
-    } catch (authError) {
-      console.error('❌ Error deleting Firebase Auth user:', authError);
-      // Don't fail the entire operation if auth deletion fails
-      // (user data is already deleted)
-    }
-
-    console.log(`✅ User deletion completed: ${userId}`);
-    return {
-      success: true,
-      message: 'User deleted successfully',
-      deletedUserId: userId,
-      deletedUserName: userData.fullName
-    };
-
-  } catch (error) {
-    console.error('❌ Error in adminDeleteUser:', error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError('internal', 'Failed to delete user completely');
-  }
-});
-
-/**
- * SET ADMIN ROLE - Callable function for existing admins to grant admin role
- * Only callable by existing admins using custom auth claims
- */
-exports.setAdminRole = httpsOnCall(async (request) => {
-  assertAdmin(request);
-
-  const targetUid = request.data?.uid;
-  if (!targetUid || typeof targetUid !== 'string') {
-    throw new HttpsError('invalid-argument', 'Valid UID is required');
-  }
-
-  try {
-    // Set custom claim for admin role
-    await admin.auth().setCustomUserClaims(targetUid, {
-      role: 'admin'
-    });
-
-    console.log(`✅ Admin role granted to user: ${targetUid} by admin: ${request.auth.uid}`);
-
-    return {
-      success: true,
-      message: `Admin role granted to user ${targetUid}`,
-      uid: targetUid
-    };
-
-  } catch (error) {
-    console.error('❌ Error setting admin role:', error);
-    throw new HttpsError('internal', 'Failed to set admin role');
-  }
-});
-
-/**
- * REMOVE ADMIN ROLE - Callable function for admins to revoke admin role
- * Only callable by existing admins
- */
-exports.removeAdminRole = httpsOnCall(async (request) => {
-  assertAdmin(request);
-
-  const targetUid = request.data?.uid;
-  if (!targetUid || typeof targetUid !== 'string') {
-    throw new HttpsError('invalid-argument', 'Valid UID is required');
-  }
-
-  try {
-    // Remove custom claim for admin role
-    await admin.auth().setCustomUserClaims(targetUid, {
-      role: null // Remove the role claim
-    });
-
-    console.log(`✅ Admin role revoked from user: ${targetUid} by admin: ${request.auth.uid}`);
-
-    return {
-      success: true,
-      message: `Admin role revoked from user ${targetUid}`,
-      uid: targetUid
-    };
-
-  } catch (error) {
-    console.error('❌ Error removing admin role:', error);
-    throw new HttpsError('internal', 'Failed to remove admin role');
-  }
-});
-
-exports.checkEpinStatus = httpsOnRequest(async (req, res) => {
-  function allowedOrigin(origin) {
-    const allowed = [
-      'http://localhost:3000',
-      'https://your-production-domain.com',
-    ];
-    if (allowed.includes(origin)) return origin;
-    return 'https://your-production-domain.com';
-  }
-
-  res.set({
-    // CORS fix: allow localhost:3000 and production domain(s)
-    'Access-Control-Allow-Origin': allowedOrigin(req.headers.origin),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Vary': 'Origin',
-  });
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).send();
-  }
-
-  try {
-    const authHeader = req.headers.authorization || '';
-    const match = typeof authHeader === 'string' ? authHeader.match(/^Bearer\s+(.+)$/i) : null;
-    const idToken = match?.[1];
-    if (!idToken) {
-      return res.status(401).json({ success: false, message: 'Authentication required', issue: 'unauthenticated' });
-    }
-
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    const uid = decoded?.uid;
-    if (!uid) {
-      return res.status(401).json({ success: false, message: 'Authentication required', issue: 'unauthenticated' });
-    }
-
-    const { epinCode } = req.body || {};
-
-    if (!epinCode) {
-      return res.status(400).json({ success: false, message: 'E-PIN code is required', issue: 'missing_epin_code' });
-    }
-
-    // Check epins collection for the code
-    const epinRef = db.collection('epins').doc(epinCode);
-    const epinSnap = await epinRef.get();
-
-    if (!epinSnap.exists) {
-      return res.status(404).json({ success: false, message: 'E-PIN code does not exist', issue: 'epin_not_found' });
-    }
-
-    const epinData = epinSnap.data();
-
-    // Check if already used
-    if (epinData.isUsed) {
-      return res.status(409).json({ success: false, message: `E-PIN was used on ${epinData.usedAt?.toDate()?.toLocaleDateString()} by ${epinData.usedBy}`, issue: 'epin_already_used' });
-    }
-
-    // Check if expired (assuming 1 year validity)
-    const now = new Date();
-    const createdAt = epinData.createdAt?.toDate();
-    const oneYearLater = new Date(createdAt);
-    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-
-    if (now > oneYearLater) {
-      return res.status(410).json({ success: false, message: 'E-PIN has expired', issue: 'epin_expired' });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'E-PIN is valid and available',
-      data: {
-        value: epinData.value,
-        createdAt: epinData.createdAt?.toDate(),
-        expiresAt: oneYearLater
-      }
-    });
-
-  } catch (error) {
-    console.error('Error checking E-PIN status:', error);
-    return res.status(500).json({ success: false, message: 'Unable to check E-PIN status. Please try again.', issue: 'system_error' });
-  }
-});
-
-exports.checkSendHelpStatus = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-
-  try {
-    // Get user's active send help
-    const sendHelpQuery = db.collection('sendHelp')
-      .where('senderUid', '==', uid)
-      .where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
-      .orderBy('createdAt', 'desc')
-      .limit(5);
-
-    const sendHelpSnap = await sendHelpQuery.get();
-    const activeHelps = [];
-
-    sendHelpSnap.forEach(doc => {
-      const data = doc.data();
-      activeHelps.push({
-        id: doc.id,
-        receiverName: data.receiverName,
-        amount: data.amount,
-        status: data.status,
-        createdAt: data.createdAt?.toDate(),
-        nextTimeoutAtMs: data.nextTimeoutAtMs
-      });
-    });
-
-    // Check user status for sending
-    const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-    const userData = userSnap.data();
-
-    const canSend = !userData?.isBlocked && !userData?.isOnHold && !userData?.paymentBlocked;
-
-    return {
-      success: true,
-      canSend,
-      activeHelps,
-      userStatus: {
-        isBlocked: userData?.isBlocked || false,
-        isOnHold: userData?.isOnHold || false,
-        paymentBlocked: userData?.paymentBlocked || false,
-        blockReason: userData?.blockReason
-      }
-    };
-
-  } catch (error) {
-    console.error('Error checking send help status:', error);
-    return {
-      success: false,
-      message: 'Unable to check send help status',
-      issue: 'system_error'
-    };
-  }
-});
-
-// Check Receive Help Status
-exports.checkReceiveHelpStatus = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-
-  try {
-    // Get user's active receive help
-    const receiveHelpQuery = db.collection('receiveHelp')
-      .where('receiverUid', '==', uid)
-      .where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
-      .orderBy('createdAt', 'desc')
-      .limit(5);
-
-    const receiveHelpSnap = await receiveHelpQuery.get();
-    const activeHelps = [];
-
-    receiveHelpSnap.forEach(doc => {
-      const data = doc.data();
-      activeHelps.push({
-        id: doc.id,
-        senderName: data.senderName,
-        amount: data.amount,
-        status: data.status,
-        createdAt: data.createdAt?.toDate(),
-        nextTimeoutAtMs: data.nextTimeoutAtMs
-      });
-    });
-
-    // Check user eligibility
-    const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-    const userData = userSnap.data();
-
-    const eligibility = receiverIneligibilityReason(userData);
-    const canReceive = eligibility === 'not_eligible' ? false : true;
-
-    return {
-      success: true,
-      canReceive,
-      ineligibilityReason: eligibility,
-      activeHelps,
-      userStatus: {
-        level: userData?.level || userData?.levelStatus,
-        activeReceiveCount: userData?.activeReceiveCount || 0,
-        isReceivingHeld: userData?.isReceivingHeld || false,
-        isBlocked: userData?.isBlocked || false,
-        upgradeRequired: userData?.upgradeRequired || false,
-        sponsorPaymentPending: userData?.sponsorPaymentPending || false
-      }
-    };
-
-  } catch (error) {
-    console.error('Error checking receive help status:', error);
-    return {
-      success: false,
-      message: 'Unable to check receive help status',
-      issue: 'system_error'
-    };
-  }
-});
-
-// Check Referral Status
-exports.checkReferralStatus = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-
-  try {
-    // Get user's referral data
-    const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      return {
-        success: false,
-        message: 'User not found',
-        issue: 'user_not_found'
-      };
-    }
-
-    const userData = userSnap.data();
-
-    // Get referred users
-    const referredUsersQuery = db.collection('users')
-      .where('sponsorId', '==', userData.userId);
-
-    const referredUsersSnap = await referredUsersQuery.get();
-    const referredUsers = [];
-
-    referredUsersSnap.forEach(doc => {
-      const data = doc.data();
-      referredUsers.push({
-        userId: data.userId,
-        fullName: data.fullName,
-        level: data.level || data.levelStatus,
-        createdAt: data.createdAt?.toDate(),
-        isActivated: data.isActivated
-      });
-    });
-
-    return {
-      success: true,
-      referralLink: `https://helpinghandsfoundation.in/register?sponsor=${userData.userId}`,
-      totalReferrals: referredUsers.length,
-      activeReferrals: referredUsers.filter(u => u.isActivated).length,
-      referredUsers,
-      userData: {
-        userId: userData.userId,
-        referralCount: userData.referralCount || 0
-      }
-    };
-
-  } catch (error) {
-    console.error('Error checking referral status:', error);
-    return {
-      success: false,
-      message: 'Unable to check referral status',
-      issue: 'system_error'
-    };
-  }
-});
-
-// Check Upcoming Payments
-exports.checkUpcomingPayments = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-
-  try {
-    // Get user data
-    const userRef = db.collection('users').doc(uid);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      return {
-        success: false,
-        message: 'User not found',
-        issue: 'user_not_found'
-      };
-    }
-
-    const userData = userSnap.data();
-    const currentLevel = userData.level || userData.levelStatus;
-
-    // Calculate next income
-    const nextIncome = getAmountByLevel(currentLevel);
-    const upgradeAmount = getUpgradeAmount(currentLevel);
-    const sponsorPaymentAmount = getSponsorPaymentAmount(currentLevel);
-
-    // Check if user needs upgrade
-    const needsUpgrade = userData.upgradeRequired === true;
-    const sponsorPaymentPending = userData.sponsorPaymentPending === true;
-
-    return {
-      success: true,
-      currentLevel,
-      nextIncome,
-      needsUpgrade,
-      upgradeAmount,
-      sponsorPaymentPending,
-      sponsorPaymentAmount,
-      userStatus: {
-        isReceivingHeld: userData.isReceivingHeld || false,
-        isBlocked: userData.isBlocked || false,
-        activeReceiveCount: userData.activeReceiveCount || 0
-      }
-    };
-
-  } catch (error) {
-    console.error('Error checking upcoming payments:', error);
-    return {
-      success: false,
-      message: 'Unable to check upcoming payments',
-      issue: 'system_error'
-    };
-  }
-});
-
-// Chatbot Reply with proper CORS handling
-exports.chatbotReply = httpsOnRequest({ cors: true }, async (req, res) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    res.set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '3600'
-    });
-    res.status(204).send('');
-    return;
-  }
-
-  // Set CORS headers for all responses
-  res.set({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-  });
-
-  const fallback = 'I apologize, but I\'m currently experiencing technical difficulties. Please try again in a moment or contact our support team for immediate assistance.';
-
-  try {
-    // Validate request method
-    if (req.method !== 'POST') {
-      console.error('chatbotReply: Invalid method:', req.method);
-      res.status(405).json({ 
-        error: 'Method not allowed',
-        reply: fallback 
-      });
-      return;
-    }
-
-    // Validate request body
-    if (!req.body || typeof req.body !== 'object') {
-      console.error('chatbotReply: Invalid request body:', req.body);
-      res.status(400).json({ 
-        error: 'Invalid request body',
-        reply: fallback 
-      });
-      return;
-    }
-
-    const { message, history } = req.body;
-
-    // Validate message field exists
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      console.error('chatbotReply: Missing or invalid message field:', message);
-      res.status(400).json({ 
-        error: 'Message field is required and must be a non-empty string',
-        reply: fallback 
-      });
-      return;
-    }
-
-    console.log('chatbotReply: Processing request', {
-      messageLength: message.length,
-      historyLength: Array.isArray(history) ? history.length : 0,
-      timestamp: new Date().toISOString()
-    });
-
-    // Check for OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || typeof apiKey !== 'string') {
-      console.error('chatbotReply: OpenAI API key not configured');
-      res.status(500).json({ 
-        error: 'Service configuration error',
-        reply: 'Our chatbot service is currently unavailable due to configuration issues. Please contact support for assistance.' 
-      });
-      return;
-    }
-
-    // Sanitize conversation history
-    const sanitizedHistory = Array.isArray(history) 
-      ? history
-          .map((m) => ({ role: m?.role, content: m?.content }))
-          .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
-          .slice(-10) // Limit to last 10 messages
-      : [];
-
-    const systemContent = 'You are a helpful customer support assistant for HH Foundation. Answer questions about the HH Foundation platform (account, activation, referrals, E-PIN, send help, receive help, payments). Be concise, accurate, and polite. If the user asks for sensitive data or anything you cannot verify, instruct them to contact official support.';
-
-    // Make OpenAI API request with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemContent },
-            ...sanitizedHistory,
-            { role: 'user', content: message.trim() }
-          ],
-          temperature: 0.4,
-          max_tokens: 250,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        console.error('chatbotReply: OpenAI API error', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errText,
-          timestamp: new Date().toISOString()
-        });
-        
-        res.status(500).json({ 
-          error: 'AI service error',
-          reply: 'I\'m experiencing difficulties connecting to our AI service. Please try again in a moment.' 
-        });
-        return;
-      }
-
-      const json = await response.json();
-      const reply = json?.choices?.[0]?.message?.content;
-      
-      if (typeof reply === 'string' && reply.trim()) {
-        console.log('chatbotReply: Success', {
-          messageLength: message.length,
-          replyLength: reply.length,
-          timestamp: new Date().toISOString()
-        });
-        
-        res.status(200).json({ reply: reply.trim() });
-        return;
-      } else {
-        console.error('chatbotReply: Invalid response from OpenAI', json);
-        res.status(500).json({ 
-          error: 'Invalid AI response',
-          reply: 'I received an unexpected response from our AI service. Please try rephrasing your question.' 
-        });
-        return;
-      }
-
-    } catch (fetchError) {
-      clearTimeout(timeout);
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('chatbotReply: Request timeout');
-        res.status(408).json({ 
-          error: 'Request timeout',
-          reply: 'Your request is taking longer than expected. Please try again with a shorter message.' 
-        });
-        return;
-      }
-      
-      console.error('chatbotReply: Fetch error', {
-        error: fetchError.message,
-        name: fetchError.name,
-        timestamp: new Date().toISOString()
-      });
-      
-      res.status(500).json({ 
-        error: 'Network error',
-        reply: 'I\'m having trouble connecting to our AI service. Please check your connection and try again.' 
-      });
-      return;
-    }
-
-  } catch (error) {
-    console.error('chatbotReply: Unexpected error', {
-      error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-    
-    res.status(500).json({ 
-      error: 'Internal server error',
-      reply: fallback 
-    });
-  }
-});
-
-// Create Support Ticket from Chatbot
-exports.createSupportTicketFromChatbot = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-  const { issueType, issueDescription, relatedData } = request.data || {};
-
-  try {
-    if (!issueType || !issueDescription) {
-      throw new HttpsError('invalid-argument', 'Issue type and description are required');
-    }
-
-    // Create ticket in supportTickets collection
-    const ticketRef = db.collection('supportTickets').doc();
-    await ticketRef.set({
-      id: ticketRef.id,
-      userId: uid,
-      subject: `AI Support: ${issueType}`,
-      description: issueDescription,
-      priority: 'medium',
-      status: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      source: 'chatbot',
-      relatedData: relatedData || {},
-      agentId: null
-    });
-
-    return {
-      success: true,
-      message: 'Support ticket created successfully',
-      ticketId: ticketRef.id
-    };
-
-  } catch (error) {
-    console.error('Error creating support ticket:', error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError('internal', 'Failed to create support ticket');
-  }
-});
-// ============================
-// BOOTSTRAP ADMIN FUNCTION
-// ============================
-
-/**
- * BOOTSTRAP ADMIN - One-time function to create the first admin
- * This function can be called without authentication to bootstrap the first admin
- * Should be removed after the first admin is created for security
- */
-exports.bootstrapFirstAdmin = httpsOnCall(async (request) => {
-  const TARGET_UID = 'kFhXYjSCO1Pw0qlZc7eCoRJFvEq1';
-  const BOOTSTRAP_SECRET = 'bootstrap-admin-2024'; // Simple secret for security
-  
-  const { secret } = request.data || {};
-  
-  // Basic security check
-  if (secret !== BOOTSTRAP_SECRET) {
-    throw new HttpsError('permission-denied', 'Invalid bootstrap secret');
-  }
-
-  try {
-    // Check if user exists
-    const userRecord = await admin.auth().getUser(TARGET_UID);
-    
-    // Set admin custom claims
-    await admin.auth().setCustomUserClaims(TARGET_UID, {
-      role: 'admin'
-    });
-
-    // Also update the user document for Firestore rules compatibility
-    const userDocRef = db.collection('users').doc(TARGET_UID);
-    await userDocRef.update({
-      role: 'admin',
-      isAdmin: true,
-      adminGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    console.log(`✅ Bootstrap admin created: ${TARGET_UID}`);
-
-    // Log this action for security
-    await db.collection('adminActions').add({
-      actionType: 'bootstrap_admin_created',
-      targetUid: TARGET_UID,
-      performedBy: 'system',
-      reason: 'Initial admin bootstrap',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      userEmail: userRecord.email
-    });
-
-    return {
-      success: true,
-      message: 'Bootstrap admin created successfully',
-      uid: TARGET_UID,
-      email: userRecord.email,
-      note: 'User must log out and log in again for claims to take effect'
-    };
-
-  } catch (error) {
-    console.error('❌ Bootstrap admin error:', error);
-    
-    if (error.code === 'auth/user-not-found') {
-      throw new HttpsError('not-found', 'Target user not found');
-    }
-    
-    throw new HttpsError('internal', 'Failed to create bootstrap admin');
-  }
-});
-// ============================
-// SIMPLE HTTP BOOTSTRAP ADMIN
-// ============================
-
-/**
- * Simple HTTP endpoint to bootstrap admin - can be called via curl/browser
- * GET/POST: /simpleBootstrapAdmin?secret=bootstrap-admin-2024
- */
-exports.simpleBootstrapAdmin = httpsOnRequest({ cors: true }, async (req, res) => {
-  // CORS headers
+// ============================================================================
+// TEMPORARY DEBUG FUNCTION - Send Help Eligibility Verification
+// ============================================================================
+// This function helps verify if Firestore queries for Send Help are working
+// Usage: GET /debugSendHelpEligibility?senderUid=xxx
+// This function will be removed after debugging
+// ============================================================================
+
+exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
+  // Enable CORS
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  const TARGET_UID = 'kFhXYjSCO1Pw0qlZc7eCoRJFvEq1';
-  const BOOTSTRAP_SECRET = 'bootstrap-admin-2024';
-  
-  // Get secret from query parameter or body
-  const secret = req.query.secret || req.body?.secret;
-  
-  if (secret !== BOOTSTRAP_SECRET) {
-    res.status(403).json({
-      error: 'Invalid bootstrap secret',
-      code: 'permission-denied'
-    });
+    res.status(200).end();
     return;
   }
 
   try {
-    // Check if user exists
-    const userRecord = await admin.auth().getUser(TARGET_UID);
-    
-    // Set admin custom claims ONLY (no Firestore document)
-    await admin.auth().setCustomUserClaims(TARGET_UID, {
-      role: 'admin'
+    const senderUid = req.query.senderUid;
+
+    if (!senderUid) {
+      res.status(400).json({
+        error: 'Missing senderUid query parameter',
+        example: '/debugSendHelpEligibility?senderUid=uid123'
+      });
+      return;
+    }
+
+    console.log('[DEBUG] debugSendHelpEligibility start', { senderUid });
+
+    // Get sender data
+    const senderSnap = await db.collection('users').doc(senderUid).get();
+    if (!senderSnap.exists) {
+      res.status(404).json({
+        error: 'Sender user not found',
+        senderUid
+      });
+      return;
+    }
+
+    const sender = senderSnap.data();
+
+    console.log('[DEBUG] SENDER_DATA', {
+      uid: senderUid,
+      userId: sender.userId,
+      levelStatus: sender.levelStatus,
+      level: sender.level,
+      isActivated: sender.isActivated,
+      isBlocked: sender.isBlocked,
+      isOnHold: sender.isOnHold,
+      paymentBlocked: sender.paymentBlocked
     });
 
-    console.log(`✅ Bootstrap admin created: ${TARGET_UID}`);
+    // Normalize sender level
+    const senderLevel = sender.levelStatus || sender.level || 'Star';
 
-    // Log this action for security
-    await db.collection('adminActions').add({
-      actionType: 'bootstrap_admin_created',
-      targetUid: TARGET_UID,
-      performedBy: 'system',
-      reason: 'Initial admin bootstrap via HTTP',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      userEmail: userRecord.email,
-      requestIP: req.ip || 'unknown'
+    console.log('[DEBUG] NORMALIZED_SENDER_LEVEL', senderLevel);
+
+    // Run the exact same query as startHelpAssignment
+    console.log('[DEBUG] RUNNING_QUERY', {
+      isActivated: true,
+      helpVisibility: true,
+      isReceivingHeld: false,
+      isBlocked: false,
+      isOnHold: false,
+      levelStatus: senderLevel
     });
 
+    const receiverQuery = db
+      .collection('users')
+      .where('isActivated', '==', true)
+      .where('helpVisibility', '==', true)
+      .where('isReceivingHeld', '==', false)
+      .where('isBlocked', '==', false)
+      .where('isOnHold', '==', false)
+      .where('levelStatus', '==', senderLevel);
+
+    const snap = await receiverQuery.get();
+
+    console.log('[DEBUG] QUERY_RESULT', {
+      totalMatched: snap.size,
+      isEmpty: snap.empty,
+      senderLevel
+    });
+
+    // Log each matching receiver
+    const receivers = [];
+    snap.forEach(doc => {
+      const u = doc.data();
+      const receiverInfo = {
+        uid: doc.id,
+        userId: u.userId,
+        levelStatus: u.levelStatus,
+        level: u.level,
+        isActivated: u.isActivated,
+        helpVisibility: u.helpVisibility,
+        isBlocked: u.isBlocked,
+        isOnHold: u.isOnHold,
+        isReceivingHeld: u.isReceivingHeld,
+        helpReceived: u.helpReceived || 0,
+        activeReceiveCount: u.activeReceiveCount || 0,
+        sponsorPaymentPending: u.sponsorPaymentPending,
+        upgradeRequired: u.upgradeRequired
+      };
+
+      console.log('[DEBUG] MATCHING_RECEIVER', receiverInfo);
+      receivers.push(receiverInfo);
+    });
+
+    // Return summary
     res.json({
       success: true,
-      message: 'Bootstrap admin created successfully - CUSTOM CLAIMS ONLY',
-      uid: TARGET_UID,
-      email: userRecord.email,
-      customClaims: { role: 'admin' },
-      note: 'User must log out and log in again for claims to take effect',
-      verification: 'Use: auth.currentUser.getIdTokenResult(true).claims.role'
+      sender: {
+        uid: senderUid,
+        userId: sender.userId,
+        levelStatus: sender.levelStatus,
+        isActivated: sender.isActivated,
+        isBlocked: sender.isBlocked
+      },
+      query: {
+        senderLevel,
+        conditions: {
+          isActivated: true,
+          helpVisibility: true,
+          isReceivingHeld: false,
+          isBlocked: false,
+          isOnHold: false,
+          levelStatus: senderLevel
+        }
+      },
+      result: {
+        totalMatched: snap.size,
+        receivers: receivers
+      }
     });
 
   } catch (error) {
-    console.error('❌ Bootstrap admin error:', error);
-    
-    if (error.code === 'auth/user-not-found') {
-      res.status(404).json({
-        error: 'Target user not found',
-        code: 'not-found'
-      });
-    } else {
-      res.status(500).json({
-        error: 'Failed to create bootstrap admin',
-        code: 'internal',
-        details: error.message
-      });
-    }
+    console.error('[DEBUG] ERROR', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 });
-=======
-    
-    return null;
-  });
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5

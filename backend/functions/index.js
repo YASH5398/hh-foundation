@@ -248,6 +248,8 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
     data: request?.data || null
   });
 
+  console.log('[PROBE] startHelpAssignment version', new Date().toISOString());
+
   const startedAtMs = Date.now();
   try {
     if (!request?.auth || !request.auth.uid) {
@@ -359,6 +361,16 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       }
 
       const senderLevel = normalizeLevelName(sender.levelStatus || sender.level);
+      const senderAmount = getAmountByLevel(senderLevel);
+
+      console.log('[INVESTIGATION] SENDER_DETAILS', {
+        senderUid,
+        senderId,
+        senderLevel,
+        senderAmount,
+        senderFullName: sender.fullName || sender.name || null,
+        senderPhone: sender.phone || null
+      });
 
       const activeSendQuery = db
         .collection('sendHelp')
@@ -377,149 +389,83 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         throw new HttpsError('failed-precondition', 'Sender already has an active help');
       }
 
+      // Simplified query: ONLY these conditions
       const receiverQuery = db
         .collection('users')
+        .where('helpVisibility', '==', true)
         .where('isActivated', '==', true)
-        .where('isReceivingHeld', '==', false)
-        .where('levelStatus', '==', senderLevel)
-        .orderBy('referralCount', 'desc')
-        .orderBy('lastReceiveAssignedAt', 'asc')
-        .limit(25);
+        .where('isBlocked', '==', false)
+        .where('isReceivingHeld', '==', false);
+
+      console.log('[INVESTIGATION] FIRESTORE_QUERY_CONDITIONS', {
+        collection: 'users',
+        filters: {
+          helpVisibility: true,
+          isActivated: true,
+          isBlocked: false,
+          isReceivingHeld: false
+        },
+        note: 'Filtering by level, referralCount, helpReceived removed - will be done in JS'
+      });
 
       let receiverSnap;
       try {
         receiverSnap = await tx.get(receiverQuery);
       } catch (e) {
-        safeThrowInternal(e, { step: 'tx.get.receiverQuery', senderLevel });
+        safeThrowInternal(e, { step: 'tx.get.receiverQuery' });
       }
 
-      console.log('[startHelpAssignment] receiverCandidates.count', { senderUid, senderLevel, count: receiverSnap.size });
-      if (receiverSnap.empty) {
-        throw new HttpsError('failed-precondition', 'No eligible receivers available');
-      }
+      console.log('[startHelpAssignment] total.users.fetched', { 
+        senderUid, 
+        totalFetched: receiverSnap.size 
+      });
+
+      // Post-fetch processing in JavaScript
+      let receiversToCheck = receiverSnap.docs
+        // Exclude sender UID manually
+        .filter(doc => doc.id !== senderUid)
+        // Sort by referralCount DESC
+        .sort((a, b) => {
+          const aRefCount = a.data()?.referralCount || 0;
+          const bRefCount = b.data()?.referralCount || 0;
+          return bRefCount - aRefCount;
+        });
+
+      const filteredCount = receiversToCheck.length;
+      console.log('[startHelpAssignment] filtered.users.count', { 
+        senderUid, 
+        totalFetched: receiverSnap.size,
+        afterExcludingSender: filteredCount
+      });
 
       let chosenReceiverRef = null;
       let chosenReceiver = null;
-      let skippedReceivers = [];
       
-      for (const docSnap of receiverSnap.docs) {
-        const candidate = docSnap.data() || {};
-        const candidateUid = docSnap.id;
-        
-        // Log candidate details for debugging
-        console.log('[startHelpAssignment] evaluating.candidate', {
-          uid: candidateUid,
-          helpReceived: candidate?.helpReceived || 0,
-          level: candidate?.levelStatus || candidate?.level || 'Star',
-          isActivated: candidate?.isActivated,
-          isBlocked: candidate?.isBlocked,
-          isOnHold: candidate?.isOnHold,
-          isReceivingHeld: candidate?.isReceivingHeld,
-          helpVisibility: candidate?.helpVisibility,
-          upgradeRequired: candidate?.upgradeRequired,
-          sponsorPaymentPending: candidate?.sponsorPaymentPending,
-          activeReceiveCount: candidate?.activeReceiveCount || 0
-        });
-        
-        // Skip if same as sender
-        if (candidateUid === senderUid) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'same_as_sender' });
-          continue;
-        }
-        
-        // Check basic eligibility conditions
-        if (candidate?.isActivated !== true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'not_activated' });
-          continue;
-        }
-        
-        if (candidate?.isBlocked === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'blocked' });
-          continue;
-        }
-        
-        if (candidate?.isOnHold === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'on_hold' });
-          continue;
-        }
-        
-        if (candidate?.isReceivingHeld === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'receiving_held' });
-          continue;
-        }
-        
-        if (candidate?.helpVisibility === false) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'help_visibility_false' });
-          continue;
-        }
-        
-        if (candidate?.upgradeRequired === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'upgrade_required' });
-          continue;
-        }
-        
-        if (candidate?.sponsorPaymentPending === true) {
-          skippedReceivers.push({ uid: candidateUid, reason: 'sponsor_payment_pending' });
-          continue;
-        }
-        
-        // Check receive count limit (this allows helpReceived = 0)
-        const currentLevel = candidate?.levelStatus || candidate?.level || 'Star';
-        const receiveLimit = getReceiveLimitForLevel(currentLevel);
-        const currentReceiveCount = candidate?.activeReceiveCount || 0;
-        
-        if (currentReceiveCount >= receiveLimit) {
-          skippedReceivers.push({ 
-            uid: candidateUid, 
-            reason: 'receive_limit_reached',
-            currentCount: currentReceiveCount,
-            limit: receiveLimit
-          });
-          continue;
-        }
-        
-        // Candidate is eligible - select them
+      // Pick first receiver
+      if (receiversToCheck.length > 0) {
+        const docSnap = receiversToCheck[0];
         chosenReceiverRef = docSnap.ref;
-        chosenReceiver = { uid: candidateUid, ...candidate };
+        chosenReceiver = { uid: docSnap.id, ...docSnap.data() };
         
-        console.log('[startHelpAssignment] receiver.selected', {
-          uid: candidateUid,
-          helpReceived: candidate?.helpReceived || 0,
-          level: currentLevel,
-          activeReceiveCount: currentReceiveCount,
-          receiveLimit: receiveLimit,
-          reason: 'eligible'
-        });
-        
-        break;
-      }
-      
-      // Log all skipped receivers for debugging
-      if (skippedReceivers.length > 0) {
-        console.log('[startHelpAssignment] skipped.receivers', {
-          count: skippedReceivers.length,
-          details: skippedReceivers
+        console.log('[startHelpAssignment] selected.receiver.uid', { 
+          senderUid,
+          selectedReceiverUid: chosenReceiver.uid,
+          receiverId: chosenReceiver.userId || null
         });
       }
 
+      // If no receiver exists, return HTTP 200 with success: false
       if (!chosenReceiverRef || !chosenReceiver) {
-        console.log('[startHelpAssignment] no.eligible.receivers', {
-          totalCandidates: receiverSnap.size,
-          skippedCount: skippedReceivers.length,
-          skippedReasons: skippedReceivers.reduce((acc, r) => {
-            acc[r.reason] = (acc[r.reason] || 0) + 1;
-            return acc;
-          }, {})
+        console.log('[startHelpAssignment] no.eligible.receiver', { 
+          senderUid,
+          totalFetched: receiverSnap.size,
+          filteredCount: filteredCount
         });
-        throw new HttpsError('failed-precondition', 'NO_ELIGIBLE_RECEIVER', {
-          code: 'NO_ELIGIBLE_RECEIVER',
-          totalCandidates: receiverSnap.size,
-          skippedCount: skippedReceivers.length,
-          skippedReasons: skippedReceivers.reduce((acc, r) => {
-            acc[r.reason] = (acc[r.reason] || 0) + 1;
-            return acc;
-          }, {})
-        });
+        
+        return { 
+          success: false, 
+          reason: 'NO_ELIGIBLE_RECEIVER'
+        };
       }
 
       console.log('[startHelpAssignment] final.receiver.selected', {
@@ -639,6 +585,15 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       alreadyExists: result?.alreadyExists === true,
       durationMs: Date.now() - startedAtMs
     });
+
+    // Handle case where no receiver was found
+    if (result.success === false && result.reason === 'NO_ELIGIBLE_RECEIVER') {
+      return {
+        success: false,
+        reason: 'NO_ELIGIBLE_RECEIVER',
+        data: result
+      };
+    }
 
     return {
       success: true,
@@ -883,6 +838,7 @@ exports.submitPayment = httpsOnCall(async (request) => {
     if (!canTransition(s.status, HELP_STATUSES.PAYMENT_DONE)) return;
 
     const paymentDoneAtMs = Date.now();
+    const senderRef = db.collection('users').doc(s.senderUid);
 
     tx.set(utrRef, {
       helpId,
@@ -907,6 +863,13 @@ exports.submitPayment = httpsOnCall(async (request) => {
     };
     tx.update(sendRef, patch);
     tx.update(receiveRef, patch);
+
+    // Activate sender upon successful payment submission (MLM activation flow)
+    tx.update(senderRef, {
+      isActivated: true,
+      helpVisibility: true,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
   });
 
   try {
@@ -1361,27 +1324,63 @@ const createActivityNotificationData = (params) => {
 };
 
 const internalResumeBlockedReceives = async (targetUid) => {
-  await db.runTransaction(async (tx) => {
-    const userRef = db.collection('users').doc(targetUid);
-    const userSnap = await tx.get(userRef);
-    if (!userSnap.exists) return;
-    tx.update(userRef, {
-      isReceivingHeld: false,
-      isOnHold: false,
-      sponsorPaymentPending: false,
-      upgradeRequired: false,
-      lastUnblockTime: admin.firestore.FieldValue.serverTimestamp()
+  try {
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection('users').doc(targetUid);
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        console.log('[internalResumeBlockedReceives] User not found', { userId: targetUid });
+        return;
+      }
+      const userData = userSnap.data() || {};
+      // Only resume if not admin-blocked (isBlocked = true means admin manually blocked)
+      if (userData?.isBlocked === true) {
+        console.log('[internalResumeBlockedReceives] User is admin-blocked, skipping auto-resume', { userId: targetUid });
+        return;
+      }
+      console.log('[internalResumeBlockedReceives] Starting complete unblock for receiver', {
+        userId: targetUid,
+        prev_isReceivingHeld: userData?.isReceivingHeld,
+        prev_isOnHold: userData?.isOnHold,
+        prev_helpVisibility: userData?.helpVisibility,
+        prev_sponsorPaymentPending: userData?.sponsorPaymentPending,
+        prev_upgradeRequired: userData?.upgradeRequired
+      });
+      tx.update(userRef, {
+        levelStatus: userData?.levelStatus || 'Star',
+        isReceivingHeld: false,
+        isOnHold: false,
+        helpVisibility: true,
+        sponsorPaymentPending: false,
+        upgradeRequired: false,
+        lastUnblockTime: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     });
-  });
 
-  const activeSnap = await db
-    .collection('receiveHelp')
-    .where('receiverUid', '==', targetUid)
-    .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE])
-    .get();
-  const activeCount = activeSnap.docs.filter(d => d.data()?.slotReleased !== true).length;
-  await db.collection('users').doc(targetUid).set({ activeReceiveCount: activeCount }, { merge: true });
-  return { activeReceiveCount: activeCount };
+    // Update active receive count after unblocking
+    const activeSnap = await db
+      .collection('receiveHelp')
+      .where('receiverUid', '==', targetUid)
+      .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE])
+      .get();
+    const activeCount = activeSnap.docs.filter(d => d.data()?.slotReleased !== true).length;
+    await db.collection('users').doc(targetUid).set({ activeReceiveCount: activeCount }, { merge: true });
+    
+    console.log('[internalResumeBlockedReceives] Receiver fully resumed and now visible in Send Help', {
+      userId: targetUid,
+      activeReceiveCount: activeCount,
+      helpVisibilityRestored: true
+    });
+    
+    return { activeReceiveCount: activeCount };
+  } catch (err) {
+    console.error('[internalResumeBlockedReceives] Error resuming receiver', {
+      userId: targetUid,
+      error: err?.message || String(err)
+    });
+    throw err;
+  }
 };
 
 exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', async (change, context) => {
@@ -1506,16 +1505,116 @@ exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}
   const before = change.before.data();
   const after = change.after.data();
   if (!after) return null;
-  if (before?.status === after?.status) return null;
-  if (after.status !== 'confirmed') return null;
+  
+  const beforeStatus = (before?.status || '').toLowerCase();
+  const afterStatus = (after?.status || '').toLowerCase();
+  
+  if (beforeStatus === afterStatus) return null;
+  
+  // Match various confirmed statuses: 'confirmed', 'CONFIRMED', 'Confirmed', 'paid', 'PAID', 'success', etc.
+  const isConfirmed = ['confirmed', 'paid', 'completed', 'success'].includes(afterStatus);
+  if (!isConfirmed) {
+    console.log('[onLevelPaymentConfirmedV2] Status change detected but not confirmed', {
+      paymentId: context.params.paymentId,
+      beforeStatus: before?.status,
+      afterStatus: after?.status
+    });
+    return null;
+  }
 
   const userId = after.userId;
-  if (!userId) return null;
+  if (!userId) {
+    console.log('[onLevelPaymentConfirmedV2] No userId found in payment document', {
+      paymentId: context.params.paymentId
+    });
+    return null;
+  }
 
   try {
-    await internalResumeBlockedReceives(userId);
+    console.log('[onLevelPaymentConfirmedV2] Level payment status confirmed, triggering receiver unblock', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      level: after.level,
+      paymentType: after.type || 'unknown',
+      paymentAmount: after.amount,
+      statusValue: after.status
+    });
+    
+    const result = await internalResumeBlockedReceives(userId);
+    
+    console.log('[onLevelPaymentConfirmedV2] Auto-resume of receiver completed successfully', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      activeReceiveCount: result?.activeReceiveCount || 0,
+      timestamp: new Date().toISOString()
+    });
   } catch (e) {
-    console.error('[onLevelPaymentConfirmedV2] Error:', e);
+    console.error('[onLevelPaymentConfirmedV2] Failed to auto-resume receiver after level payment', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      error: e?.message || String(e),
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  return null;
+});
+
+// Cloud Function: Trigger on sponsor payment confirmation
+exports.onSponsorPaymentConfirmedV2 = onDocumentUpdated('sponsorPayments/{paymentId}', async (change, context) => {
+  const before = change.before.data();
+  const after = change.after.data();
+  if (!after) return null;
+  
+  const beforeStatus = (before?.status || '').toLowerCase();
+  const afterStatus = (after?.status || '').toLowerCase();
+  
+  if (beforeStatus === afterStatus) return null;
+  
+  // Match various confirmed statuses: 'confirmed', 'CONFIRMED', 'Confirmed', 'paid', 'PAID', 'success', etc.
+  const isConfirmed = ['confirmed', 'paid', 'completed', 'success'].includes(afterStatus);
+  if (!isConfirmed) {
+    console.log('[onSponsorPaymentConfirmedV2] Status change detected but not confirmed', {
+      paymentId: context.params.paymentId,
+      beforeStatus: before?.status,
+      afterStatus: after?.status
+    });
+    return null;
+  }
+
+  const userId = after.userId;
+  if (!userId) {
+    console.log('[onSponsorPaymentConfirmedV2] No userId found in payment document', {
+      paymentId: context.params.paymentId
+    });
+    return null;
+  }
+
+  try {
+    console.log('[onSponsorPaymentConfirmedV2] Sponsor payment status confirmed, triggering receiver unblock', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      level: after.level,
+      paymentType: after.type || 'sponsor_payment',
+      paymentAmount: after.amount,
+      statusValue: after.status
+    });
+    
+    const result = await internalResumeBlockedReceives(userId);
+    
+    console.log('[onSponsorPaymentConfirmedV2] Auto-resume of receiver completed successfully', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      activeReceiveCount: result?.activeReceiveCount || 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[onSponsorPaymentConfirmedV2] Failed to auto-resume receiver after sponsor payment', {
+      userId: userId,
+      paymentId: context.params.paymentId,
+      error: e?.message || String(e),
+      timestamp: new Date().toISOString()
+    });
   }
 
   return null;
@@ -2579,5 +2678,151 @@ exports.bootstrapFirstAdmin = httpsOnCall(async (request) => {
     }
     
     throw new HttpsError('internal', 'Failed to create bootstrap admin');
+  }
+});
+
+// ============================================================================
+// TEMPORARY DEBUG FUNCTION - Send Help Eligibility Verification
+// ============================================================================
+// This function helps verify if Firestore queries for Send Help are working
+// Usage: GET /debugSendHelpEligibility?senderUid=xxx
+// This function will be removed after debugging
+// ============================================================================
+
+exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    const senderUid = req.query.senderUid;
+
+    if (!senderUid) {
+      res.status(400).json({
+        error: 'Missing senderUid query parameter',
+        example: '/debugSendHelpEligibility?senderUid=uid123'
+      });
+      return;
+    }
+
+    console.log('[DEBUG] debugSendHelpEligibility start', { senderUid });
+
+    // Get sender data
+    const senderSnap = await db.collection('users').doc(senderUid).get();
+    if (!senderSnap.exists) {
+      res.status(404).json({
+        error: 'Sender user not found',
+        senderUid
+      });
+      return;
+    }
+
+    const sender = senderSnap.data();
+
+    console.log('[DEBUG] SENDER_DATA', {
+      uid: senderUid,
+      userId: sender.userId,
+      levelStatus: sender.levelStatus,
+      level: sender.level,
+      isActivated: sender.isActivated,
+      isBlocked: sender.isBlocked,
+      isOnHold: sender.isOnHold,
+      paymentBlocked: sender.paymentBlocked
+    });
+
+    // Normalize sender level
+    const senderLevel = sender.levelStatus || sender.level || 'Star';
+
+    console.log('[DEBUG] NORMALIZED_SENDER_LEVEL', senderLevel);
+
+    // Run the exact same query as startHelpAssignment
+    console.log('[DEBUG] RUNNING_QUERY', {
+      isActivated: true,
+      helpVisibility: true,
+      isReceivingHeld: false,
+      isBlocked: false,
+      isOnHold: false,
+      levelStatus: senderLevel
+    });
+
+    const receiverQuery = db
+      .collection('users')
+      .where('isActivated', '==', true)
+      .where('helpVisibility', '!=', false)
+      .where('isReceivingHeld', '!=', true)
+      .where('isBlocked', '!=', true)
+      .where('isOnHold', '!=', true)
+      .where('levelStatus', '==', senderLevel);
+
+    const snap = await receiverQuery.get();
+
+    console.log('[DEBUG] QUERY_RESULT', {
+      totalMatched: snap.size,
+      isEmpty: snap.empty,
+      senderLevel
+    });
+
+    // Log each matching receiver
+    const receivers = [];
+    snap.forEach(doc => {
+      const u = doc.data();
+      const receiverInfo = {
+        uid: doc.id,
+        userId: u.userId,
+        levelStatus: u.levelStatus,
+        level: u.level,
+        isActivated: u.isActivated,
+        helpVisibility: u.helpVisibility,
+        isBlocked: u.isBlocked,
+        isOnHold: u.isOnHold,
+        isReceivingHeld: u.isReceivingHeld,
+        helpReceived: u.helpReceived || 0,
+        activeReceiveCount: u.activeReceiveCount || 0,
+        sponsorPaymentPending: u.sponsorPaymentPending,
+        upgradeRequired: u.upgradeRequired
+      };
+
+      console.log('[DEBUG] MATCHING_RECEIVER', receiverInfo);
+      receivers.push(receiverInfo);
+    });
+
+    // Return summary
+    res.json({
+      success: true,
+      sender: {
+        uid: senderUid,
+        userId: sender.userId,
+        levelStatus: sender.levelStatus,
+        isActivated: sender.isActivated,
+        isBlocked: sender.isBlocked
+      },
+      query: {
+        senderLevel,
+        conditions: {
+          isActivated: true,
+          helpVisibility: true,
+          isReceivingHeld: false,
+          isBlocked: false,
+          isOnHold: false,
+          levelStatus: senderLevel
+        }
+      },
+      result: {
+        totalMatched: snap.size,
+        receivers: receivers
+      }
+    });
+
+  } catch (error) {
+    console.error('[DEBUG] ERROR', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 });

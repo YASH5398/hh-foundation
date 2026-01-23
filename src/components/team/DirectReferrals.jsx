@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
-<<<<<<< HEAD
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-=======
-import { collection, query, where, getDocs } from "firebase/firestore";
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { useAuth } from "../../context/AuthContext";
 import { db, auth } from "../../config/firebase";
 
@@ -16,17 +12,12 @@ const gradients = [
 ];
 
 export default function DirectReferrals() {
-<<<<<<< HEAD
   const { user, userProfile, loading: authLoading } = useAuth();
-=======
-  const { user, loading: authLoading } = useAuth();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-<<<<<<< HEAD
     console.log("DirectReferral useEffect triggered");
     console.log("User object:", user);
     console.log("User profile:", userProfile);
@@ -34,34 +25,17 @@ export default function DirectReferrals() {
 
     if (!userProfile?.userId) {
       console.log("No userProfile.userId found, skipping fetch");
-=======
-    // BLOCKER: No Firestore call without auth.currentUser
-    if (!auth.currentUser) {
-      console.log("DirectReferral: No auth.currentUser - skipping fetch");
-      setReferrals([]);
-      setLoading(false);
-      return;
-    }
-
-    if (!user || !user.userId) {
-      console.log("DirectReferral: No user or user.userId - skipping fetch");
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       setReferrals([]);
       setLoading(false);
       return;
     }
 
     console.log("DirectReferral fetch start");
-<<<<<<< HEAD
     console.log("Sponsor ID:", userProfile.userId);
-=======
-    console.log("Sponsor ID:", user.userId);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
     setLoading(true);
     setError("");
 
-<<<<<<< HEAD
     const q = query(
       collection(db, "users"),
       where("sponsorId", "==", userProfile.userId)
@@ -82,29 +56,6 @@ export default function DirectReferrals() {
 
     return () => unsubscribe();
   }, [userProfile?.userId]);
-=======
-    async function fetchReferrals() {
-      try {
-        const q = query(
-          collection(db, "users"),
-          where("sponsorId", "==", user.userId)
-        );
-        const snap = await getDocs(q);
-        const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-
-        console.log("Fetched referrals:", items.length, items);
-
-        setReferrals(items);
-      } catch (e) {
-        console.error("DirectReferral fetch error:", e);
-        setError("❌ Failed to load direct referrals.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchReferrals();
-  }, [user?.userId]);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Stats
   const total = referrals.length;
@@ -121,11 +72,7 @@ export default function DirectReferrals() {
     );
   }
 
-<<<<<<< HEAD
   if (!userProfile?.userId) {
-=======
-  if (!user?.userId) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return null;
   }
 
@@ -149,11 +96,8 @@ export default function DirectReferrals() {
                   <th className="px-4 py-2 text-left text-xs font-bold text-gray-900 uppercase">NAME</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-gray-900 uppercase">USER ID</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-gray-900 uppercase">PHONE NO</th>
-<<<<<<< HEAD
                   <th className="px-4 py-2 text-left text-xs font-bold text-gray-900 uppercase">EMAIL</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-gray-900 uppercase">REGISTRATION TIME</th>
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   <th className="px-4 py-2 text-center text-xs font-bold text-gray-900 uppercase">ACTIVE</th>
                   <th className="px-4 py-2 text-center text-xs font-bold text-gray-900 uppercase">INACTIVE</th>
                 </tr>
@@ -161,11 +105,7 @@ export default function DirectReferrals() {
               <tbody>
                 {referrals.length === 0 ? (
                   <tr>
-<<<<<<< HEAD
                     <td colSpan={8} className="text-center py-6 text-gray-800 font-bold">No direct referrals found.</td>
-=======
-                    <td colSpan={6} className="text-center py-6 text-gray-800 font-bold">No direct referrals found.</td>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                   </tr>
                 ) : (
                   referrals.map((r, idx) => (
@@ -182,13 +122,10 @@ export default function DirectReferrals() {
                           {r.phone}
                         </span>
                       </td>
-<<<<<<< HEAD
                       <td className="px-4 py-2 text-gray-700">{r.email}</td>
                       <td className="px-4 py-2 text-sm text-gray-600">
                         {r.registrationTime ? new Date(r.registrationTime.toDate ? r.registrationTime.toDate() : r.registrationTime).toLocaleString() : 'N/A'}
                       </td>
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       <td className="px-4 py-2 text-center">
                         {r.isActivated ? (
                           <span className="inline-flex items-center justify-center w-6 h-6 bg-green-500 text-white rounded-full" aria-label="Active">

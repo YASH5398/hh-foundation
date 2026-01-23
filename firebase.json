@@ -1,26 +1,6 @@
 {
-<<<<<<< HEAD
   "firestore": {
     "rules": "firestore.rules"
-=======
-  "hosting": {
-    "public": "build",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   },
   "storage": {
     "rules": "storage.rules"

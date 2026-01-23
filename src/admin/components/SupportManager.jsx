@@ -26,11 +26,7 @@ const TICKET_STATUSES = {
 };
 
 const SupportManager = () => {
-<<<<<<< HEAD
   const { user, isAdmin: contextIsAdmin, loading: authLoading } = useAuth();
-=======
-  const { user, userClaims } = useAuth();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [activeTab, setActiveTab] = useState('agent-chats');
   const [chatRooms, setChatRooms] = useState([]);
   const [chatbotChats, setChatbotChats] = useState([]);
@@ -46,23 +42,10 @@ const SupportManager = () => {
 
   // Check admin status
   useEffect(() => {
-<<<<<<< HEAD
     if (authLoading) return;
     setIsAdmin(!!contextIsAdmin);
     setLoading(false);
   }, [contextIsAdmin, authLoading]);
-=======
-    const checkAdminStatus = () => {
-      const adminStatus = userClaims && userClaims.admin === true;
-      setIsAdmin(adminStatus);
-      setLoading(false);
-    };
-
-    if (userClaims !== undefined) {
-      checkAdminStatus();
-    }
-  }, [userClaims]);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Load agent chat rooms
   useEffect(() => {

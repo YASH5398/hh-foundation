@@ -1,14 +1,8 @@
 import { db } from '../config/firebase';
-<<<<<<< HEAD
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, serverTimestamp, Timestamp, increment, query, where, getDocs } from 'firebase/firestore';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDocumentById, updateDocumentField, setDocument, queryDocuments } from '../utils/firestoreUtils';
-=======
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, getDocs, query, where, orderBy, limit, serverTimestamp, Timestamp, increment } from 'firebase/firestore';
-import { auth } from '../config/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const usersCollectionRef = collection(db, 'users');
 
@@ -25,16 +19,9 @@ export const getUsers = (onUpdate = () => {}, onError = () => {}) => {
 
 export const getUserById = async (id) => {
   try {
-<<<<<<< HEAD
     const userData = await getDocumentById('users', id);
     if (userData) {
       return { success: true, data: userData };
-=======
-  const userDoc = doc(db, 'users', id);
-  const data = await getDoc(userDoc);
-    if (data.exists()) {
-      return { success: true, data: { ...data.data(), id: data.id } };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     } else {
       return { success: false, message: 'User not found', data: null };
     }
@@ -62,18 +49,8 @@ export const getUserByUserId = async (userId) => {
 
 export const updateUser = async (id, userData) => {
   try {
-<<<<<<< HEAD
     const result = await setDocument('users', id, { ...userData, uid: id }, true);
     return result.success ? { success: true, message: 'User updated successfully' } : result;
-=======
-  const userDoc = doc(db, 'users', id);
-  await setDoc(userDoc, {
-    ...userData,
-      uid: id,
-      updatedAt: new Date(),
-  }, { merge: true });
-    return { success: true, message: 'User updated successfully' };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   } catch (error) {
     console.error('Error updating user:', error);
     return { success: false, message: error.message };
@@ -82,17 +59,8 @@ export const updateUser = async (id, userData) => {
 
 export const updateUserField = async (id, field, value) => {
   try {
-<<<<<<< HEAD
     const result = await updateDocumentField('users', id, { [field]: value });
     return result.success ? { success: true, message: 'User field updated successfully' } : result;
-=======
-    const userDoc = doc(db, 'users', id);
-    await updateDoc(userDoc, {
-      [field]: value,
-      updatedAt: new Date(),
-    });
-    return { success: true, message: 'User field updated successfully' };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   } catch (error) {
     console.error('Error updating user field:', error);
     return { success: false, message: error.message };
@@ -101,22 +69,10 @@ export const updateUserField = async (id, field, value) => {
 
 export const getUsersByLevel = async (level, limitCount = 10) => {
   try {
-<<<<<<< HEAD
     const users = await queryDocuments('users', [
       ['level', '==', level],
       ['isActivated', '==', true]
     ], [['referralCount', 'desc']], limitCount);
-=======
-    const q = query(
-      collection(db, 'users'),
-      where('level', '==', level),
-      where('isActivated', '==', true),
-      orderBy('referralCount', 'desc'),
-      limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return { success: true, data: users };
   } catch (error) {
     console.error('Error getting users by level:', error);
@@ -126,21 +82,10 @@ export const getUsersByLevel = async (level, limitCount = 10) => {
 
 export const searchUsers = async (searchTerm) => {
   try {
-<<<<<<< HEAD
     const users = await queryDocuments('users', [
       ['fullName', '>=', searchTerm],
       ['fullName', '<=', searchTerm + '\uf8ff']
     ], [], 10);
-=======
-    const q = query(
-      collection(db, 'users'),
-      where('fullName', '>=', searchTerm),
-      where('fullName', '<=', searchTerm + '\uf8ff'),
-      limit(10)
-    );
-    const snapshot = await getDocs(q);
-    const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return { success: true, data: users };
   } catch (error) {
     console.error('Error searching users:', error);
@@ -150,20 +95,9 @@ export const searchUsers = async (searchTerm) => {
 
 export const getTopReferrers = async (limitCount = 10) => {
   try {
-<<<<<<< HEAD
     const users = await queryDocuments('users', [
       ['isActivated', '==', true]
     ], [['referralCount', 'desc']], limitCount);
-=======
-    const q = query(
-      collection(db, 'users'),
-      where('isActivated', '==', true),
-      orderBy('referralCount', 'desc'),
-      limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return { success: true, data: users };
   } catch (error) {
     console.error('Error getting top referrers:', error);

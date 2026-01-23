@@ -208,7 +208,6 @@ const Signup = () => {
         return;
       }
 
-<<<<<<< HEAD
       console.log('🔍 STEP 1: Validating E-PIN...');
       console.log('🔍 STEP 1: auth.currentUser before E-PIN validation:', auth.currentUser?.uid || 'null');
       const epinQuery = query(collection(db, 'epins'), where('epin', '==', epin), where('status', '==', 'unused'));
@@ -217,18 +216,12 @@ const Signup = () => {
 
       if (epinSnapshot.empty) {
         console.log('❌ STEP 1: No valid E-PIN found');
-=======
-      const epinQuery = query(collection(db, 'epins'), where('epin', '==', epin), where('status', '==', 'unused'));
-      const epinSnapshot = await getDocs(epinQuery);
-      if (epinSnapshot.empty) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         toast.error('Invalid or already used E-PIN');
         setLoading(false);
         return;
       }
       const epinDoc = epinSnapshot.docs[0];
       const epinRef = doc(db, 'epins', epinDoc.id);
-<<<<<<< HEAD
       console.log('✅ STEP 1: Valid E-PIN found, ID:', epinDoc.id);
 
       console.log('🔍 STEP 2: Creating Firebase Auth user...');
@@ -248,36 +241,12 @@ const Signup = () => {
 
       if (userDoc.exists()) {
         console.log('❌ STEP 3: User document already exists, aborting signup');
-=======
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const uid = user.uid;
-
-      const userId = generateUserId();
-      uidForCleanup = uid;
-
-      await updateDoc(epinRef, {
-        status: 'used',
-        assignedTo: uid,
-        usedBy: uid,
-        usedAt: serverTimestamp()
-      });
-
-      // Check if user document exists, create if not
-      const userDocRef = doc(db, "users", uid);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         // User document already exists, this shouldn't happen during signup
         toast.error('User already exists');
         setLoading(false);
         return;
       }
-<<<<<<< HEAD
       console.log('✅ STEP 3: User document does not exist, proceeding with creation');
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
       // Prepare payment method data based on selection
       let paymentMethodData = {};
@@ -311,7 +280,6 @@ const Signup = () => {
         };
       }
 
-<<<<<<< HEAD
       console.log('🔍 STEP 4: Creating user document with FULL data...');
       console.log('🔍 STEP 4: auth.currentUser before setDoc:', auth.currentUser?.uid || 'null');
       console.log('🔍 STEP 4: uid being used for document:', uid);
@@ -325,10 +293,6 @@ const Signup = () => {
       const userId = generateUserId();
       const docRef = doc(db, "users", uid);
       const userData = {
-=======
-      const docRef = doc(db, "users", uid);
-      await setDoc(docRef, { 
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         uid: uid,
         userId: userId,
         fullName,
@@ -336,7 +300,6 @@ const Signup = () => {
         phone,
         whatsapp: whatsappNumber,
         sponsorId,
-<<<<<<< HEAD
         role: "user",
         level: 1,
         levelStatus: "Star",
@@ -349,38 +312,17 @@ const Signup = () => {
         nextLevelPaymentDone: false,
         referralCount: 0,
         helpReceived: 0,
-=======
-        password, 
-        paymentMethod: paymentMethodData,
-        isActivated: false,
-        levelStatus: "Star",
-        registrationTime: serverTimestamp(),
-        profileImage: DEFAULT_PROFILE_IMAGE,
-        referralCount: 0,
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         totalEarnings: 0,
         totalReceived: 0,
         totalSent: 0,
         totalTeam: 0,
-<<<<<<< HEAD
         profileImage: DEFAULT_PROFILE_IMAGE,
         deviceToken: "",
         paymentMethod: paymentMethodData,
-=======
-        isBlocked: false,
-        deviceToken: "",
-        helpReceived: 0,
-        level: 1,
-        referredUsers: [],
-        paymentBlocked: false,
-        nextLevelPaymentDone: false,
-        createdAt: serverTimestamp(),
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         bank: bankData,
         kycDetails: {
           aadhaar: "",
           pan: ""
-<<<<<<< HEAD
         },
         registrationTime: serverTimestamp(),
         createdAt: serverTimestamp()
@@ -433,18 +375,6 @@ const Signup = () => {
       const errorMessage = getRegistrationErrorMessage(error);
       toast.error(errorMessage);
 
-=======
-        }
-      });
-
-      await login(email, password);
-      navigate('/user-details');
-
-    } catch (error) {
-      const errorMessage = getRegistrationErrorMessage(error);
-      toast.error(errorMessage);
-      
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       if (requiresCleanup(error) && uidForCleanup !== null) {
         await cleanupAuthUser(uidForCleanup);
       }
@@ -1141,8 +1071,4 @@ const Signup = () => {
   );
 };
 
-<<<<<<< HEAD
 export default Signup;
-=======
-export default Signup;
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5

@@ -78,7 +78,6 @@ const Layout = () => {
   return (
     <div className="w-full">
       <div className="min-h-screen bg-white w-full">
-<<<<<<< HEAD
         {/* Header (hidden only on /dashboard/support/chatbot) */}
         {location.pathname !== '/dashboard/support/chatbot' && (
           <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center px-4">
@@ -106,33 +105,6 @@ const Layout = () => {
             </div>
           </header>
         )}
-=======
-        {/* Header */}
-        <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center px-4">
-          <div className="relative">
-            <button
-              id="hamburger"
-              onClick={toggleSidebar}
-              onMouseEnter={() => !isMobile && setShowTooltip(true)}
-              onMouseLeave={() => !isMobile && setShowTooltip(false)}
-              className="text-gray-700 w-10 h-10 flex items-center justify-center bg-transparent border-none focus:outline-none"
-              aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            >
-              <FiMenu size={24} />
-            </button>
-            {!isMobile && showTooltip && (
-              <div className="absolute top-12 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
-                {isSidebarOpen ? 'Close Menu' : 'Open Menu'}
-                <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
-              </div>
-            )}
-          </div>
-          <h1 className="ml-4 text-xl font-bold text-blue-800 select-none">Helping Hands Foundation</h1>
-          <div className="ml-auto flex items-center space-x-4">
-            <NotificationDropdown />
-          </div>
-        </header>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
         {/* Mobile Overlay */}
         {isMobile && isSidebarOpen && (

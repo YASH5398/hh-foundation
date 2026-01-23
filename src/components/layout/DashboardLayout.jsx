@@ -15,10 +15,7 @@ import {
 import Sidebar from './Sidebar';
 import UserMenu from '../common/UserMenu';
 import NotificationDropdown from '../notifications/NotificationDropdown';
-<<<<<<< HEAD
 import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { useAuth } from '../../context/AuthContext';
 
 const DashboardLayout = () => {
@@ -26,11 +23,7 @@ const DashboardLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const navigate = useNavigate();
-<<<<<<< HEAD
   const { user, logout, testLogout } = useAuth();
-=======
-  const { user, logout } = useAuth();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -49,7 +42,6 @@ const DashboardLayout = () => {
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
-<<<<<<< HEAD
 
     // Listen for chatbot sidebar open events
     const handleOpenSidebar = () => {
@@ -83,14 +75,6 @@ const DashboardLayout = () => {
     } catch (error) {
       console.error("🔍 DASHBOARD LAYOUT: Exception during logout:", error);
     }
-=======
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   };
 
   return (
@@ -181,10 +165,7 @@ const DashboardLayout = () => {
           <Outlet />
         </div>
       </main>
-<<<<<<< HEAD
 
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     </div>
   );
 };

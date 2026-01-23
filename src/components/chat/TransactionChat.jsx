@@ -39,11 +39,7 @@ const TransactionChat = ({
     }
 
     // Subscribe to messages
-<<<<<<< HEAD
     unsubscribeRef.current = ChatService.subscribeToTransactionMessages(
-=======
-    unsubscribeRef.current = ChatService.subscribeToMessages(
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
       transactionType,
       transactionId,
       (newMessages) => {
@@ -81,11 +77,7 @@ const TransactionChat = ({
     setSending(true);
     
     try {
-<<<<<<< HEAD
       const result = await ChatService.sendTransactionMessage(
-=======
-      const result = await ChatService.sendMessage(
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         transactionType,
         transactionId,
         user.uid,

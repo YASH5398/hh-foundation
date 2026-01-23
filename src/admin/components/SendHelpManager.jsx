@@ -3,11 +3,6 @@ import { db } from '../../config/firebase';
 import { collection, onSnapshot, doc, updateDoc, query, orderBy, where, serverTimestamp, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
-<<<<<<< HEAD
-=======
-import { auth } from '../../config/firebase';
-import { getIdTokenResult } from 'firebase/auth';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 import { getDirectImageUrl } from '../../utils/firebaseStorageUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, CheckCircle, XCircle, Clock, User, CreditCard, Phone, MessageCircle } from 'lucide-react';
@@ -20,17 +15,12 @@ const STATUS_COLORS = {
 };
 
 const SendHelpManager = () => {
-<<<<<<< HEAD
   const { user, isAdmin, loading: authLoading } = useAuth();
-=======
-  const { user } = useAuth();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [sendHelpData, setSendHelpData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedHelp, setSelectedHelp] = useState(null);
-<<<<<<< HEAD
 
   useEffect(() => {
     let unsub = null;
@@ -72,80 +62,6 @@ const SendHelpManager = () => {
     setup();
     return () => { if (unsub) unsub(); };
   }, [user, isAdmin, authLoading]);
-=======
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [accessDenied, setAccessDenied] = useState(false);
-
-  useEffect(() => {
-    let unsub = null;
-    const verifyAdmin = async () => {
-      setCheckingAdmin(true);
-      setIsAdmin(false);
-      setAccessDenied(false);
-      setSendHelpData([]);
-      setLoading(true);
-      
-      try {
-        const currentUser = auth.currentUser;
-        if (!user || !currentUser) {
-          setCheckingAdmin(false);
-          setIsAdmin(false);
-          setAccessDenied(true);
-          setLoading(false);
-          return;
-        }
-        
-        const tokenResult = await getIdTokenResult(currentUser, true);
-        console.log('Admin token claims:', tokenResult.claims);
-        
-        if (tokenResult.claims && tokenResult.claims.admin === true) {
-          setIsAdmin(true);
-          setAccessDenied(false);
-          
-          // Fetch SendHelp data
-          const q = query(collection(db, 'sendHelp'), where('status', '!=', null), orderBy('createdAt', 'desc'));
-          unsub = onSnapshot(
-            q,
-            (snap) => {
-              try {
-                const list = snap.docs.map(doc => {
-                  const data = doc.data();
-                  return { id: doc.id, ...data };
-                });
-                setSendHelpData(list);
-                setLoading(false);
-              } catch (err) {
-                setLoading(false);
-                toast.error('Error loading SendHelp data.');
-                console.error(err);
-              }
-            },
-            (error) => {
-              setLoading(false);
-              toast.error('Permission denied: Unable to fetch SendHelp data.');
-              console.error('Firestore onSnapshot permission error:', error);
-            }
-          );
-        } else {
-          setIsAdmin(false);
-          setAccessDenied(true);
-          setLoading(false);
-        }
-        setCheckingAdmin(false);
-      } catch (err) {
-        setCheckingAdmin(false);
-        setIsAdmin(false);
-        setAccessDenied(true);
-        setLoading(false);
-        toast.error(err.message || 'Failed to verify admin status.');
-        console.error('Admin claim check error:', err);
-      }
-    };
-    verifyAdmin();
-    return () => { if (unsub) unsub(); };
-  }, [user]);
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   // Filtered and searched data
   const filteredData = sendHelpData.filter(help => {
@@ -224,11 +140,7 @@ const SendHelpManager = () => {
   };
 
   // Access control and loading
-<<<<<<< HEAD
   if (authLoading || loading) {
-=======
-  if (checkingAdmin || loading) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return (
       <div className="text-center py-8 text-gray-600 font-bold flex flex-col items-center gap-4">
         <svg className="animate-spin h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -240,11 +152,7 @@ const SendHelpManager = () => {
     );
   }
 
-<<<<<<< HEAD
   if (!user || !isAdmin) {
-=======
-  if (accessDenied || !isAdmin) {
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     return (
       <div className="text-center py-8 text-red-600 font-bold">
         Access Denied. Admins only.

@@ -1,7 +1,7 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-<<<<<<< HEAD
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -10,63 +10,39 @@ service firebase.storage {
       return request.auth != null && request.auth.token.role == 'admin';
     }
 
-    function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+    // E-PIN screenshots - allow authenticated users to upload and read their own files
+    match /epin-screenshots/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    match /epin-screenshots/{uid}/{allPaths=**} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid);
+    // Payment proofs - allow authenticated users to upload and read their own files
+    match /payment-proofs/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    match /payment-proofs/{uid}/{allPaths=**} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid);
-    }
-
-    match /profileImages/{uid}/{allPaths=**} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid);
-    }
-
-    match /chat-images/{transactionId}/{allPaths=**} {
+    // Profile images - allow authenticated users to upload and read
+    match /profile-images/{userId}/{fileName} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    match /chat_images/{chatId}/{allPaths=**} {
+    // QR codes and system images - read access for authenticated users
+    match /qr-codes/{fileName} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    match /support-attachments/{ticketId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    // System images - read access for all, write for admins
+    match /system/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
+    // Admin override for all files
     match /{allPaths=**} {
       allow read, write: if isAdmin();
-=======
-
-    // E-PIN screenshots - allow authenticated users
-    match /epinScreenshots/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Payment screenshots - allow authenticated users
-    match /payment-screenshots/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // General uploads folder - allow authenticated users
-    match /uploads/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Deny all other paths by default
-    match /{allPaths=**} {
-      allow read, write: if false;
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
     }
   }
 }

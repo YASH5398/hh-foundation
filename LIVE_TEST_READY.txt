@@ -1,0 +1,241 @@
+═══════════════════════════════════════════════════════════════════════════════
+SEND HELP END-TO-END LIVE TESTING - READY TO EXECUTE
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ CLOUD FUNCTION STATUS: DEPLOYED & READY
+───────────────────────────────────────────────────────────────────────────────
+Function:    startHelpAssignment
+Status:      ✅ DEPLOYED (v2, callable)
+Region:      us-central1
+Memory:      256MB
+Runtime:     nodejs20
+Trigger:     Callable (Cloud Functions for Firebase)
+
+Fix Applied: Receiver query changed from equality (==) to inequality (!=) operators
+             to match documents where boolean fields are missing/undefined.
+             
+Commit:      Backend functions updated and deployed via Firebase CLI
+             Exit code: 0 (SUCCESS)
+
+═══════════════════════════════════════════════════════════════════════════════
+EXECUTION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: IDENTIFY TEST USERS
+───────────────────────────────────────────────────────────────────────────────
+File: TEST_EXECUTION_CHECKLIST.txt → PHASE 1: FIND TEST USERS
+
+Actions:
+  [ ] Open Firebase Console → Firestore
+  [ ] Query: users with isActivated == true
+  [ ] Find 2+ users with same levelStatus (e.g., both "Star")
+  [ ] Verify sender has NO active sendHelp
+  [ ] Verify receiver not blocked/onHold/receiving_held
+  [ ] Record sender email, receiver email, levelStatus
+
+Expected Result:
+  ✓ Sender Email: ____________________
+  ✓ Receiver Email: ____________________
+  ✓ Shared Level: ____________________
+
+
+STEP 2: EXECUTE TEST 1 - AUTO ASSIGNMENT
+───────────────────────────────────────────────────────────────────────────────
+File: TEST_EXECUTION_CHECKLIST.txt → PHASE 2: TEST 1
+
+Actions:
+  [ ] Open 4 browser tabs:
+      Tab 1: App (Sender)
+      Tab 2: App (Receiver)
+      Tab 3: Firestore Console
+      Tab 4: Cloud Function Logs (https://console.firebase.google.com/project/hh-foundation/functions/logs?functionName=startHelpAssignment)
+      
+  [ ] Tab 1: Login as SENDER
+  [ ] Tab 1: Navigate to Dashboard → Send Help
+  [ ] Tab 4: Watch Cloud Function logs in real-time
+  [ ] Tab 1: Click "Send Help" button
+  [ ] Tab 3: Verify sendHelp + receiveHelp created with SAME ID
+  [ ] Tab 3: Verify both have status == "assigned"
+
+Expected Success Logs:
+  [startHelpAssignment] entry
+  [startHelpAssignment] start
+  [startHelpAssignment] sender.data
+  [startHelpAssignment] activeSend.count { count: 0 }  ← CRITICAL: must be 0
+  [INVESTIGATION] FIRESTORE_QUERY_RESULT { snapshotSize: X, isEmpty: false }  ← X > 0
+  [startHelpAssignment] receiverCandidates.count { count: X }  ← X > 0
+  [DIAGNOSTIC] RECEIVER_ELIGIBLE { uid, levelStatus, activeReceiveCount, receiveLimit }
+  [startHelpAssignment] final.receiver.selected { receiverUid, receiverId }
+  [startHelpAssignment] docs.created { helpId, receiverUid }
+  [startHelpAssignment] success { helpId, alreadyExists: false }  ← SUCCESS
+
+Expected Firestore State:
+  sendHelp collection:
+    ✓ Document created with ID: _______________________
+    ✓ status: "assigned"
+    ✓ senderUid: matches SENDER
+    ✓ receiverUid: matches RECEIVER
+    ✓ amount: 300
+    ✓ createdAt: recent timestamp
+    
+  receiveHelp collection:
+    ✓ Document ID: EXACT SAME as sendHelp ← CRITICAL
+    ✓ status: "assigned"
+    ✓ receiverUid: matches RECEIVER
+    ✓ senderUid: matches SENDER
+    ✓ createdAt: SAME as sendHelp
+
+Test 1 Result: ✅ PASS / ❌ FAIL
+
+
+STEP 3: EXECUTE TEST 2 - RECEIVER UI
+───────────────────────────────────────────────────────────────────────────────
+File: TEST_EXECUTION_CHECKLIST.txt → PHASE 3: TEST 2
+
+Actions:
+  [ ] Tab 2: Login as RECEIVER
+  [ ] Tab 2: Navigate to Dashboard → Receive Help
+  [ ] Tab 2: Verify newly created help is visible
+  [ ] Tab 2: Verify sender details, amount (₹300), status (assigned)
+
+Expected Result:
+  ✓ Help appears in Receive Help screen
+  ✓ Sender name visible
+  ✓ Amount: ₹300
+  ✓ Status: "assigned"
+  ✓ Action buttons visible: "Request Payment", "View Chat"
+
+Test 2 Result: ✅ PASS / ❌ FAIL
+
+
+STEP 4: EXECUTE TEST 3 - PAYMENT FLOW
+───────────────────────────────────────────────────────────────────────────────
+File: TEST_EXECUTION_CHECKLIST.txt → PHASE 4: TEST 3
+
+Phase 3A: Receiver Requests Payment
+  [ ] Tab 2: Click "Request Payment" button
+  [ ] Tab 3: Verify receiveHelp status: "assigned" → "payment_requested"
+  [ ] Tab 3: Verify paymentRequestedAt timestamp set
+
+Phase 3B: Sender Submits Payment Proof
+  [ ] Tab 1: Verify status shows "payment_requested"
+  [ ] Tab 1: Click "Upload Payment Proof"
+  [ ] Tab 1: Select payment method, enter details, submit
+  [ ] Tab 3: Verify sendHelp status: "payment_requested" → "payment_done"
+  [ ] Tab 3: Verify payment.method, payment.utr filled
+  [ ] Tab 3: Verify paymentDoneAt timestamp set
+
+Phase 3C: Receiver Confirms Payment
+  [ ] Tab 2: Verify status shows "payment_done"
+  [ ] Tab 2: Click "Confirm Payment Received"
+  [ ] Tab 3: Verify receiveHelp status: "payment_done" → "confirmed"
+  [ ] Tab 3: Verify confirmedByReceiver: true
+  [ ] Tab 3: Verify confirmedAt timestamp set
+
+Phase 3D: Verify Sync
+  [ ] Tab 3: Both sendHelp AND receiveHelp status == "confirmed"
+  [ ] Tab 3: Both have paymentDoneAt
+  [ ] Tab 3: receiveHelp has confirmedAt
+  [ ] Tab 3: All timestamps consistent
+
+Test 3 Result: ✅ PASS / ❌ FAIL
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FAILURE HANDLING
+═══════════════════════════════════════════════════════════════════════════════
+
+If Test 1 fails with "receiverCandidates.count: 0":
+───────────────────────────────────────────────────────────────────────────────
+  ERROR LOG: [ROOT_CAUSE] ZERO_USERS_MATCH_FIRESTORE_QUERY
+  
+  Diagnosis:
+    1. No users matched the receiver query filters
+    2. Check which field is blocking:
+       - No users with same levelStatus?
+       - All users blocked (isBlocked == true)?
+       - All users on hold (isOnHold == true)?
+       - All users receiving held (isReceivingHeld == true)?
+       - All users have helpVisibility == false?
+       - All users exceeded receive limit?
+       - All users have upgradeRequired == true?
+       - All users have sponsorPaymentPending == true?
+       
+  Fix:
+    1. Go to Firestore users collection
+    2. Update receiver document:
+       {
+         isBlocked: false,
+         isOnHold: false,
+         isReceivingHeld: false,
+         helpVisibility: true,
+         upgradeRequired: false,
+         sponsorPaymentPending: false,
+         activeReceiveCount: 0
+       }
+    3. Retry Send Help
+
+
+If Test 1 fails with "Sender already has an active help":
+───────────────────────────────────────────────────────────────────────────────
+  Cause: Previous test created sendHelp that wasn't completed
+  
+  Fix:
+    1. Go to Firestore sendHelp collection
+    2. Find document where senderUid == [your sender uid]
+    3. Delete it OR update status to "confirmed"
+    4. Retry Send Help
+
+
+If receiveHelp not created or has different ID than sendHelp:
+───────────────────────────────────────────────────────────────────────────────
+  Cause: Cloud Function failed or transaction didn't complete atomically
+  
+  Fix:
+    1. Check Cloud Function logs for [startHelpAssignment] crash error
+    2. Copy exact error message
+    3. Analyze the specific condition that failed
+    4. Update that condition in startHelpAssignment if needed
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FINAL RESULTS TEMPLATE
+═══════════════════════════════════════════════════════════════════════════════
+
+TEST 1 (Auto Assignment):     ✅ PASS / ❌ FAIL
+TEST 2 (Receiver UI):         ✅ PASS / ❌ FAIL  
+TEST 3 (Payment Flow):        ✅ PASS / ❌ FAIL
+
+OVERALL RESULT:               ✅ ALL PASS / ❌ FAILED
+
+
+If FAILED:
+  Failing Test: ____________________
+  
+  Exact Error Message or Log:
+  ________________________________________________________________
+  ________________________________________________________________
+  
+  Firestore State at Time of Failure:
+  ________________________________________________________________
+  ________________________________________________________________
+  
+  Expected vs Actual:
+  ________________________________________________________________
+  ________________________________________________________________
+  
+
+═══════════════════════════════════════════════════════════════════════════════
+RULES REMINDER
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ Use EXISTING Firestore data only - no manual document creation initially
+✓ Monitor Cloud Function logs in real-time for exact diagnosis
+✓ If auto assignment fails, identify EXACT condition rejecting users
+✓ Fix ONLY the failing condition - no fallback or bypass
+✓ Do NOT change MLM flow or UI
+✓ Do NOT add new fields or alter data structure
+✓ Validate with live data before any code changes
+
+═══════════════════════════════════════════════════════════════════════════════
+

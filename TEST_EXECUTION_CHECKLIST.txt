@@ -1,0 +1,255 @@
+SEND HELP LIVE END-TO-END TEST - EXACT EXECUTION STEPS
+=====================================================
+
+PHASE 1: FIND TEST USERS (Firebase Console)
+============================================
+
+STEP 1: Open Firebase Console
+  URL: https://console.firebase.google.com/project/hh-foundation/firestore
+  
+STEP 2: Query for Activated Users
+  1. Click "users" collection
+  2. Add filter: isActivated == true
+  3. Note count of users - need at least 2
+  
+STEP 3: Group Users by Level
+  Manually scan users to find:
+  - At least 2 users with SAME levelStatus (e.g., both "Star")
+  - Different uid
+  - Both isActivated == true
+  
+  Document: 
+    - Note their levelStatus
+    - Note their uid
+    - Note their email
+    - Note their userId
+    
+STEP 4: Check Sender Eligibility
+  For the user you'll use as SENDER:
+  1. Go to "sendHelp" collection
+  2. Run this query: where senderUid == [SENDER_UID] AND status in ["assigned", "payment_requested", "payment_done"]
+  3. Result must be EMPTY (no active sendHelp)
+  
+STEP 5: Check Receiver Eligibility  
+  For the user you'll use as RECEIVER:
+  1. Verify these fields in the user document:
+     - isBlocked: false (or missing) ✓
+     - isOnHold: false (or missing) ✓
+     - isReceivingHeld: false (or missing) ✓
+     - helpVisibility: true (or missing) ✓
+     - upgradeRequired: false (or missing) ✓
+     - sponsorPaymentPending: false (or missing) ✓
+     - activeReceiveCount: < 3 (for Star), < 9 (for Silver), etc ✓
+     
+RESULT OF PHASE 1:
+  ✓ Sender Email: ____________________
+  ✓ Sender UID: ____________________
+  ✓ Receiver Email: ____________________
+  ✓ Receiver UID: ____________________
+  ✓ Shared Level: ____________________
+
+
+PHASE 2: TEST 1 - AUTO ASSIGNMENT (Execute in App)
+===================================================
+
+SETUP BROWSER TABS:
+  Tab 1: App (Sender)
+  Tab 2: App (Receiver) 
+  Tab 3: Firestore Console
+  Tab 4: Cloud Function Logs (https://console.firebase.google.com/project/hh-foundation/functions/logs?functionName=startHelpAssignment)
+
+EXECUTE TEST 1:
+  
+  STEP 1: Sender Login
+    1. In Tab 1, open app
+    2. Login with SENDER email
+    3. Verify dashboard loads
+    
+  STEP 2: Prepare to Monitor Logs
+    1. Switch to Tab 4 (Cloud Function Logs)
+    2. Check current time
+    3. Keep this tab open, ready to refresh
+    
+  STEP 3: Trigger Send Help
+    1. Switch to Tab 1 (Sender app)
+    2. Navigate to Dashboard → Send Help
+    3. Click "Send Help" button
+    4. Note exact timestamp
+    
+  STEP 4: Monitor Cloud Function Logs
+    1. Switch to Tab 4
+    2. Click Refresh or wait for auto-update
+    3. Look for log entry with timestamp close to Step 3
+    4. Read the logs carefully
+    
+  EXPECTED LOGS (in order):
+    [startHelpAssignment] entry
+    [startHelpAssignment] start { senderUid: "...", payload: {...}, startedAtMs: 123... }
+    [startHelpAssignment] sender.data { senderUid: "...", senderId: "HHF...", levelStatus: "Star" }
+    [startHelpAssignment] activeSend.count { senderUid: "...", count: 0 } ← CRITICAL: must be 0
+    [INVESTIGATION] FIRESTORE_QUERY_CONDITIONS { collection: "users", filters: {...} }
+    [INVESTIGATION] FIRESTORE_QUERY_RESULT { snapshotSize: X, isEmpty: false } ← CRITICAL: X must be > 0
+    [startHelpAssignment] receiverCandidates.count { senderUid: "...", senderLevel: "Star", count: X } ← X must be > 0
+    [DIAGNOSTIC] ALL_RECEIVERS_BEFORE_FILTERING { totalFetched: X, receivers: [...] }
+    [DIAGNOSTIC] RECEIVER_ELIGIBLE { userId: "HHF...", uid: "...", levelStatus: "Star", activeReceiveCount: 0, receiveLimit: 3 }
+    [startHelpAssignment] final.receiver.selected { senderUid: "...", receiverUid: "...", receiverId: "HHF..." }
+    [startHelpAssignment] docs.created { senderUid: "...", helpId: "...", receiverUid: "..." }
+    [startHelpAssignment] success { senderUid: "...", senderId: "HHF...", helpId: "...", alreadyExists: false, durationMs: XXX }
+    
+  ERROR LOGS to watch for:
+    [startHelpAssignment] crash ← FAILURE
+    [ROOT_CAUSE] ZERO_USERS_MATCH_FIRESTORE_QUERY ← NO RECEIVERS FOUND
+    
+STEP 5: Verify Firestore Documents
+    1. Switch to Tab 3 (Firestore)
+    2. Navigate to "sendHelp" collection
+    3. Look for document with recent createdAt timestamp
+    4. Check document ID: note it (e.g., "xyz_123_1234567890")
+    5. Verify fields:
+       - id: exists ✓
+       - status: "assigned" ✓
+       - senderUid: matches SENDER_UID ✓
+       - senderId: matches SENDER email prefix ✓
+       - receiverUid: matches RECEIVER_UID ✓
+       - receiverId: matches RECEIVER user ID ✓
+       - amount: 300 ✓
+       - createdAt: recent timestamp ✓
+       - assignedAt: recent timestamp ✓
+       
+    6. Navigate to "receiveHelp" collection
+    7. Find document with SAME ID as sendHelp ← CRITICAL
+    8. Verify fields:
+       - Document ID: EXACT SAME as sendHelp ✓
+       - status: "assigned" ✓
+       - senderUid: matches SENDER_UID ✓
+       - receiverUid: matches RECEIVER_UID ✓
+       - createdAt: SAME as sendHelp ✓
+       - assignedAt: SAME as sendHelp ✓
+
+TEST 1 RESULT:
+  ☑ sendHelp created: YES / NO
+  ☑ receiveHelp created: YES / NO
+  ☑ Document IDs match: YES / NO
+  ☑ Both status == "assigned": YES / NO
+  ☑ Cloud Function succeeded: YES / NO
+  
+TEST 1 OVERALL: ✅ PASS / ❌ FAIL
+
+
+PHASE 3: TEST 2 - RECEIVER UI (Execute in App)
+===============================================
+
+STEP 1: Receiver Login
+    1. In Tab 2, open app in new incognito window
+    2. Login with RECEIVER email
+    3. Wait for dashboard to load
+    
+STEP 2: Navigate to Receive Help
+    1. Go to Dashboard → Receive Help
+    2. Look for newly created help assignment
+    3. Verify it appears in the list
+    
+STEP 3: Verify Details
+    Look for these elements:
+    ✓ Sender name: _____________
+    ✓ Amount displayed: ₹300
+    ✓ Status shown: "assigned"
+    ✓ Sender contact info visible
+    ✓ Action buttons present: "Request Payment", "View Chat"
+    ✓ Help not marked as hidden/inactive
+    
+TEST 2 RESULT:
+  ☑ Help visible in Receive Help screen: YES / NO
+  ☑ Correct sender details: YES / NO
+  ☑ Amount correct: YES / NO
+  ☑ Status correct: YES / NO
+  ☑ Buttons present and enabled: YES / NO
+  
+TEST 2 OVERALL: ✅ PASS / ❌ FAIL
+
+
+PHASE 4: TEST 3 - PAYMENT FLOW (Execute in App)
+================================================
+
+PHASE 3A: Receiver Requests Payment
+
+  STEP 1: In Tab 2 (Receiver)
+    1. Click "Request Payment" button on the help
+    2. Observe UI update
+    
+  STEP 2: Verify Status Update in Firestore
+    1. Switch to Tab 3 (Firestore)
+    2. Go to "receiveHelp" collection
+    3. Find the document
+    4. Verify status changed: "assigned" → "payment_requested" ✓
+    5. Verify paymentRequestedAt: timestamp should be set ✓
+    
+PHASE 3B: Sender Submits Payment
+
+  STEP 1: In Tab 1 (Sender)
+    1. Refresh if needed
+    2. Verify status shows "payment_requested"
+    3. Click "Upload Payment Proof" button
+    4. Select payment method (UPI or Bank)
+    5. Enter payment details
+    6. Click "Submit Payment"
+    
+  STEP 2: Verify Status Update in Firestore
+    1. Switch to Tab 3 (Firestore)
+    2. Go to "sendHelp" collection
+    3. Find the document
+    4. Verify status changed: "payment_requested" → "payment_done" ✓
+    5. Verify payment.method: filled with selected method ✓
+    6. Verify payment.utr or screenshotUrl: filled ✓
+    7. Verify paymentDoneAt: timestamp should be set ✓
+    
+PHASE 3C: Receiver Confirms Payment
+
+  STEP 1: In Tab 2 (Receiver)
+    1. Refresh if needed
+    2. Verify status shows "payment_done"
+    3. Click "Confirm Payment Received" button
+    4. Observe confirmation message
+    
+  STEP 2: Verify Status Update in Firestore
+    1. Switch to Tab 3 (Firestore)
+    2. Go to "receiveHelp" collection
+    3. Find the document
+    4. Verify status changed: "payment_done" → "confirmed" ✓
+    5. Verify confirmedByReceiver: true ✓
+    6. Verify confirmedAt: timestamp should be set ✓
+    
+PHASE 3D: Verify Sync
+
+  1. Check both sendHelp AND receiveHelp:
+     - Both status: "confirmed" ✓
+     - Both have paymentDoneAt ✓
+     - receiveHelp has confirmedAt ✓
+     - All createdAt/assignedAt match ✓
+     
+TEST 3 RESULT:
+  ☑ Request Payment works: YES / NO
+  ☑ Submit Payment works: YES / NO
+  ☑ Confirm Payment works: YES / NO
+  ☑ Status transitions correct: YES / NO
+  ☑ Both collections in sync: YES / NO
+  ☑ All timestamps recorded: YES / NO
+  
+TEST 3 OVERALL: ✅ PASS / ❌ FAIL
+
+
+FINAL RESULTS
+=============
+
+TEST 1 (Auto Assignment): ✅ PASS / ❌ FAIL
+TEST 2 (Receiver UI): ✅ PASS / ❌ FAIL
+TEST 3 (Payment Flow): ✅ PASS / ❌ FAIL
+
+OVERALL: ✅ ALL PASS / ❌ SOME FAILED
+
+If any test failed, describe:
+  Test number: __________
+  Exact error or log message: ________________________________
+  Firestore state at time of failure: ________________________________
+  Expected vs actual: ________________________________
+

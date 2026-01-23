@@ -9,7 +9,6 @@ module.exports = {
       return webpackConfig;
     },
   },
-<<<<<<< HEAD
   devServer: {
     setupMiddlewares: (middlewares, devServer) => {
       return middlewares;
@@ -18,6 +17,4 @@ module.exports = {
     onBeforeSetupMiddleware: undefined,
     onAfterSetupMiddleware: undefined
   }
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 }; 

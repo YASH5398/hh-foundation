@@ -6,10 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../../config/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
-<<<<<<< HEAD
 import { formatDate } from '../../utils/formatDate';
-=======
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const EpinHistory = () => {
   const { user } = useAuth();
@@ -71,19 +68,6 @@ const EpinHistory = () => {
     return configs[status] || configs.default;
   };
 
-<<<<<<< HEAD
-=======
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
   if (loading) {
     return (
@@ -203,11 +187,7 @@ const EpinHistory = () => {
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
-<<<<<<< HEAD
                               {formatDate(item.createdAt, { includeTime: true })}
-=======
-                              {formatDate(item.createdAt)}
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

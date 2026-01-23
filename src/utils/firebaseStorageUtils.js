@@ -41,11 +41,7 @@ export const getDirectImageUrl = (downloadURL) => {
  * @returns {string} Direct public URL
  */
 export const createDirectImageUrl = (userId, fileName, folder = 'paymentProofs') => {
-<<<<<<< HEAD
   const bucket = 'hh-foundation.firebasestorage.app';
-=======
-  const bucket = 'hh-foundation.appspot.com';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const path = `${folder}/${userId}/${fileName}`;
   const encodedPath = encodeURIComponent(path);
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;

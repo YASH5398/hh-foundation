@@ -4,16 +4,10 @@ import { db } from '../../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCheckCircle, FiXCircle, FiImage } from 'react-icons/fi';
-<<<<<<< HEAD
 import { useAuth } from '../../../context/AuthContext';
 import { approveEpinRequest } from '../../../services/epinService';
 import { firestoreQueryService } from '../../../services/firestoreQueryService';
 import { authGuardService } from '../../../services/authGuardService';
-=======
-import { getDirectImageUrl } from '../../../utils/firebaseStorageUtils';
-import { useAuth } from '../../../context/AuthContext';
-import { approveEpinRequest } from '../../../services/epinService';
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
 
 const statusColors = {
   accepted: 'bg-green-100 text-green-700',
@@ -45,12 +39,7 @@ function generateRandomEpin() {
 }
 
 const EpinRequestManager = () => {
-<<<<<<< HEAD
   const { user, isAdmin, loading: authLoading } = useAuth();
-=======
-  const { user, userClaims } = useAuth();
-  const isAdmin = userClaims && userClaims.admin === true;
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +48,6 @@ const EpinRequestManager = () => {
   const [processingRequest, setProcessingRequest] = useState(null);
 
   useEffect(() => {
-<<<<<<< HEAD
     // Wait for auth/claims to load
     if (authLoading) return;
 
@@ -85,43 +73,15 @@ const EpinRequestManager = () => {
           console.log(`Fetched ${reqList.length} E-PIN requests`);
           setRequests(reqList);
         }
-=======
-    // Real-time listener for all E-PIN requests
-    const q = query(collection(db, 'epinRequests'), where('status', '!=', null));
-    const unsubscribe = onSnapshot(q,
-      (snapshot) => {
-        const reqList = snapshot.docs.map(doc => ({ 
-          id: doc.id, 
-          ...doc.data() 
-        }));
-        // Sort by timestamp (newest first)
-        reqList.sort((a, b) => {
-          const aTime = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : 
-                       a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
-          const bTime = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : 
-                       b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
-          return bTime - aTime;
-        });
-    setRequests(reqList);
-    setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching E-PIN requests:', error);
-        toast.error('Failed to load E-PIN requests');
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
         setLoading(false);
       }
     );
 
-<<<<<<< HEAD
     // Cleanup listener on unmount
     return () => {
       console.log('Cleaning up E-PIN requests listener');
       unsubscribe();
     };
-=======
-    return () => unsubscribe();
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
   }, []);
 
   const handleAccept = async (req) => {
@@ -317,11 +277,7 @@ const EpinRequestManager = () => {
           <table className="min-w-full">
             <thead>
               <tr className="bg-slate-800/60 border-b border-slate-600">
-<<<<<<< HEAD
                 <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">User</th>
-=======
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">User</th>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Count</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Type</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">Payment</th>
@@ -336,11 +292,7 @@ const EpinRequestManager = () => {
               <AnimatePresence>
                 {filtered.length === 0 && !loading && (
                   <tr>
-<<<<<<< HEAD
                     <td colSpan={10} className="px-6 py-12 text-center">
-=======
-                    <td colSpan={9} className="px-6 py-12 text-center">
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                       <div className="flex flex-col items-center justify-center text-slate-400">
                         <FiCheckCircle className="w-12 h-12 mb-4 opacity-50" />
                         <p className="text-lg font-medium">No E-PIN requests found</p>
@@ -379,7 +331,6 @@ const EpinRequestManager = () => {
                         <button
                           className="focus:outline-none group transition-transform hover:scale-105"
                           title="View Screenshot"
-<<<<<<< HEAD
                           onClick={() => setModalImg(req.paymentScreenshotUrl)}
                         >
                           <img
@@ -390,14 +341,6 @@ const EpinRequestManager = () => {
                               e.target.onerror = null;
                               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSIyNCIgeT0iMjQiIGZvbnQtc2l6ZT0iOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgYWxpZ25tZW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM4ODgiPkVycm9yPC90ZXh0Pjwvc3ZnPg==';
                             }}
-=======
-                          onClick={() => setModalImg(getDirectImageUrl(req.paymentScreenshotUrl))}
-                        >
-                          <img
-                            src={getDirectImageUrl(req.paymentScreenshotUrl)}
-                            alt="Payment Screenshot"
-                            className="w-12 h-12 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                           />
                         </button>
                       ) : (
@@ -527,7 +470,6 @@ const EpinRequestManager = () => {
 
               {req.paymentScreenshotUrl && (
                 <div className="mb-4">
-<<<<<<< HEAD
                   <p className="text-xs text-slate-400 uppercase font-medium mb-2">Images</p>
                   <div className="flex gap-4">
                     {req.paymentScreenshotUrl && (
@@ -551,20 +493,6 @@ const EpinRequestManager = () => {
                       </div>
                     )}
                   </div>
-=======
-                  <p className="text-xs text-slate-400 uppercase font-medium mb-2">Payment Proof</p>
-                  <button
-                    className="focus:outline-none group transition-transform hover:scale-105 touch-manipulation"
-                    title="View Screenshot"
-                    onClick={() => setModalImg(getDirectImageUrl(req.paymentScreenshotUrl))}
-                  >
-                    <img
-                      src={getDirectImageUrl(req.paymentScreenshotUrl)}
-                      alt="Payment Screenshot"
-                      className="w-20 h-20 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
-                    />
-                  </button>
->>>>>>> 60b3a7f821302b61dfef9887afd598a9a3deb9d5
                 </div>
               )}
 
