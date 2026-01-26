@@ -5,7 +5,11 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import LoginRequired from '../auth/LoginRequired';
 import TransactionChat from '../chat/TransactionChat';
-import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
+
+import PaymentModal from './PaymentModal';
+import PaymentDoneConfirmation from './PaymentDoneConfirmation';
+import PaymentProofForm from './PaymentProofForm';
+import SendHelpFlowContainer from './SendHelpFlow/SendHelpFlowContainer';
 import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof } from '../../services/helpService';
 import { HELP_STATUS, normalizeStatus } from '../../config/helpStatus';
 import { waitForAuthReady } from '../../services/authReady';
@@ -21,6 +25,15 @@ const UI_STATES = {
   
   // Active help states
   RECEIVER_ASSIGNED: 'receiver_assigned',
+  
+  // New 4-step full-page flow
+  SEND_HELP_FLOW: 'send_help_flow',
+  
+  // Payment flow states (legacy modals)
+  PAYMENT_METHODS_MODAL: 'payment_methods_modal',
+  PAYMENT_DONE_CONFIRMATION: 'payment_done_confirmation',
+  PAYMENT_PROOF_FORM: 'payment_proof_form',
+  
   PAYMENT_SUBMITTED: 'payment_submitted',
   COMPLETED: 'completed',
   
@@ -167,10 +180,10 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
   </motion.div>
 );
 
-const ReceiverAssignedState = ({ receiver, helpStatus, onMakePayment, showChat, setShowChat, transactionId }) => {
+const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick, showChat, setShowChat, transactionId }) => {
   const status = normalizeStatus(helpStatus);
-  const canMakePayment = status === HELP_STATUS.PAYMENT_REQUESTED;
-  const isPending = status === HELP_STATUS.ASSIGNED;
+  // Show "Pay Now" button for both ASSIGNED and PAYMENT_REQUESTED statuses
+  const showPayButton = status === HELP_STATUS.ASSIGNED || status === HELP_STATUS.PAYMENT_REQUESTED;
 
   return (
     <motion.div
@@ -180,22 +193,9 @@ const ReceiverAssignedState = ({ receiver, helpStatus, onMakePayment, showChat, 
     >
       {/* Status Header */}
       <div className="text-center mb-6">
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 ${
-          isPending 
-            ? 'bg-yellow-100 text-yellow-800'
-            : 'bg-orange-100 text-orange-800'
-        }`}>
-          {isPending ? (
-            <>
-              <FiClock className="w-4 h-4" />
-              Payment Pending
-            </>
-          ) : (
-            <>
-              <FiCreditCard className="w-4 h-4" />
-              Ready for Payment
-            </>
-          )}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-indigo-100 text-indigo-800">
+          <FiCreditCard className="w-4 h-4" />
+          Ready to Pay
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Receiver Assigned</h2>
         <p className="text-gray-600">Complete your payment to activate your account</p>
@@ -207,8 +207,8 @@ const ReceiverAssignedState = ({ receiver, helpStatus, onMakePayment, showChat, 
           <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 p-1">
             <div className="w-full h-full rounded-full overflow-hidden bg-white">
               <img
-                src={receiver.profileImage || '/images/default-avatar.png'}
-                alt={receiver.name}
+                src={receiver?.profileImage || '/images/default-avatar.png'}
+                alt={receiver?.name || 'Receiver'}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.src = '/images/default-avatar.png';
@@ -217,10 +217,13 @@ const ReceiverAssignedState = ({ receiver, helpStatus, onMakePayment, showChat, 
             </div>
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-800">{receiver.name}</h3>
-            <p className="text-sm text-gray-600">ID: {receiver.userId}</p>
-            {receiver.phone && (
+            <h3 className="text-lg font-bold text-gray-800">{receiver?.name || 'Loading...'}</h3>
+            <p className="text-sm text-gray-600">ID: {receiver?.userId || '-'}</p>
+            {receiver?.phone && (
               <p className="text-sm text-gray-600">📞 {receiver.phone}</p>
+            )}
+            {receiver?.email && (
+              <p className="text-sm text-gray-600">✉️ {receiver.email}</p>
             )}
           </div>
         </div>
@@ -236,25 +239,15 @@ const ReceiverAssignedState = ({ receiver, helpStatus, onMakePayment, showChat, 
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        {canMakePayment && (
+        {/* Primary Pay Now Button - Always visible when assigned */}
+        {showPayButton && (
           <button
-            onClick={onMakePayment}
+            onClick={onPaymentClick}
             className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
           >
             <FiCreditCard className="w-5 h-5" />
-            Make Payment
+            Pay Now
           </button>
-        )}
-
-        {isPending && (
-          <div className="text-center py-4">
-            <p className="text-sm text-gray-600 mb-2">Waiting for receiver to request payment</p>
-            <div className="flex items-center justify-center space-x-1">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
-          </div>
         )}
 
         {/* Chat Button */}
@@ -299,33 +292,27 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
     <div className="mb-6">
       <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-blue-100 text-blue-800">
         <FiClock className="w-4 h-4" />
-        Payment Submitted
+        Pending Receiver Confirmation
       </div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Submitted Successfully</h2>
-      <p className="text-gray-600">Waiting for receiver confirmation</p>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Submitted!</h2>
+      <p className="text-gray-600 font-semibold text-green-700">Payment submitted successfully. Waiting for receiver confirmation.</p>
     </div>
 
     {/* Payment Details */}
-    {helpData?.payment && (
+    {helpData?.paymentDetails && (
       <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
         <h4 className="font-semibold text-gray-800 mb-3">Payment Details</h4>
-        {helpData.payment.utr && (
+        {helpData.paymentDetails.utrNumber && (
           <div className="mb-2">
             <p className="text-sm text-gray-600">UTR/Transaction ID</p>
-            <p className="font-mono text-sm font-semibold text-gray-800">{helpData.payment.utr}</p>
+            <p className="font-mono text-sm font-semibold text-gray-800">{helpData.paymentDetails.utrNumber}</p>
           </div>
         )}
-        {helpData.payment.method && (
-          <div className="mb-2">
-            <p className="text-sm text-gray-600">Payment Method</p>
-            <p className="text-sm font-semibold text-gray-800">{helpData.payment.method}</p>
-          </div>
-        )}
-        {helpData.payment.screenshotUrl && (
+        {helpData.paymentDetails.screenshotUrl && (
           <div>
             <p className="text-sm text-gray-600 mb-2">Screenshot</p>
             <img 
-              src={helpData.payment.screenshotUrl} 
+              src={helpData.paymentDetails.screenshotUrl} 
               alt="Payment proof" 
               className="w-full h-32 object-cover rounded-lg border"
             />
@@ -456,210 +443,7 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) => (
   </motion.div>
 );
 
-// Payment Form Component
-const PaymentForm = ({ receiver, onSubmit, onBack, isSubmitting }) => {
-  const { user } = useAuth();
-  const [utr, setUtr] = useState('');
-  const [screenshot, setScreenshot] = useState(null);
-  const [screenshotPreview, setScreenshotPreview] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error('File size should be less than 3MB');
-        return;
-      }
-      setScreenshot(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setScreenshotPreview(e.target.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImageToFirebase = async (file) => {
-    return uploadImageResumable(
-      file,
-      `payment-proofs/${user.uid}`,
-      (p) => setUploadProgress(p)
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (!utr.trim()) {
-      toast.error('Please enter UTR/Transaction ID');
-      return;
-    }
-    if (!screenshot) {
-      toast.error('Please upload payment screenshot');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    
-    try {
-      const uploadRes = await uploadImageToFirebase(screenshot);
-      setIsUploading(false);
-      
-      await onSubmit({
-        utr: utr.trim(),
-        screenshotUrl: uploadRes.downloadURL,
-        screenshotPath: uploadRes.screenshotPath,
-        screenshotContentType: uploadRes.screenshotContentType,
-        screenshotSize: uploadRes.screenshotSize
-      });
-      
-      toast.success('Payment proof uploaded successfully!');
-    } catch (error) {
-      console.error('Error submitting payment:', error);
-      setIsUploading(false);
-      setUploadProgress(0);
-      toast.error(`Failed to submit payment: ${error.message}`);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-      className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full mx-auto"
-    >
-      {/* Header */}
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FiUpload className="w-8 h-8 text-indigo-600" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Submit Payment Proof</h2>
-        <p className="text-gray-600">Upload your payment details to complete the process</p>
-      </div>
-
-      {/* Form */}
-      <div className="space-y-6">
-        {/* UTR Input */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            UTR / Transaction ID *
-          </label>
-          <input
-            type="text"
-            value={utr}
-            onChange={(e) => setUtr(e.target.value)}
-            placeholder="Enter 12-digit UTR or Transaction ID"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            maxLength={50}
-          />
-        </div>
-
-        {/* Screenshot Upload */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Payment Screenshot *
-          </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors duration-200">
-            {screenshotPreview ? (
-              <div className="space-y-4">
-                <img 
-                  src={screenshotPreview} 
-                  alt="Payment screenshot" 
-                  className="max-h-40 mx-auto rounded-lg shadow-md"
-                />
-                <div className="flex gap-2 justify-center">
-                  <button
-                    onClick={() => {
-                      setScreenshot(null);
-                      setScreenshotPreview(null);
-                    }}
-                    className="px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium"
-                  >
-                    Remove
-                  </button>
-                  <label
-                    htmlFor="screenshot-upload"
-                    className="px-4 py-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer"
-                  >
-                    Change
-                  </label>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <FiCamera className="w-12 h-12 text-gray-400 mx-auto" />
-                <div>
-                  <p className="text-gray-600 font-medium mb-1">Upload payment screenshot</p>
-                  <p className="text-sm text-gray-500">PNG, JPG up to 3MB</p>
-                </div>
-                <label
-                  htmlFor="screenshot-upload"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-600 rounded-lg cursor-pointer hover:bg-indigo-100 transition-colors duration-200 font-medium"
-                >
-                  <FiUpload className="w-4 h-4" />
-                  Choose File
-                </label>
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-              id="screenshot-upload"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Upload Progress */}
-      {isUploading && (
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Uploading...</span>
-            <span className="text-sm font-medium text-indigo-600">{uploadProgress}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 mt-8">
-        <button
-          onClick={onBack}
-          disabled={isSubmitting || isUploading}
-          className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || isUploading || !utr.trim() || !screenshot}
-          className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors duration-200 shadow-lg hover:shadow-xl"
-        >
-          {isUploading ? (
-            <>
-              <FiLoader className="w-4 h-4 animate-spin" />
-              Uploading... {uploadProgress}%
-            </>
-          ) : isSubmitting ? (
-            <>
-              <FiLoader className="w-4 h-4 animate-spin" />
-              Submitting...
-            </>
-          ) : (
-            'Submit Payment'
-          )}
-        </button>
-      </div>
-    </motion.div>
-  );
-};
+// Payment Form Component - REMOVED (replaced with PaymentProofForm, PaymentModal, PaymentDoneConfirmation)
 
 // Main SendHelpRefactored Component
 const SendHelpRefactored = () => {
@@ -674,9 +458,16 @@ const SendHelpRefactored = () => {
   const [error, setError] = useState(null);
   const [errorType, setErrorType] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Payment flow states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentConfirmation, setShowPaymentConfirmation] = useState(false);
+  const [showPaymentProofForm, setShowPaymentProofForm] = useState(false);
+  
+  // 4-step flow state
+  const [showSendHelpFlow, setShowSendHelpFlow] = useState(false);
   
   // Refs
   const initStartedRef = useRef(false);
@@ -778,27 +569,74 @@ const SendHelpRefactored = () => {
     }
   };
 
-  // Payment submission handler
-  const handlePaymentSubmit = async (paymentData) => {
+  // Handle "Pay Now" button click - shows full-page 4-step flow
+  const handlePayNowClick = () => {
+    setShowSendHelpFlow(true);
+    setUIState(UI_STATES.SEND_HELP_FLOW);
+  };
+
+  // Handle payment modal "I Have Paid" button
+  const handlePaymentMethodsConfirm = () => {
+    setShowPaymentModal(false);
+    setShowPaymentConfirmation(true);
+  };
+
+  // Handle payment confirmation dialog "Yes, Confirm"
+  const handlePaymentConfirmationConfirm = () => {
+    setShowPaymentConfirmation(false);
+    setShowPaymentProofForm(true);
+  };
+
+  // Handle 4-step flow completion
+  const handleSendHelpFlowComplete = (finalHelpData) => {
+    // Update the UI state to show completion
+    setShowSendHelpFlow(false);
+    setUIState(UI_STATES.COMPLETED);
+    toast.success('Payment confirmed! Your account is activated!');
+    // Optionally refresh or navigate
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  };
+
+  // Handle 4-step flow cancellation
+  const handleSendHelpFlowCancel = () => {
+    setShowSendHelpFlow(false);
+    setUIState(UI_STATES.RECEIVER_ASSIGNED);
+  };
+
+  // Handle payment proof form submission
+  const handlePaymentProofSubmit = async (formData) => {
     if (!transactionId || !currentUser) return;
 
     setIsSubmitting(true);
     try {
+      // Upload screenshot
+      let screenshotUrl = null;
+      if (formData.screenshot) {
+        const uploadRes = await uploadImageResumable(
+          formData.screenshot,
+          `payment-proofs/${currentUser.uid}`,
+          (progress) => {
+            // Could show progress here if needed
+          }
+        );
+        screenshotUrl = uploadRes.downloadURL;
+      }
+
+      // Submit payment proof
       await submitPaymentProof(transactionId, {
-        utr: paymentData.utr,
-        method: paymentData.method || null,
-        screenshotUrl: paymentData.screenshotUrl,
-        screenshotPath: paymentData.screenshotPath,
-        screenshotContentType: paymentData.screenshotContentType,
-        screenshotSize: paymentData.screenshotSize
+        utr: formData.utr.trim(),
+        screenshotUrl,
+        screenshotPath: screenshotUrl ? 'payment-proofs' : null,
       });
 
-      setShowPaymentForm(false);
-      toast.success('Payment submitted successfully!');
+      setShowPaymentProofForm(false);
+      toast.success('Payment proof submitted successfully!');
       
     } catch (error) {
-      console.error('Error submitting payment:', error);
-      toast.error('Failed to submit payment. Please try again.');
+      console.error('Error submitting payment proof:', error);
+      toast.error(`Failed to submit payment: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -834,6 +672,28 @@ const SendHelpRefactored = () => {
     return <LoginRequired />;
   }
 
+  // Show full-page 4-step flow when "Pay Now" is clicked
+  if (showSendHelpFlow && uiState === UI_STATES.SEND_HELP_FLOW) {
+    return (
+      <SendHelpFlowContainer
+        receiver={receiver}
+        helpId={transactionId}
+        sender={{
+          uid: currentUser.uid,
+          userId: currentUser.uid,
+          fullName: currentUser.displayName || 'Unknown',
+          email: currentUser.email,
+          phone: currentUser.phone,
+          whatsapp: currentUser.whatsapp,
+          profileImage: currentUser.photoURL,
+          level: currentUser.level || 1
+        }}
+        onFlowComplete={handleSendHelpFlowComplete}
+        onFlowCancel={handleSendHelpFlowCancel}
+      />
+    );
+  }
+
   // Render based on UI state
   const renderUIState = () => {
     switch (uiState) {
@@ -848,13 +708,17 @@ const SendHelpRefactored = () => {
         
       case UI_STATES.ERROR:
         return <ErrorState error={error} onRetry={handleRetry} isRetrying={isRetrying} />;
+      
+      case UI_STATES.SEND_HELP_FLOW:
+        return null; // Flow is rendered separately above
         
       case UI_STATES.RECEIVER_ASSIGNED:
         return (
           <ReceiverAssignedState
             receiver={receiver}
             helpStatus={helpStatus}
-            onMakePayment={() => setShowPaymentForm(true)}
+            helpData={helpData}
+            onPaymentClick={handlePayNowClick}
             showChat={showChat}
             setShowChat={setShowChat}
             transactionId={transactionId}
@@ -905,24 +769,51 @@ const SendHelpRefactored = () => {
 
         {/* Main UI State */}
         <AnimatePresence mode="wait">
-          {showPaymentForm ? (
-            <PaymentForm
-              key="payment-form"
-              receiver={receiver}
-              onSubmit={handlePaymentSubmit}
-              onBack={() => setShowPaymentForm(false)}
-              isSubmitting={isSubmitting}
-            />
-          ) : (
-            <div key={uiState}>
-              {renderUIState()}
-            </div>
-          )}
+          <div key={uiState}>
+            {renderUIState()}
+          </div>
         </AnimatePresence>
       </div>
 
-      {/* Payment Journey Motion Icon */}
-      <PaymentJourneyMotion mode="icon" user={currentUser} />
+      {/* Payment Modal - Show receiver's payment methods */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setShowPaymentConfirmation(false);
+          setShowPaymentProofForm(false);
+        }}
+        receiver={receiver}
+        paymentDetails={helpData?.paymentDetails}
+        onProceed={handlePaymentMethodsConfirm}
+        isProceedLoading={false}
+      />
+
+      {/* Payment Confirmation Dialog - Ask "Are you sure?" */}
+      <PaymentDoneConfirmation
+        isOpen={showPaymentConfirmation && !showPaymentProofForm}
+        onConfirm={handlePaymentConfirmationConfirm}
+        onCancel={() => setShowPaymentConfirmation(false)}
+        isLoading={false}
+        receiver={receiver}
+      />
+
+      {/* Payment Proof Form - Upload screenshot and UTR */}
+      <AnimatePresence>
+        {showPaymentProofForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <PaymentProofForm
+              onSubmit={handlePaymentProofSubmit}
+              onBack={() => setShowPaymentProofForm(false)}
+              isSubmitting={isSubmitting}
+              receiver={receiver}
+              paymentAmount={300}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+
     </div>
   );
 };

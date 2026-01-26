@@ -33,7 +33,7 @@ import { useAuth } from '../../context/AuthContext';
 import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
 import { useCountdown } from '../../hooks/useCountdown';
 import { isIncomeBlocked, getRequiredPaymentForUnblock } from '../../shared/mlmCore';
-import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
+
 
 // UI State Constants
 const UI_STATES = {
@@ -457,8 +457,7 @@ function ReceiveHelpRefactored() {
         )}
       </div>
 
-      {/* Payment Journey Motion Icon */}
-      <PaymentJourneyMotion mode="icon" user={user} />
+
 
       {/* Chat Modal */}
       <AnimatePresence>

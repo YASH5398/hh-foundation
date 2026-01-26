@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   FiHome,
   FiSend,
@@ -15,7 +16,6 @@ import {
 import Sidebar from './Sidebar';
 import UserMenu from '../common/UserMenu';
 import NotificationDropdown from '../notifications/NotificationDropdown';
-import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
 import { useAuth } from '../../context/AuthContext';
 
 const DashboardLayout = () => {

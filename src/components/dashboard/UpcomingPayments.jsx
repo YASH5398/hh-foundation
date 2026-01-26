@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
+
 import { useAuth } from '../../context/AuthContext';
 
 const UpcomingPayments = () => {
@@ -92,10 +92,7 @@ const UpcomingPayments = () => {
           ))}
         </div>
 
-        {/* Payment Journey Video Icon */}
-        <div className="mt-8 text-center">
-          <PaymentJourneyMotion mode="icon" user={user} />
-        </div>
+
       </div>
     </div>
   );

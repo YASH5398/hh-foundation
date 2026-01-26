@@ -1041,6 +1041,7 @@ const Dashboard = () => {
           </div>
         </motion.div>
       )}
+
         {/* Render ChatModal at the bottom */}
         <ChatModal
           isOpen={chatOpen}

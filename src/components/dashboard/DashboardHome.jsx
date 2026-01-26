@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import PaymentJourneyMotion from '../common/PaymentJourneyMotion';
 import { db } from '../../config/firebase';
 import {
   doc,
@@ -276,6 +277,7 @@ const DashboardHome = () => {
   const { user, loading } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [localUserProfile, setLocalUserProfile] = useState(null);
+  const [showPaymentJourney, setShowPaymentJourney] = useState(false);
   const [stats, setStats] = useState({
     totalSentAmount: 0,
     totalReceivedAutopool: 0,
@@ -979,7 +981,49 @@ const DashboardHome = () => {
           >
             <SocialMediaBar />
           </motion.div>
-        </div>
+          {/* Payment Journey Explained Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="w-full px-4 py-12 sm:py-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl"
+          >
+            <div className="max-w-2xl mx-auto text-center">
+              <motion.h2
+                className="text-3xl sm:text-4xl font-black text-gray-900 mb-4"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                Payment Journey Explained
+              </motion.h2>
+              <motion.p
+                className="text-lg text-gray-600 mb-8"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                Explore how your earnings grow from Star Level to Diamond Level through our helping network.
+              </motion.p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowPaymentJourney(true)}
+                className="px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                View Full Journey
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Payment Journey Motion Overlay */}
+          {showPaymentJourney && (
+            <PaymentJourneyMotion 
+              mode="fullscreen" 
+              user={user} 
+              onClose={() => setShowPaymentJourney(false)}
+            />
+          )}        </div>
       </div>
     </div>
   );
