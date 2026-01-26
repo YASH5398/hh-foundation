@@ -16,18 +16,44 @@ import { doc, getDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firest
 /**
  * Get user profile from Firestore
  * @param {string} uid - User UID
- * @returns {Promise<Object|null>} User profile data or null
+ * @returns {Promise<Object|null>} User profile data or null if document doesn't exist
+ * @throws {Error} Throws error on Firestore permission-denied or network errors
  */
 export const getUserProfile = async (uid) => {
   if (!uid) return null;
 
   try {
+    console.log('🔍 getUserProfile: Fetching profile for uid:', uid);
+    console.log('🔍 getUserProfile: Firebase project:', db.app.options.projectId);
+    console.log('🔍 getUserProfile: Firebase auth domain:', db.app.options.authDomain);
+    
     const userDoc = doc(db, 'users', uid);
     const snapshot = await getDoc(userDoc);
-    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+    
+    console.log('🔍 getUserProfile: Document exists?', snapshot.exists());
+    
+    if (snapshot.exists()) {
+      const data = { id: snapshot.id, ...snapshot.data() };
+      console.log('🔍 getUserProfile: Profile data -', {
+        uid: data.uid,
+        email: data.email,
+        role: data.role,
+        fullName: data.fullName
+      });
+      return data;
+    } else {
+      console.log('🔍 getUserProfile: Document does not exist for uid:', uid);
+      return null;
+    }
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    return null;
+    console.error('🔍 getUserProfile: Error fetching profile -', {
+      uid,
+      code: error.code,
+      message: error.message,
+      projectId: db.app.options.projectId
+    });
+    // Rethrow error so caller can distinguish from "document doesn't exist"
+    throw error;
   }
 };
 
@@ -40,15 +66,25 @@ export const checkAdminRole = async (user) => {
   if (!user) return false;
 
   try {
+    console.log('🔍 checkAdminRole: Checking admin role for uid:', user.uid);
+    console.log('🔍 checkAdminRole: Firebase project:', db.app.options.projectId);
+    
     // CRITICAL: Check Firestore role field, not custom claims
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      return userData.role === 'admin';
+      const isAdmin = userData.role === 'admin';
+      console.log('🔍 checkAdminRole: User role:', userData.role, '| isAdmin:', isAdmin);
+      return isAdmin;
     }
+    console.log('🔍 checkAdminRole: User document does not exist');
     return false;
   } catch (error) {
-    console.error('Error checking admin role from Firestore:', error);
+    console.error('🔍 checkAdminRole: Error checking admin role -', {
+      uid: user.uid,
+      code: error.code,
+      message: error.message
+    });
     return false;
   }
 };

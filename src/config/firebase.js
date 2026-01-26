@@ -43,17 +43,37 @@ const defaultFirebaseConfig = {
 let firebaseConfig = defaultFirebaseConfig;
 if (typeof window !== 'undefined' && window.__FIREBASE_CONFIG__) {
   try {
-    console.log('Using runtime Firebase config override from window.__FIREBASE_CONFIG__');
+    console.log('🔍 FIREBASE INIT: Using runtime Firebase config override from window.__FIREBASE_CONFIG__');
     firebaseConfig = window.__FIREBASE_CONFIG__;
   } catch (e) {
-    console.warn('Failed to apply runtime Firebase config override, using default config', e);
+    console.warn('🔍 FIREBASE INIT: Failed to apply runtime Firebase config override, using default config', e);
   }
 }
+
+console.log('🔍 FIREBASE INIT: ===== FIREBASE CONFIGURATION =====');
+console.log('🔍 FIREBASE INIT: Project ID:', firebaseConfig.projectId);
+console.log('🔍 FIREBASE INIT: Auth Domain:', firebaseConfig.authDomain);
+console.log('🔍 FIREBASE INIT: App ID:', firebaseConfig.appId);
+console.log('🔍 FIREBASE INIT: Storage Bucket:', firebaseConfig.storageBucket);
+console.log('🔍 FIREBASE INIT: Messaging Sender ID:', firebaseConfig.messagingSenderId);
+console.log('🔍 FIREBASE INIT: Runtime override used?', typeof window !== 'undefined' && !!window.__FIREBASE_CONFIG__);
+console.log('🔍 FIREBASE INIT: =====================================');
 
 // ✅ Initialize Firebase - SINGLE AUTH INSTANCE ONLY
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 export const auth = getAuth(app);
+
+console.log('🔍 FIREBASE INIT: Firebase app initialized successfully');
+console.log('🔍 FIREBASE INIT: App name:', app.name);
+console.log('🔍 FIREBASE INIT: App options.projectId:', app.options.projectId);
+console.log('🔍 FIREBASE INIT: App options.authDomain:', app.options.authDomain);
+
+// Export app options for debugging
+if (typeof window !== 'undefined') {
+  window.__FIREBASE_APP_OPTIONS__ = app.options;
+  console.log('🔍 FIREBASE INIT: App options exported to window.__FIREBASE_APP_OPTIONS__');
+}
 
 // ✅ Enable Firebase Auth persistence (browserLocalPersistence)
 // This ensures the session is restored on page refresh

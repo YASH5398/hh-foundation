@@ -20,6 +20,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  // Initialize to undefined: undefined=loading, null=no profile document, object=has profile
   const [userProfile, setUserProfile] = useState(undefined);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -290,7 +291,7 @@ export const AuthProvider = ({ children }) => {
 
     if (!user) {
       console.log("🔍 AUTH CONTEXT: No user, clearing profile and setting loading false");
-      setUserProfile(null);
+      setUserProfile(undefined);
       setIsBlocked(false);
       setBlockReason(null);
       setBlockedAt(null);
@@ -310,6 +311,7 @@ export const AuthProvider = ({ children }) => {
           fullName: profile?.fullName,
           role: profile?.role
         });
+        // Set to actual profile data (can be null if document doesn't exist)
         setUserProfile(profile);
 
         // Server-truth eligibility (no raw flag reads)
@@ -334,16 +336,20 @@ export const AuthProvider = ({ children }) => {
           code: error.code,
           isPermissionDenied: error.code === 'permission-denied' || error.message?.includes('permission-denied')
         });
-        // Handle missing profile documents gracefully (e.g., during signup before document is created)
-        // Only log non-permission errors
-        if (!error.message?.includes('permission-denied') && error.code !== 'permission-denied') {
-          console.error("AuthContext user profile fetch error:", error);
-        }
-        setUserProfile(null);
+        // CRITICAL FIX: Set to undefined (not null) when fetch fails
+        // undefined = still loading/error state (show spinner in AdminProtectedRoute)
+        // null = document doesn't exist (actual access denied)
+        // This prevents premature redirect to /access-denied on Firestore errors
+        setUserProfile(undefined);
         setIsBlocked(false);
         setBlockReason(null);
         setBlockedAt(null);
         setReceiveEligibility(null);
+        
+        // Only log non-permission errors
+        if (!error.message?.includes('permission-denied') && error.code !== 'permission-denied') {
+          console.error("AuthContext user profile fetch error:", error);
+        }
         // Don't show toast for permission errors in context
       } finally {
         setProfileLoading(false);
@@ -357,7 +363,8 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   // 🔹 Derive isAdmin from Firestore profile role (single source of truth)
-  const isAdmin = userProfile?.role === 'admin';
+  // undefined = still loading, null = document doesn't exist, object = has data
+  const isAdmin = userProfile && typeof userProfile !== 'undefined' && userProfile.role === 'admin';
 
   // 🔹 Context Value
   const value = {

@@ -66,11 +66,13 @@ service cloud.firestore {
       // Leaderboard + dashboard queries
       allow list: if isAuthenticated();
 
-      // User can read own profile
-      allow read: if isAuthenticated() && request.auth.uid == uid;
+      // User can read own profile - CRITICAL for admin login
+      // This must work even if the user doesn't have admin role yet
+      // Admins can also read any user profile
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
 
-      // User can update only own data
-      allow update: if isAuthenticated() && request.auth.uid == uid;
+      // User can update only own data, or admin can update any user
+      allow update: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
 
       allow delete: if false;
     }
