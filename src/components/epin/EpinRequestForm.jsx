@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { toast } from 'react-toastify';
 import { firebaseStorageService } from '../../services/firebaseStorageService';
 import { authGuardService } from '../../services/authGuardService';
 
 const EpinRequestForm = () => {
   const { user } = useAuth();
+  const { sendNotification } = useNotifications();
   const [quantity, setQuantity] = useState('');
   const [bonus, setBonus] = useState(0);
   const [totalEpins, setTotalEpins] = useState(0);
@@ -132,7 +134,7 @@ const EpinRequestForm = () => {
 
       // Send notification to admins about new EPIN request
       try {
-        const { sendNotification } = await import('../../../context/NotificationContext');
+
         await sendNotification({
           title: 'New E-PIN Request',
           message: `${user.displayName || user.email} has requested ${quantity + bonus} E-PINs (₹${amountPaid})`,

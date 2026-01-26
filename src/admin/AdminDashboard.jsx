@@ -100,6 +100,14 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    // CRITICAL: Only set up listeners if user is confirmed admin
+    if (!user || !isAdmin) {
+      console.log('AdminDashboard: User is not admin or not authenticated, skipping listeners');
+      return;
+    }
+
+    console.log('AdminDashboard: Admin confirmed, setting up listeners');
+
     // Real-time listener for E-PINs
     const epinsQuery = query(collection(db, 'epins'));
     const unsubEpins = onSnapshot(epinsQuery, (epinsSnap) => {
@@ -213,7 +221,7 @@ const AdminDashboard = () => {
       unsubReqs();
       unsubUsers();
     };
-  }, []);
+  }, [user, isAdmin]);
 
   const onPaymentDone = () => {
     setLoadingPayment(true);

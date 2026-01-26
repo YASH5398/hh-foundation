@@ -24,6 +24,17 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
+  // If auth finished but user exists, ensure userProfile has resolved
+  // (we initialize userProfile as `undefined` while loading; `null` means no document)
+  if (user && typeof userProfile === 'undefined') {
+    console.log("🔍 PROTECTED ROUTE: userProfile not yet loaded, showing spinner to avoid redirect");
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   if (!user) {
     console.log("🔍 PROTECTED ROUTE: No user, redirecting to login from:", location.pathname);
     // If the user is not authenticated, redirect them to the login page.

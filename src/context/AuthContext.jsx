@@ -20,10 +20,8 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [userClaims, setUserClaims] = useState({});
-  const [userProfile, setUserProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState(undefined);
   const [loading, setLoading] = useState(true);
-  const [claimsLoading, setClaimsLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -39,8 +37,8 @@ export const AuthProvider = ({ children }) => {
       setAuthLoading(false);
 
       if (result.success) {
-        const claims = await checkAdminRole(result.user);
-        return { success: true, claims: { admin: claims } };
+        // Get admin status from Firestore (will be fetched in profile fetch)
+        return { success: true };
       } else {
         const errorMessage = getAuthErrorMessage(result.errorCode);
         toast.error(errorMessage);
@@ -108,9 +106,8 @@ export const AuthProvider = ({ children }) => {
 
       if (result.success) {
         console.log("🔍 LOGOUT: Firebase signOut successful");
-        console.log("🔍 LOGOUT: Clearing non-Firebase state (userClaims, userProfile)");
+        console.log("🔍 LOGOUT: Clearing non-Firebase state (userProfile)");
         // Clear state that doesn't depend on Firebase auth
-        setUserClaims({});
         setUserProfile(null);
         // IMPORTANT: Do NOT set user to null here - let onAuthStateChanged handle it
         // This ensures Firebase is the single source of truth
@@ -225,17 +222,17 @@ export const AuthProvider = ({ children }) => {
       console.log("🔍 AUTH CONTEXT: Auth persistence check:", auth.app.options.authDomain);
 
       setUser(user);
-      setLoading(false);
-      setClaimsLoading(false);
+      // Don't set loading to false yet - wait for profile fetch to complete
+      // setLoading will be set to false in the profile fetch useEffect
 
       // Handle logout completion - CRITICAL: Only clear state when Firebase confirms logout
       if (isNowLoggedOut) {
         console.log("🔍 AUTH CONTEXT: 🚨 LOGOUT CONFIRMED - Clearing all auth state");
         console.log("🔍 AUTH CONTEXT: Previous user was:", wasLoggedIn);
         console.log("🔍 AUTH CONTEXT: Firebase user is now:", !!user);
-        setUserClaims({});
         setUserProfile(null);
         setAuthLoading(false);
+        setLoading(false);
         toast.success("Logged out successfully");
         console.log("🔍 AUTH CONTEXT: All logout state cleared");
 
@@ -263,8 +260,10 @@ export const AuthProvider = ({ children }) => {
         }, 1000);
       } else if (user) {
         console.log("🔍 AUTH CONTEXT: ✅ User authenticated:", user.uid);
+        // Don't set loading to false - let profile fetch complete first
       } else {
         console.log("🔍 AUTH CONTEXT: ℹ️ No user (initial load or already logged out)");
+        setLoading(false);
       }
 
       console.log("🔍 AUTH CONTEXT: ===== AUTH STATE UPDATE COMPLETE =====");
@@ -282,30 +281,6 @@ export const AuthProvider = ({ children }) => {
     console.log("🔍 AUTH CONTEXT: User state changed to:", !!user, user?.uid);
   }, [user]);
 
-  // 🔹 Fetch claims separately
-  useEffect(() => {
-    if (!auth.currentUser) {
-      setUserClaims({});
-      return;
-    }
-
-    const fetchClaims = async () => {
-      try {
-        setClaimsLoading(true);
-        const tokenResult = await auth.currentUser.getIdTokenResult(true);
-        setUserClaims(tokenResult.claims || {});
-      } catch (error) {
-        console.error("Error fetching claims:", error);
-        setUserClaims({});
-        // Don't block login for new users without claims
-      } finally {
-        setClaimsLoading(false);
-      }
-    };
-
-    fetchClaims();
-  }, [user]);
-
   // 🔹 Fetch User Profile (only after auth exists)
   useEffect(() => {
     console.log("🔍 AUTH CONTEXT: Profile fetch effect triggered -", {
@@ -314,12 +289,13 @@ export const AuthProvider = ({ children }) => {
     });
 
     if (!user) {
-      console.log("🔍 AUTH CONTEXT: No user, clearing profile");
+      console.log("🔍 AUTH CONTEXT: No user, clearing profile and setting loading false");
       setUserProfile(null);
       setIsBlocked(false);
       setBlockReason(null);
       setBlockedAt(null);
       setReceiveEligibility(null);
+      setLoading(false);
       return;
     }
 
@@ -331,7 +307,8 @@ export const AuthProvider = ({ children }) => {
         console.log("🔍 AUTH CONTEXT: Profile fetch successful -", {
           profile: !!profile,
           uid: profile?.uid,
-          fullName: profile?.fullName
+          fullName: profile?.fullName,
+          role: profile?.role
         });
         setUserProfile(profile);
 
@@ -370,37 +347,37 @@ export const AuthProvider = ({ children }) => {
         // Don't show toast for permission errors in context
       } finally {
         setProfileLoading(false);
-        console.log("🔍 AUTH CONTEXT: Profile loading completed");
+        // Set loading to false ONLY after profile fetch completes
+        setLoading(false);
+        console.log("🔍 AUTH CONTEXT: Profile loading completed and loading state set to false");
       }
     };
 
     fetchProfile();
   }, [user]);
 
-  // 🔹 Derive isAdmin from custom claims (single source of truth)
-  const isAdmin = userClaims?.role === 'admin';
+  // 🔹 Derive isAdmin from Firestore profile role (single source of truth)
+  const isAdmin = userProfile?.role === 'admin';
 
   // 🔹 Context Value
   const value = {
     user,
     setUser,
-    userClaims,
     userProfile,
-    claimsLoading,
-    login,
-    logout,
-    signup,
-    testLogout, // TEMP: Remove after fixing logout
-    loading: loading || claimsLoading || profileLoading,
+    loading: loading || profileLoading,
     authLoading,
-    // Admin status (single source of truth)
+    // Admin status (single source of truth from Firestore)
     isAdmin,
     // Blocked user status
     isBlocked,
     blockReason,
     blockedAt,
     isUserBlocked: isBlocked,
-    receiveEligibility
+    receiveEligibility,
+    login,
+    logout,
+    signup,
+    testLogout, // TEMP: Remove after fixing logout
   };
 
   return (

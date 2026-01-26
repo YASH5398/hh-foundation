@@ -1,25 +1,31 @@
-rules_version = '2';
+   rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* ================= HELPERS ================= */
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      // Check role field in user document (role == "admin")
+      // Returns false gracefully if document doesn't exist (e.g., during signup on deployed hosting)
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isAgent() {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
     }
 
     function isAdminOrAgent() {
       return isAdmin() || isAgent();
     }
 
+    /* ================= PUBLIC CONTENT ================= */
     match /faqs/{docId} {
       allow read: if true;
       allow write, create, update, delete: if isAdmin();
@@ -36,93 +42,116 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if docId in ['faqs', 'terms', 'rules'];
+      allow read: if true;
       allow write, create, update, delete: if isAdmin();
     }
 
-    // REQUIRED FOR DASHBOARD / LEADERBOARD / REFERRALS
+    /* ================= LEADERBOARD / DASHBOARD ================= */
     match /leaderboard/{docId} {
-      allow read, list: if request.auth != null;
+      allow read, list: if isAuthenticated();
       allow write, create, update, delete: if isAdmin();
     }
 
     match /directReferrals/{docId} {
-      allow read, list: if request.auth != null;
-      allow write: if isAdmin();
+      allow read, list: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
     }
 
-    // Users: self read + allow list for dashboard queries
-    // Cloud Functions (Admin SDK) can read all users for receiver eligibility checks
-    // Normal users can only read their own user document
+    /* ================= USERS ================= */
     match /users/{uid} {
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow list: if request.auth != null;
+
+      // Signup (before auth listener settles)
+      allow create: if true;
+
+      // Leaderboard + dashboard queries
+      allow list: if isAuthenticated();
+
+      // User can read own profile
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+
+      // User can update only own data
       allow update: if isAuthenticated() && request.auth.uid == uid;
+
       allow delete: if false;
     }
-    
-    // Cloud Functions (Admin SDK) full read access to users collection for backend operations
-    // This is executed server-side only, not from client SDK
-    match /users/{uid} {
-      allow read, list: if request.auth == null;
-    }
 
-    // Dashboard reads ticker settings
+    /* ================= APP SETTINGS & TICKER ================= */
     match /appSettings/{docId} {
       allow read, list: if isAuthenticated();
       allow write, create, update, delete: if isAdmin();
     }
 
-    // Notifications are read by users; writes happen via Admin SDK in callable
-    match /notifications/{notificationId} {
-      allow read, list: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow write, create, update, delete: if false;
+    match /appConfig/{docId} {
+      allow read, list: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
     }
 
-    // Send/Receive help are read by participants; writes happen via Cloud Functions/Admin
+    match /tickerMessages/{docId} {
+      allow read, list: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    /* ================= NOTIFICATIONS ================= */
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read, list: if isAuthenticated()
+        && resource.data.uid == request.auth.uid;
+      // Admins can create, read, update, and delete any notification
+      allow create, write, update, delete: if isAdmin();
+    }
+
+    /* ================= SEND / RECEIVE HELP ================= */
     match /sendHelp/{helpId} {
-      allow read, list: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+      allow read, list: if isAuthenticated()
+        && (resource.data.senderUid == request.auth.uid
+            || resource.data.receiverUid == request.auth.uid);
       allow write, create, update, delete: if isAdmin();
     }
 
     match /receiveHelp/{helpId} {
-      allow read, list: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+      allow read, list: if isAuthenticated()
+        && (resource.data.senderUid == request.auth.uid
+            || resource.data.receiverUid == request.auth.uid);
       allow write, create, update, delete: if isAdmin();
     }
 
-    // Chatbot chat history is stored per-user
+    /* ================= CHATBOT ================= */
     match /chatbotChats/{uid} {
-      allow read, create, update: if isAuthenticated() && request.auth.uid == uid;
+      allow read, create, update: if isAuthenticated()
+        && request.auth.uid == uid;
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read, create: if isAuthenticated() && request.auth.uid == uid;
+        allow read, create: if isAuthenticated()
+          && request.auth.uid == uid;
         allow update, delete: if false;
       }
     }
 
-    // E-PIN requests are created and viewed by the requesting user
+    /* ================= E-PIN ================= */
     match /epinRequests/{requestId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow read, list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      allow read, list: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
 
     match /epins/{docId} {
-      allow read, list: if request.auth != null;
-      allow write: if isAdmin();
-    }
-
-    // System configuration (UPI settings, QR images, etc.) - read access for authenticated users
-    match /systemConfig/{docId} {
-      allow read: if isAuthenticated();
+      allow read, list: if isAuthenticated();
       allow write, create, update, delete: if isAdmin();
     }
 
-    // ADMIN OVERRIDE
+    /* ================= SYSTEM CONFIG ================= */
+    match /systemConfig/{docId} {
+      allow read, list: if isAuthenticated();
+      allow write, create, update, delete: if isAdmin();
+    }
+
+    /* ================= FINAL DENY ================= */
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if false;
     }
   }
 }
+ 

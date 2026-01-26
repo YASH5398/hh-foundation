@@ -32,7 +32,7 @@ export const getUserProfile = async (uid) => {
 };
 
 /**
- * Check if user has admin role
+ * Check if user has admin role (from Firestore)
  * @param {Object} user - Firebase user object
  * @returns {Promise<boolean>} True if user is admin
  */
@@ -40,10 +40,15 @@ export const checkAdminRole = async (user) => {
   if (!user) return false;
 
   try {
-    const tokenResult = await getIdTokenResult(user, true);
-    return tokenResult.claims?.role === 'admin';
+    // CRITICAL: Check Firestore role field, not custom claims
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData.role === 'admin';
+    }
+    return false;
   } catch (error) {
-    console.error('Error checking admin role:', error);
+    console.error('Error checking admin role from Firestore:', error);
     return false;
   }
 };

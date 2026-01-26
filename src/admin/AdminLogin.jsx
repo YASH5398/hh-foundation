@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { login, isAdmin, loading: authLoading } = useAuth();
+  const { login, isAdmin, loading: authLoading, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
+
+  // Navigate admin users to dashboard
+  useEffect(() => {
+    if (user && isAdmin && !loading && !authLoading) {
+      console.log('🔍 ADMIN LOGIN: User is admin, redirecting to dashboard');
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, isAdmin, loading, authLoading, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,12 +29,13 @@ const AdminLogin = () => {
     setLoading(true);
     try {
       const result = await login(email, password);
-      if (result.success && result.claims?.admin === true) {
-        toast.success('Admin login successful!');
-        navigate('/admin/dashboard', { replace: true });
-      } else if (result.success) {
-        toast.success('Login successful!');
-        navigate('/dashboard', { replace: true });
+      if (result.success) {
+        toast.success('Login successful! Verifying admin status...');
+        // Don't navigate here - let the useEffect above handle navigation
+        // based on isAdmin from the auth context profile fetch
+      } else {
+        setErrorDetails('Admin login failed');
+        toast.error('Login failed');
       }
     } catch (error) {
       setErrorDetails('Login failed: ' + (error.message || 'Unknown error'));

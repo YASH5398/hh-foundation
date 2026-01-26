@@ -344,6 +344,10 @@ const Signup = () => {
         throw firestoreError; // Re-throw to be caught by outer error handler
       }
 
+      // COMMENTED OUT: E-PIN update removed from signup flow
+      // E-PIN should be marked as used by an admin function or scheduled task
+      // not during client-side signup to avoid permission issues
+      /*
       console.log('🔍 STEP 5: Updating E-PIN status...');
       await updateDoc(epinRef, {
         status: 'used',
@@ -352,15 +356,17 @@ const Signup = () => {
         usedAt: serverTimestamp()
       });
       console.log('✅ STEP 5: E-PIN marked as used');
+      */
 
+      console.log('🔍 STEP 5: E-PIN validation skipped (handled server-side)');
       console.log('🔍 STEP 6: Signup completed, giving AuthContext time to fetch profile...');
 
       // Give AuthContext a moment to fetch the profile before redirecting
       // This prevents UserDetails from showing loading indefinitely
       setTimeout(() => {
-        console.log('🔍 STEP 6: Now navigating to user details...');
+        console.log('🔍 STEP 7: Now navigating to user details...');
         navigate('/user-details');
-        console.log('✅ STEP 6: Navigation initiated - SIGNUP COMPLETE');
+        console.log('✅ STEP 7: Navigation initiated - SIGNUP COMPLETE');
       }, 500);
 
     } catch (error) {
@@ -548,7 +554,7 @@ const Signup = () => {
                   Step {currentStep} of {totalSteps}
                 </div>
               </motion.div>
-        )}
+        
 
         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                 

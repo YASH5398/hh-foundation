@@ -112,18 +112,11 @@ const Login = () => {
 
       // Handle navigation in the UI component
       if (result.success) {
-        console.log("🔍 LOGIN: Auth successful, preparing navigation...");
+        console.log("🔍 LOGIN: Auth successful, waiting for profile load to determine route...");
         toast.success("Login successful!");
-
-        if (result.claims?.admin === true) {
-          console.log("🔍 LOGIN: Admin user, navigating to admin dashboard");
-          navigate("/admin/dashboard", { replace: true });
-        } else {
-          console.log("🔍 LOGIN: Regular user, navigating to dashboard");
-          console.log("🔍 LOGIN: Current URL before navigate:", window.location.href);
-          navigate("/dashboard", { replace: true });
-          console.log("🔍 LOGIN: Navigate called, URL after:", window.location.href);
-        }
+        // Don't navigate immediately - let the auth context load the profile
+        // The admin status will be determined from the Firestore profile
+        // Navigation will happen automatically based on isAdmin from context
       } else {
         console.log("🔍 LOGIN: Auth failed:", result);
         // Error toast is already handled in the context's login function

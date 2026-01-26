@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCheckCircle, FiXCircle, FiImage } from 'react-icons/fi';
 import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../context/NotificationContext';
 import { approveEpinRequest } from '../../../services/epinService';
 import { firestoreQueryService } from '../../../services/firestoreQueryService';
 import { authGuardService } from '../../../services/authGuardService';
@@ -39,7 +40,8 @@ function generateRandomEpin() {
 }
 
 const EpinRequestManager = () => {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading, userProfile, loading: profileLoading } = useAuth();
+  const { sendNotification } = useNotifications();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,6 +52,14 @@ const EpinRequestManager = () => {
   useEffect(() => {
     // Wait for auth/claims to load
     if (authLoading) return;
+
+    // CRITICAL: Check admin status before setting up listener
+    if (!isAdmin) {
+      console.warn('User is not admin, cannot fetch E-PIN requests');
+      toast.error('Admin access required');
+      setLoading(false);
+      return;
+    }
 
     // Check authentication before setting up listener
     if (!authGuardService.isAuthenticated()) {
@@ -82,7 +92,7 @@ const EpinRequestManager = () => {
       console.log('Cleaning up E-PIN requests listener');
       unsubscribe();
     };
-  }, []);
+  }, [authLoading, isAdmin]);
 
   const handleAccept = async (req) => {
     // Validate admin permissions
@@ -90,16 +100,26 @@ const EpinRequestManager = () => {
       toast.error('Admin access required');
       return;
     }
-    // Build adminInfo
-    const adminInfo = {
-      uid: user?.uid || '',
-      name: user?.fullName || user?.displayName || user?.name || user?.userName || '',
-      email: user?.email || ''
-    };
-    if (!adminInfo.uid || !adminInfo.name || !adminInfo.email) {
-      toast.error('Admin info incomplete. Please ensure your profile has uid, name, and email.');
+    
+    // CRITICAL: Block if Firestore profile is still loading
+    if (profileLoading) {
+      toast.error('Profile still loading. Please wait...');
       return;
     }
+    
+    // CRITICAL: Build adminInfo ONLY from Firestore userProfile
+    if (!userProfile?.uid || !userProfile?.fullName || !userProfile?.email) {
+      console.error('❌ Admin profile incomplete from Firestore:', userProfile);
+      toast.error('Admin profile incomplete. Please update your Firestore profile.');
+      return;
+    }
+    
+    const adminInfo = {
+      uid: userProfile.uid,
+      fullName: userProfile.fullName,
+      email: userProfile.email
+    };
+    
     if (!req.id) {
       toast.error('Invalid request data. Missing required fields.');
       return;
@@ -114,7 +134,6 @@ const EpinRequestManager = () => {
       
       // Send notification to user about EPIN approval
       try {
-        const { sendNotification } = await import('../../../context/NotificationContext');
         await sendNotification({
           title: 'E-PIN Request Approved',
           message: `Your request for ${req.totalEpins || req.quantityRequested} E-PINs has been approved by admin`,
@@ -140,38 +159,24 @@ const EpinRequestManager = () => {
       return;
     }
 
-    // Debug: Log the entire user object to see what's available
-    console.log('🔍 Full user object:', user);
-    console.log('🔍 User properties:', {
-      uid: user?.uid,
-      fullName: user?.fullName,
-      email: user?.email,
-      displayName: user?.displayName,
-      name: user?.name,
-      userName: user?.userName
-    });
-
-    // Build and validate adminInfo - try multiple possible name fields
-    const adminInfo = {
-      uid: user?.uid,
-      name: user?.fullName || user?.displayName || user?.name || user?.userName || "Unknown Admin",
-      email: user?.email || ""
-    };
-    
-    console.log('🔍 Built adminInfo:', { ...adminInfo });
-    
-    const missing = [];
-    if (!adminInfo.uid) missing.push("uid");
-    if (!adminInfo.name || adminInfo.name === "Unknown Admin") missing.push("name");
-    if (adminInfo.email === undefined || adminInfo.email === null) missing.push("email");
-    
-    if (missing.length > 0) {
-      console.error("❌ Admin info missing fields:", missing, adminInfo);
-      console.error("❌ User object keys:", Object.keys(user || {}));
-      toast.error(`Admin info missing: ${missing.join(", ")}. Please update your profile.`);
+    // CRITICAL: Block if Firestore profile is still loading
+    if (profileLoading) {
+      toast.error('Profile still loading. Please wait...');
       return;
     }
-    console.log('✅ Admin info validated:', { ...adminInfo });
+    
+    // CRITICAL: Build adminInfo ONLY from Firestore userProfile
+    if (!userProfile?.uid || !userProfile?.fullName || !userProfile?.email) {
+      console.error('❌ Admin profile incomplete from Firestore:', userProfile);
+      toast.error('Admin profile incomplete. Please update your Firestore profile.');
+      return;
+    }
+    
+    const adminInfo = {
+      uid: userProfile.uid,
+      fullName: userProfile.fullName,
+      email: userProfile.email
+    };
 
     // Validate request data
     if (!req.id) {
@@ -195,14 +200,13 @@ const EpinRequestManager = () => {
       // Log updateData without serverTimestamp fields
       const logUpdateData = { ...updateData, rejectedAt: '[serverTimestamp]', processedAt: '[serverTimestamp]' };
       console.log('📝 Updating E-PIN with:', logUpdateData);
-      if (!updateData.status || !updateData.rejectedBy?.uid || !updateData.rejectedBy?.name || updateData.rejectedBy?.email === undefined || updateData.rejectedBy?.email === null) {
+      if (!updateData.status || !updateData.rejectedBy?.uid || !updateData.rejectedBy?.fullName || updateData.rejectedBy?.email === undefined || updateData.rejectedBy?.email === null) {
         throw new Error('Invalid rejection data prepared');
       }
       await updateDoc(doc(db, 'epinRequests', req.id), updateData);
       
       // Send notification to user about EPIN rejection
       try {
-        const { sendNotification } = await import('../../../context/NotificationContext');
         await sendNotification({
           title: 'E-PIN Request Rejected',
           message: `Your request for ${req.totalEpins || req.quantityRequested} E-PINs has been rejected by admin`,

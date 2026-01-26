@@ -4,8 +4,8 @@ import { toast } from "react-hot-toast";
 
 export const approveEpinRequest = async (requestId, adminInfo) => {
   try {
-    // Validate admin info
-    if (!adminInfo?.uid || !adminInfo?.name || !adminInfo?.email) {
+    // Validate admin info (uid, fullName, email)
+    if (!adminInfo?.uid || !adminInfo?.fullName || !adminInfo?.email) {
       toast.error("❌ Invalid admin info. Please re-login or contact dev.");
       return;
     }
@@ -16,7 +16,7 @@ export const approveEpinRequest = async (requestId, adminInfo) => {
       approvedAt: serverTimestamp(),
       approvedBy: {
         uid: adminInfo.uid,
-        name: adminInfo.name,
+        fullName: adminInfo.fullName,
         email: adminInfo.email,
       },
     };

@@ -32,11 +32,11 @@ if (typeof document !== 'undefined' && !document.getElementById('admin-sidebar-a
 }
 
 const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
-  const { logout, isAdmin, claimsLoading } = useAuth();
+  const { logout, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
   
-  console.log('AdminSidebar - isAdmin:', isAdmin, 'claimsLoading:', claimsLoading);
+  console.log('AdminSidebar - isAdmin:', isAdmin, 'loading:', loading);
 
   useEffect(() => {
     if (!isSidebarOpen) return;
@@ -49,8 +49,8 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isSidebarOpen, setIsSidebarOpen]);
 
-  // Show loading state while claims are being fetched
-  if (claimsLoading) {
+  // Show loading state while profile is being fetched
+  if (loading) {
     return (
       <div className="fixed inset-y-0 left-0 z-30 w-64 h-screen bg-gradient-to-br from-violet-900/90 via-purple-800/85 to-indigo-900/90 backdrop-blur-2xl border-r border-white/30 shadow-2xl text-white flex items-center justify-center"
         style={{
