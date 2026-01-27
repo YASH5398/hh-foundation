@@ -108,6 +108,16 @@ service cloud.firestore {
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
       allow write, create, update, delete: if isAdmin();
+
+      match /chat/{messageId} {
+        allow read, list: if isAuthenticated()
+          && (get(/databases/$(database)/documents/sendHelp/$(helpId)).data.senderUid == request.auth.uid
+              || get(/databases/$(database)/documents/sendHelp/$(helpId)).data.receiverUid == request.auth.uid);
+        allow create, write, update: if isAuthenticated()
+          && (get(/databases/$(database)/documents/sendHelp/$(helpId)).data.senderUid == request.auth.uid
+              || get(/databases/$(database)/documents/sendHelp/$(helpId)).data.receiverUid == request.auth.uid);
+        allow delete: if false;
+      }
     }
 
     match /receiveHelp/{helpId} {
@@ -115,6 +125,16 @@ service cloud.firestore {
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
       allow write, create, update, delete: if isAdmin();
+
+      match /chat/{messageId} {
+        allow read, list: if isAuthenticated()
+          && (get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.senderUid == request.auth.uid
+              || get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.receiverUid == request.auth.uid);
+        allow create, write, update: if isAuthenticated()
+          && (get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.senderUid == request.auth.uid
+              || get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.receiverUid == request.auth.uid);
+        allow delete: if false;
+      }
     }
 
     /* ================= CHATBOT ================= */

@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -61,7 +60,6 @@ console.log('🔍 FIREBASE INIT: =====================================');
 
 // ✅ Initialize Firebase - SINGLE AUTH INSTANCE ONLY
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 
 console.log('🔍 FIREBASE INIT: Firebase app initialized successfully');
@@ -119,7 +117,6 @@ export const storage = getStorage(app); // use default bucket from app config
 
 export {
   app,
-  analytics,
   db,
   messaging,
   collection,

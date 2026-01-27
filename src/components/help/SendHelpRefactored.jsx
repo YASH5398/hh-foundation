@@ -85,11 +85,21 @@ const InitializingState = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center"
+    className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-sm"
   >
-    <FiLoader className="w-12 h-12 text-indigo-600 mx-auto mb-4 animate-spin" />
-    <h3 className="text-xl font-semibold text-gray-700 mb-2">Initializing...</h3>
-    <p className="text-gray-500">Setting up your send help request</p>
+    <div className="flex justify-center mb-6">
+      <div className="relative w-16 h-16">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          className="absolute inset-0"
+        >
+          <FiLoader className="w-full h-full text-slate-400" />
+        </motion.div>
+      </div>
+    </div>
+    <h3 className="text-lg font-semibold text-slate-900 mb-2">Initializing...</h3>
+    <p className="text-slate-600 text-sm">Setting up your send help request</p>
   </motion.div>
 );
 
@@ -97,20 +107,33 @@ const WaitingForReceiverState = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center"
+    className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-sm"
   >
-    <div className="relative mb-6">
-      <FiLoader className="w-16 h-16 text-indigo-600 mx-auto animate-spin" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <FiUser className="w-8 h-8 text-indigo-400" />
-      </div>
+    <div className="relative mb-8">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        className="w-20 h-20 rounded-full border-4 border-slate-200 border-t-slate-400 mx-auto"
+      />
+      <motion.div
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="absolute inset-0 flex items-center justify-center"
+      >
+        <FiUser className="w-8 h-8 text-slate-500" />
+      </motion.div>
     </div>
-    <h3 className="text-xl font-semibold text-gray-700 mb-2">Matching you with an eligible receiver</h3>
-    <p className="text-gray-500 mb-4">Please wait while we find the perfect match for you</p>
-    <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
-      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
-      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+    <h3 className="text-lg font-semibold text-slate-900 mb-2">Matching you with a receiver</h3>
+    <p className="text-slate-600 text-sm mb-6">Please wait while we find the perfect match for you</p>
+    <div className="flex items-center justify-center gap-2">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.4, delay: i * 0.2, repeat: Infinity }}
+          className="w-2 h-2 bg-slate-400 rounded-full"
+        />
+      ))}
     </div>
   </motion.div>
 );
@@ -119,27 +142,34 @@ const NoReceiverAvailableState = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-blue-200"
+    className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-sm"
   >
-    <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-blue-50 flex items-center justify-center">
-      <FiClock className="w-8 h-8 text-blue-600" />
-    </div>
-    <h2 className="text-xl font-bold text-gray-800 mb-2">No Receivers Available Right Now</h2>
-    <p className="text-gray-600 leading-relaxed mb-6">
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.1, type: 'spring' }}
+      className="w-16 h-16 mx-auto mb-6 rounded-lg bg-slate-100 flex items-center justify-center"
+    >
+      <FiClock className="w-8 h-8 text-slate-500" />
+    </motion.div>
+    <h2 className="text-lg font-bold text-slate-900 mb-2">No Receivers Available Right Now</h2>
+    <p className="text-slate-600 text-sm leading-relaxed mb-6">
       We will automatically match you when a receiver becomes available.
     </p>
-    <div className="mb-6 text-sm text-gray-500 space-y-1">
+    <div className="mb-6 text-xs text-slate-600 space-y-1">
       <p>• New receivers become available regularly</p>
       <p>• You'll be matched automatically</p>
       <p>• No action needed from you</p>
     </div>
-    <button
+    <motion.button
       disabled={true}
-      className="w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-gray-400 text-gray-200 cursor-not-allowed"
+      className="w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 text-slate-500 cursor-not-allowed"
     >
-      <FiLoader className="w-4 h-4 animate-spin" />
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
+        <FiLoader className="w-4 h-4" />
+      </motion.div>
       Waiting for Receiver...
-    </button>
+    </motion.button>
   </motion.div>
 );
 
@@ -147,27 +177,36 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-red-200"
+    className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-sm"
   >
-    <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-red-50 flex items-center justify-center">
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.1, type: 'spring' }}
+      className="w-16 h-16 mx-auto mb-6 rounded-lg bg-red-100 flex items-center justify-center"
+    >
       <FiAlertTriangle className="w-8 h-8 text-red-600" />
-    </div>
-    <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-    <p className="text-gray-600 leading-relaxed mb-6">
+    </motion.div>
+    <h2 className="text-lg font-bold text-slate-900 mb-2">Something went wrong</h2>
+    <p className="text-slate-600 text-sm leading-relaxed mb-6">
       {error || 'An unexpected error occurred. Please try again.'}
     </p>
-    <button
+    <motion.button
+      whileHover={{ scale: isRetrying ? 1 : 1.02 }}
+      whileTap={{ scale: isRetrying ? 1 : 0.98 }}
       onClick={onRetry}
       disabled={isRetrying}
-      className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+      className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
         isRetrying
-          ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-          : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl'
+          ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+          : 'bg-red-600 hover:bg-red-700 text-white'
       }`}
     >
       {isRetrying ? (
         <>
-          <FiLoader className="w-4 h-4 animate-spin" />
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
+            <FiLoader className="w-4 h-4" />
+          </motion.div>
           Retrying...
         </>
       ) : (
@@ -176,88 +215,87 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
           Try Again
         </>
       )}
-    </button>
+    </motion.button>
   </motion.div>
 );
 
 const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick, showChat, setShowChat, transactionId }) => {
   const status = normalizeStatus(helpStatus);
-  // Show "Pay Now" button for both ASSIGNED and PAYMENT_REQUESTED statuses
   const showPayButton = status === HELP_STATUS.ASSIGNED || status === HELP_STATUS.PAYMENT_REQUESTED;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full mx-auto"
+      className="bg-white rounded-lg p-8 max-w-md w-full shadow-sm"
     >
-      {/* Status Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-indigo-100 text-indigo-800">
-          <FiCreditCard className="w-4 h-4" />
-          Ready to Pay
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800">Receiver Assigned</h2>
-        <p className="text-gray-600">Complete your payment to activate your account</p>
-      </div>
-
-      {/* Receiver Card */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-6 border border-indigo-200">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 p-1">
-            <div className="w-full h-full rounded-full overflow-hidden bg-white">
-              <img
-                src={receiver?.profileImage || '/images/default-avatar.png'}
-                alt={receiver?.name || 'Receiver'}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = '/images/default-avatar.png';
-                }}
-              />
-            </div>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-800">{receiver?.name || 'Loading...'}</h3>
-            <p className="text-sm text-gray-600">ID: {receiver?.userId || '-'}</p>
+      {/* Receiver Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8"
+      >
+        <div className="flex items-center gap-4 mb-6">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.15, type: 'spring' }}
+            className="w-16 h-16 rounded-lg overflow-hidden shadow-sm flex items-center justify-center flex-shrink-0 bg-slate-200"
+          >
+            <img
+              src={receiver?.profileImage || '/images/default-avatar.png'}
+              alt={receiver?.name || 'Receiver'}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </motion.div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">{receiver?.name || 'Loading...'}</h3>
+            <p className="text-xs text-slate-600 font-mono">ID: {receiver?.userId || '-'}</p>
             {receiver?.phone && (
-              <p className="text-sm text-gray-600">📞 {receiver.phone}</p>
-            )}
-            {receiver?.email && (
-              <p className="text-sm text-gray-600">✉️ {receiver.email}</p>
+              <p className="text-xs text-slate-600 mt-1">📞 {receiver.phone}</p>
             )}
           </div>
         </div>
 
-        {/* Amount */}
-        <div className="bg-white rounded-lg p-4 border border-indigo-200">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Amount to Send</p>
-            <p className="text-3xl font-bold text-indigo-600">₹300</p>
-          </div>
-        </div>
-      </div>
+        {/* Amount Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-slate-50 rounded-lg p-4 text-center mb-6 border border-slate-200"
+        >
+          <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-1">Amount to Send</p>
+          <p className="text-4xl font-bold text-slate-900">₹300</p>
+        </motion.div>
+      </motion.div>
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        {/* Primary Pay Now Button - Always visible when assigned */}
         {showPayButton && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onPaymentClick}
-            className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+            className="w-full py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
           >
-            <FiCreditCard className="w-5 h-5" />
+            <FiCreditCard className="w-4 h-4" />
             Pay Now
-          </button>
+          </motion.button>
         )}
 
-        {/* Chat Button */}
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setShowChat(true)}
-          className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
+          className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
         >
           <FiMessageCircle className="w-4 h-4" />
           Chat with Receiver
-        </button>
+        </motion.button>
       </div>
 
       {/* Chat Modal */}
@@ -300,64 +338,82 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
 
     {/* Payment Details */}
     {helpData?.paymentDetails && (
-      <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
-        <h4 className="font-semibold text-gray-800 mb-3">Payment Details</h4>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-slate-50 rounded-lg p-4 mb-6 text-left border border-slate-200"
+      >
+        <h4 className="font-semibold text-slate-900 text-sm mb-3">Payment Details</h4>
         {helpData.paymentDetails.utrNumber && (
-          <div className="mb-2">
-            <p className="text-sm text-gray-600">UTR/Transaction ID</p>
-            <p className="font-mono text-sm font-semibold text-gray-800">{helpData.paymentDetails.utrNumber}</p>
+          <div className="mb-3">
+            <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-1">UTR/Transaction ID</p>
+            <p className="font-mono text-xs font-semibold text-slate-800 break-all">{helpData.paymentDetails.utrNumber}</p>
           </div>
         )}
         {helpData.paymentDetails.screenshotUrl && (
           <div>
-            <p className="text-sm text-gray-600 mb-2">Screenshot</p>
+            <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-2">Screenshot</p>
             <img 
               src={helpData.paymentDetails.screenshotUrl} 
               alt="Payment proof" 
-              className="w-full h-32 object-cover rounded-lg border"
+              className="w-full h-32 object-cover rounded-lg border border-slate-200"
             />
           </div>
         )}
-      </div>
+      </motion.div>
     )}
 
     {/* Receiver Info */}
     {receiver && (
-      <div className="bg-indigo-50 rounded-xl p-4 mb-6">
-        <p className="text-sm text-gray-600 mb-2">Receiver</p>
-        <div className="flex items-center justify-center gap-3">
-          <img
-            src={receiver.profileImage || '/images/default-avatar.png'}
-            alt={receiver.name}
-            className="w-10 h-10 rounded-full"
-            onError={(e) => {
-              e.target.src = '/images/default-avatar.png';
-            }}
-          />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200"
+      >
+        <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-3">Receiver</p>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-slate-200">
+            <img
+              src={receiver.profileImage || '/images/default-avatar.png'}
+              alt={receiver.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
           <div className="text-left">
-            <p className="font-semibold text-gray-800">{receiver.name}</p>
-            <p className="text-sm text-gray-600">ID: {receiver.userId}</p>
+            <p className="font-semibold text-slate-900 text-sm">{receiver.name}</p>
+            <p className="text-xs text-slate-600">ID: {receiver.userId}</p>
           </div>
         </div>
-      </div>
+      </motion.div>
     )}
 
     {/* Chat Button */}
-    <button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       onClick={() => setShowChat(true)}
-      className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors duration-200 flex items-center justify-center gap-2 mb-4"
+      className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 mb-4"
     >
       <FiMessageCircle className="w-4 h-4" />
       Chat with Receiver
-    </button>
+    </motion.button>
 
     {/* Info Message */}
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-      <p className="text-sm text-yellow-800">
-        <strong>Next Steps:</strong> The receiver will verify your payment and confirm it. 
-        Your account will be activated once confirmed.
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+    >
+      <p className="text-xs text-blue-900 leading-relaxed">
+        <strong>Next Steps:</strong> The receiver will verify your payment. Your account activates once confirmed.
       </p>
-    </div>
+    </motion.div>
 
     {/* Chat Modal */}
     {transactionId && (
@@ -379,56 +435,68 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center"
+    className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-sm"
   >
     {/* Success Icon */}
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-      className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+      className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-6"
     >
-      <FiCheckCircle className="w-10 h-10 text-green-600" />
+      <FiCheckCircle className="w-8 h-8 text-green-600" />
     </motion.div>
 
     {/* Status Header */}
-    <div className="mb-6">
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-green-100 text-green-800">
-        <FiCheckCircle className="w-4 h-4" />
-        Completed
-      </div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">🎉 Send Help Completed!</h2>
-      <p className="text-gray-600">Your payment has been confirmed and your account is now active</p>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="mb-6"
+    >
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Help Completed!</h2>
+      <p className="text-slate-600 text-sm">Your account is now fully activated</p>
+    </motion.div>
 
     {/* Receiver Info */}
     {receiver && (
-      <div className="bg-green-50 rounded-xl p-4 mb-6">
-        <p className="text-sm text-gray-600 mb-2">Payment sent to</p>
-        <div className="flex items-center justify-center gap-3">
-          <img
-            src={receiver.profileImage || '/images/default-avatar.png'}
-            alt={receiver.name}
-            className="w-12 h-12 rounded-full"
-            onError={(e) => {
-              e.target.src = '/images/default-avatar.png';
-            }}
-          />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200"
+      >
+        <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-3">Payment sent to</p>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-slate-200">
+            <img
+              src={receiver.profileImage || '/images/default-avatar.png'}
+              alt={receiver.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
           <div className="text-left">
-            <p className="font-semibold text-gray-800">{receiver.name}</p>
-            <p className="text-sm text-gray-600">ID: {receiver.userId}</p>
+            <p className="font-semibold text-slate-900 text-sm">{receiver.name}</p>
+            <p className="text-xs text-slate-600">ID: {receiver.userId}</p>
           </div>
         </div>
-      </div>
+      </motion.div>
     )}
 
     {/* Success Message */}
-    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-      <p className="text-sm text-green-800">
-        <strong>Congratulations!</strong> Your account is now fully activated. 
-        You can access all platform features and start receiving help.
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6"
+    >
+      <p className="text-xs text-green-900 leading-relaxed">
+        <strong>Congratulations!</strong> Your account is now fully activated. Access all features and start receiving help.
       </p>
-    </div>
+    </motion.div>
 
     {/* Next Help Button (if eligible) */}
     {showNextHelp && (
@@ -759,13 +827,17 @@ const SendHelpRefactored = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-zinc-100 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md mx-auto">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-800">Send Help</h1>
-          <p className="text-gray-500 mt-1">Complete your payment to activate your account</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 text-center"
+        >
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">Send Help</h1>
+          <p className="text-slate-600 text-sm">Complete your payment to activate your account</p>
+        </motion.div>
 
         {/* Main UI State */}
         <AnimatePresence mode="wait">
@@ -801,7 +873,7 @@ const SendHelpRefactored = () => {
       {/* Payment Proof Form - Upload screenshot and UTR */}
       <AnimatePresence>
         {showPaymentProofForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
             <PaymentProofForm
               onSubmit={handlePaymentProofSubmit}
               onBack={() => setShowPaymentProofForm(false)}
