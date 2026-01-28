@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { auth } from '../../config/firebase';
 import { db } from '../../config/firebase';
 import { doc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import { FiSend, FiMessageCircle, FiUser, FiArrowLeft, FiMoreVertical } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
-import { requireFreshIdToken } from '../../services/authReady';
 
 const ChatbotSupport = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -54,17 +50,18 @@ const ChatbotSupport = () => {
 
   // Initialize or get existing chat room
   useEffect(() => {
-    if (!user?.uid) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
 
     const initializeChatRoom = async () => {
-      const chatbotChatRef = doc(db, 'chatbotChats', user.uid);
+      const chatbotChatRef = doc(db, 'chatbotChats', currentUser.uid);
       const chatbotChatDoc = await getDoc(chatbotChatRef);
       
       if (!chatbotChatDoc.exists()) {
         // Create new chat room for chatbot
         await setDoc(chatbotChatRef, {
-          userId: user.uid,
-          userName: user.displayName || user.email,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || currentUser.email,
           agentId: 'CHATBOT',
           agentName: 'AI Assistant',
           status: 'active',
@@ -73,11 +70,11 @@ const ChatbotSupport = () => {
         });
       }
       
-      setChatRoomId(user.uid);
+      setChatRoomId(currentUser.uid);
     };
 
     initializeChatRoom();
-  }, [user?.uid, user?.displayName, user?.email]);
+  }, [auth.currentUser]);
 
   // Load messages from subcollection
   useEffect(() => {
@@ -122,16 +119,28 @@ const ChatbotSupport = () => {
         timestamp: new Date().toISOString()
       });
 
-      // Make HTTP request to Cloud Function with proper error handling
-      const response = await fetch('https://us-central1-hh-foundation.cloudfunctions.net/chatbotReply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        // Add timeout to prevent hanging requests
-        signal: AbortSignal.timeout(25000) // 25 second timeout
-      });
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        console.error('Chatbot: user not logged in');
+        return;
+      }
+
+      const token = await currentUser.getIdToken(true);
+      
+      const response = await fetch(
+        'https://us-central1-hh-foundation.cloudfunctions.net/handleChatbotMessage',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            message: userMessage
+          })
+        }
+      );
 
       console.log('[chatbotReply] response status', response.status);
 
@@ -199,11 +208,18 @@ const ChatbotSupport = () => {
 
     let aiResponse = 'Support is temporarily unavailable. Please try again later.';
     try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        console.error('Chatbot: user not logged in');
+        return;
+      }
+      
       // Add user message
       const userMessageData = {
-        senderUid: user.uid,
+        senderUid: currentUser.uid,
         senderType: 'user',
-        senderName: user.displayName || user.email,
+        senderName: currentUser.displayName || currentUser.email,
         text: messageText,
         timestamp: serverTimestamp()
       };

@@ -124,8 +124,8 @@ export const runIntegrationTests = async () => {
     console.log('🤖 Testing Chatbot Integration...');
     
     // Test chatbot URL format
-    const chatbotUrl = 'https://us-central1-hh-foundation.cloudfunctions.net/chatbotReply';
-    const isValidUrl = chatbotUrl.includes('cloudfunctions.net') && chatbotUrl.includes('chatbotReply');
+    const chatbotUrl = 'https://us-central1-hh-foundation.cloudfunctions.net/handleChatbotMessage';
+    const isValidUrl = chatbotUrl.includes('cloudfunctions.net') && chatbotUrl.includes('handleChatbotMessage');
     
     if (isValidUrl) {
       results.passed++;
