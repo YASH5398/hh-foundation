@@ -1820,3 +1820,119 @@ exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
     });
   }
 });
+// ============================
+// HTTP FUNCTION: VALIDATE E-PIN
+// ============================
+exports.validateEpin = httpsOnRequest(async (req, res) => {
+  // Set CORS headers for all responses
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  try {
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).json({ success: true });
+      return;
+    }
+
+    // Handle POST
+    if (req.method === 'POST') {
+      const { epin } = req.body;
+
+      // Validate input
+      if (!epin || typeof epin !== 'string' || epin.trim().length === 0) {
+        res.status(400).json({ success: false, message: 'Invalid E-PIN format' });
+        return;
+      }
+
+      const epinTrimmed = epin.trim();
+
+      // Query Firestore for matching E-PIN
+      const epinsRef = admin.firestore().collection('epins');
+      const snapshot = await epinsRef
+        .where('epin', '==', epinTrimmed)
+        .where('status', '==', 'unused')
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        res.status(400).json({ success: false, message: 'Invalid or already used E-PIN' });
+        return;
+      }
+
+      const epinDoc = snapshot.docs[0];
+      res.status(200).json({ 
+        success: true, 
+        epinId: epinDoc.id,
+        message: 'E-PIN validated successfully'
+      });
+      return;
+    }
+
+    // Handle other methods
+    res.status(405).json({ success: false, error: 'Method not allowed' });
+  } catch (error) {
+    console.error('validateEpin error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================
+// HTTP FUNCTION: CHECK E-PIN (NEW)
+// ============================
+exports.checkEpinHttp = httpsOnRequest(async (req, res) => {
+  // Set CORS headers for all responses
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  try {
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).json({ success: true });
+      return;
+    }
+
+    // Handle POST
+    if (req.method === 'POST') {
+      const { epin } = req.body;
+
+      // Validate input
+      if (!epin || typeof epin !== 'string' || epin.trim().length === 0) {
+        res.status(400).json({ success: false, message: 'Invalid E-PIN format' });
+        return;
+      }
+
+      const epinTrimmed = epin.trim();
+
+      // Query Firestore for matching E-PIN
+      const epinsRef = admin.firestore().collection('epins');
+      const snapshot = await epinsRef
+        .where('epin', '==', epinTrimmed)
+        .where('status', '==', 'unused')
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        res.status(400).json({ success: false, message: 'Invalid or already used E-PIN' });
+        return;
+      }
+
+      const epinDoc = snapshot.docs[0];
+      res.status(200).json({ 
+        success: true, 
+        epinId: epinDoc.id,
+        message: 'E-PIN validated successfully'
+      });
+      return;
+    }
+
+    // Handle other methods
+    res.status(405).json({ success: false, error: 'Method not allowed' });
+  } catch (error) {
+    console.error('checkEpinHttp error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+

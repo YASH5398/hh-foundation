@@ -1,179 +1,145 @@
-   rules_version = '2';
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /* ================= HELPERS ================= */
-    function isAuthenticated() {
+    function isAuth() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      // Check role field in user document (role == "admin")
-      // Returns false gracefully if document doesn't exist (e.g., during signup on deployed hosting)
-      return request.auth != null
+      return isAuth()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isAgent() {
-      return request.auth != null
+      return isAuth()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
     }
 
-    function isAdminOrAgent() {
-      return isAdmin() || isAgent();
-    }
-
-    /* ================= PUBLIC CONTENT ================= */
-    match /faqs/{docId} {
+    /* ================= PUBLIC ================= */
+    match /faqs/{id} {
       allow read: if true;
-      allow write, create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    match /terms/{docId} {
+    match /terms/{id} {
       allow read: if true;
-      allow write, create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    match /rules/{docId} {
+    match /rules/{id} {
       allow read: if true;
-      allow write, create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    match /settings/{docId} {
+    match /settings/{id} {
       allow read: if true;
-      allow write, create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    /* ================= LEADERBOARD / DASHBOARD ================= */
-    match /leaderboard/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
-    }
-
-    match /directReferrals/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
-    }
-
-    /* ================= USERS ================= */
+    /* ================= USERS (FIXED) ================= */
     match /users/{uid} {
 
-      // Signup (before auth listener settles)
-      allow create: if true;
+      // ✅ SIGNUP (CRITICAL FIX)
+      allow create: if isAuth() && request.auth.uid == uid;
 
-      // Leaderboard + dashboard queries
-      allow list: if isAuthenticated();
+      // ✅ READ + LIST (needed after signup)
+      allow read, list: if isAuth();
 
-      // User can read own profile - CRITICAL for admin login
-      // This must work even if the user doesn't have admin role yet
-      // Admins can also read any user profile
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
-
-      // User can update only own data, or admin can update any user
-      allow update: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      // ✅ UPDATE
+      allow update: if isAuth()
+        && (request.auth.uid == uid || isAdmin());
 
       allow delete: if false;
     }
 
-    /* ================= APP SETTINGS & TICKER ================= */
-    match /appSettings/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
+    /* ================= LEADERBOARD ================= */
+    match /leaderboard/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
     }
 
-    match /appConfig/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
+    match /directReferrals/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
     }
 
-    match /tickerMessages/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
+    /* ================= APP CONFIG ================= */
+    match /appSettings/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /appConfig/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /tickerMessages/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
     }
 
     /* ================= NOTIFICATIONS ================= */
-    match /notifications/{notificationId} {
-      // Users can read their own notifications
-      allow read, list: if isAuthenticated()
+    match /notifications/{id} {
+      allow read, list: if isAuth()
         && resource.data.uid == request.auth.uid;
-      // Admins can create, read, update, and delete any notification
-      allow create, write, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    /* ================= SEND / RECEIVE HELP ================= */
-    match /sendHelp/{helpId} {
-      allow read, list: if isAuthenticated()
+    /* ================= SEND HELP ================= */
+    match /sendHelp/{id} {
+      allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
-      allow write, create, update, delete: if isAdmin();
-
-      match /chat/{messageId} {
-        allow read, list: if isAuthenticated()
-          && (get(/databases/$(database)/documents/sendHelp/$(helpId)).data.senderUid == request.auth.uid
-              || get(/databases/$(database)/documents/sendHelp/$(helpId)).data.receiverUid == request.auth.uid);
-        allow create, write, update: if isAuthenticated()
-          && (get(/databases/$(database)/documents/sendHelp/$(helpId)).data.senderUid == request.auth.uid
-              || get(/databases/$(database)/documents/sendHelp/$(helpId)).data.receiverUid == request.auth.uid);
-        allow delete: if false;
-      }
+      allow write: if isAdmin();
     }
 
-    match /receiveHelp/{helpId} {
-      allow read, list: if isAuthenticated()
+    /* ================= RECEIVE HELP ================= */
+    match /receiveHelp/{id} {
+      allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
-      allow write, create, update, delete: if isAdmin();
-
-      match /chat/{messageId} {
-        allow read, list: if isAuthenticated()
-          && (get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.senderUid == request.auth.uid
-              || get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.receiverUid == request.auth.uid);
-        allow create, write, update: if isAuthenticated()
-          && (get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.senderUid == request.auth.uid
-              || get(/databases/$(database)/documents/receiveHelp/$(helpId)).data.receiverUid == request.auth.uid);
-        allow delete: if false;
-      }
+      allow write: if isAdmin();
     }
 
-    /* ================= CHATBOT ================= */
+    /* ================= CHAT ================= */
     match /chatbotChats/{uid} {
-      allow read, create, update: if isAuthenticated()
+      allow read, create, update: if isAuth()
         && request.auth.uid == uid;
-      allow delete: if false;
 
-      match /messages/{messageId} {
-        allow read, create: if isAuthenticated()
+      match /messages/{msgId} {
+        allow read, create: if isAuth()
           && request.auth.uid == uid;
-        allow update, delete: if false;
       }
     }
 
     /* ================= E-PIN ================= */
-    match /epinRequests/{requestId} {
-      allow create: if isAuthenticated()
+    match /epinRequests/{id} {
+      allow create: if isAuth()
         && request.resource.data.userId == request.auth.uid;
-      allow read, list: if isAuthenticated()
+
+      allow read, list: if isAuth()
         && resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
     }
 
-    match /epins/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
+    match /epins/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
     }
 
-    /* ================= SYSTEM CONFIG ================= */
-    match /systemConfig/{docId} {
-      allow read, list: if isAuthenticated();
-      allow write, create, update, delete: if isAdmin();
+    /* ================= SYSTEM ================= */
+    match /systemConfig/{id} {
+      allow read, list: if isAuth();
+      allow write: if isAdmin();
     }
 
     /* ================= FINAL DENY ================= */
-    match /{document=**} {
+    match /{doc=**} {
       allow read, write: if false;
     }
   }
 }
- 

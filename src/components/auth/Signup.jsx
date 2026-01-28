@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -77,7 +78,7 @@ const Signup = () => {
     const refId = searchParams.get('ref');
     let isMounted = true;
 
-    if (refId) {
+    if (refId && auth.currentUser) {
       setSponsorInfo(prev => ({ ...prev, isVerifying: true, isLocked: true }));
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('userId', '==', refId));
@@ -208,45 +209,78 @@ const Signup = () => {
         return;
       }
 
-      console.log('🔍 STEP 1: Validating E-PIN...');
-      console.log('🔍 STEP 1: auth.currentUser before E-PIN validation:', auth.currentUser?.uid || 'null');
-      const epinQuery = query(collection(db, 'epins'), where('epin', '==', epin), where('status', '==', 'unused'));
-      const epinSnapshot = await getDocs(epinQuery);
-      console.log('🔍 STEP 1: E-PIN query result -', epinSnapshot.size, 'documents found');
+      console.log('🔍 STEP 1: Validating E-PIN via HTTP Cloud Function...');
+      let epinDocId;
+      try {
+        const payload = { epin: (epin || '').trim() };
+        console.log('Sending E-PIN payload:', payload);
 
-      if (epinSnapshot.empty) {
-        console.log('❌ STEP 1: No valid E-PIN found');
-        toast.error('Invalid or already used E-PIN');
+        const resp = await fetch('https://us-central1-hh-foundation.cloudfunctions.net/checkEpinHttp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        let result;
+        const text = await resp.text();
+        try {
+          result = text ? JSON.parse(text) : null;
+        } catch (parseErr) {
+          console.error('Failed to parse validateEpin response as JSON:', parseErr, 'raw:', text);
+          toast.error('E-PIN validation failed (invalid server response)');
+          setLoading(false);
+          return;
+        }
+
+        if (!resp.ok || !result || !result.success) {
+          console.log('❌ STEP 1: E-PIN validation failed', resp.status, result);
+          toast.error(result?.message || 'Invalid or already used E-PIN');
+          setLoading(false);
+          return;
+        }
+
+        epinDocId = result.epinId;
+        console.log('✅ STEP 1: E-PIN validated, ID:', epinDocId);
+      } catch (epinError) {
+        console.error('❌ STEP 1: E-PIN validation HTTP error:', epinError);
+        toast.error(epinError.message || 'Invalid or already used E-PIN');
         setLoading(false);
         return;
       }
-      const epinDoc = epinSnapshot.docs[0];
-      const epinRef = doc(db, 'epins', epinDoc.id);
-      console.log('✅ STEP 1: Valid E-PIN found, ID:', epinDoc.id);
+
+      const epinRef = doc(db, 'epins', epinDocId);
 
       console.log('🔍 STEP 2: Creating Firebase Auth user...');
       console.log('🔍 STEP 2: auth.currentUser before createUserWithEmailAndPassword:', auth.currentUser?.uid || 'null');
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      const uid = user.uid;
+      
+      // ⚠️ CRITICAL: Use auth.currentUser.uid to ensure Firestore rule passes
+      // The rule requires: request.auth.uid == uid (path parameter)
+      let uid = auth.currentUser?.uid;
+      if (!uid) {
+        console.warn('⚠️ STEP 2: auth.currentUser not ready immediately, waiting...');
+        // Wait up to 500ms for auth state to update
+        for (let i = 0; i < 10; i++) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          uid = auth.currentUser?.uid;
+          if (uid) break;
+        }
+      }
+      
+      if (!uid) {
+        throw new Error('Failed to get authenticated user UID');
+      }
+      
       uidForCleanup = uid;
       console.log('✅ STEP 2: Auth user created, UID:', uid);
       console.log('✅ STEP 2: auth.currentUser after createUserWithEmailAndPassword:', auth.currentUser?.uid || 'null');
 
-      console.log('🔍 STEP 3: Checking if user document exists...');
-      // Check if user document exists, create if not
-      const userDocRef = doc(db, "users", uid);
-      const userDoc = await getDoc(userDocRef);
-      console.log('🔍 STEP 3: User document exists check -', userDoc.exists() ? 'EXISTS' : 'DOES NOT EXIST');
-
-      if (userDoc.exists()) {
-        console.log('❌ STEP 3: User document already exists, aborting signup');
-        // User document already exists, this shouldn't happen during signup
-        toast.error('User already exists');
-        setLoading(false);
-        return;
-      }
-      console.log('✅ STEP 3: User document does not exist, proceeding with creation');
+      console.log('🔍 STEP 3: Skipping document existence check to avoid early read permission error');
+      // Removed: getDoc call that causes permission-denied during signup
+      // The document will not exist since this is a new auth user
 
       // Prepare payment method data based on selection
       let paymentMethodData = {};
@@ -285,13 +319,27 @@ const Signup = () => {
       console.log('🔍 STEP 4: uid being used for document:', uid);
       console.log('🔍 STEP 4: uid matches auth.currentUser.uid:', uid === auth.currentUser?.uid);
 
-      // Ensure auth is ready before proceeding
+      // ✅ CRITICAL: Verify authentication is fully settled before ANY Firestore operation
       if (!auth.currentUser) {
+        throw new Error('Auth not ready - auth.currentUser is null');
+      }
+
+      // ✅ CRITICAL: Use auth.currentUser.uid to ensure Firestore rule passes
+      // The rule requires: request.auth.uid == uid (path parameter)
+      // We must use the uid from the authenticated user
+      const firestoreUid = auth.currentUser?.uid;
+      if (!firestoreUid) {
         throw new Error('Authentication not ready for document creation');
+      }
+      if (firestoreUid !== uid) {
+        console.error('❌ CRITICAL: UID mismatch! auth.currentUser.uid !== user.uid', { firestoreUid, uid });
+        throw new Error('UID mismatch during signup');
       }
 
       const userId = generateUserId();
-      const docRef = doc(db, "users", uid);
+      // ✅ CRITICAL: Use the authenticated user's uid as document ID
+      // This is required by the Firestore rule: allow create: if request.auth.uid == uid
+      const docRef = doc(db, "users", firestoreUid);
       const userData = {
         uid: uid,
         userId: userId,
@@ -357,6 +405,11 @@ const Signup = () => {
       });
       console.log('✅ STEP 5: E-PIN marked as used');
       */
+
+      // ✅ CRITICAL: Final auth verification before any post-signup operations
+      if (!auth.currentUser) {
+        throw new Error('Auth session lost after signup');
+      }
 
       console.log('🔍 STEP 5: E-PIN validation skipped (handled server-side)');
       console.log('🔍 STEP 6: Signup completed, giving AuthContext time to fetch profile...');

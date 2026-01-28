@@ -212,12 +212,20 @@ export const createUserAccount = async (userData) => {
       userData.password
     );
 
+    // ⚠️ CRITICAL: Use auth.currentUser.uid instead of userCredential.user.uid
+    // This ensures the Firestore rule check passes: request.auth.uid == uid
+    const uid = auth.currentUser?.uid || userCredential.user.uid;
+    if (!uid) {
+      throw new Error('Failed to get user UID after authentication');
+    }
+
     // Generate user ID
     const userId = `HHF${Date.now().toString().slice(-6)}${Math.random().toString(36).substr(2, 3).toUpperCase()}`;
 
-    // Create user document
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      uid: userCredential.user.uid,
+    // ✅ CRITICAL: Create user document with the authenticated user's uid as document ID
+    // This is required by the Firestore rule: allow create: if request.auth.uid == uid
+    await setDoc(doc(db, "users", uid), {
+      uid: uid,
       userId: userId,
       email: userData.email.toLowerCase(),
       fullName: userData.fullName,
@@ -242,7 +250,7 @@ export const createUserAccount = async (userData) => {
       totalSent: 0
     });
 
-    return { success: true, userId: userId, user: userCredential.user };
+    return { success: true, userId: userId, user: { ...userCredential.user, uid } };
   } catch (error) {
     return { success: false, error: error.message, errorCode: error.code };
   }

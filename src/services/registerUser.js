@@ -62,12 +62,20 @@ export const registerUser = async (userData) => {
 
     // ✅ STEP 2: Create Auth User
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // ⚠️ CRITICAL: Use auth.currentUser.uid instead of userCredential.user.uid
+    // This ensures the Firestore rule check passes: request.auth.uid == uid
+    const uid = auth.currentUser?.uid || userCredential.user.uid;
+    if (!uid) {
+      throw new Error('Failed to get user UID after authentication');
+    }
+    
     const user = userCredential.user;
     const userId = generateUserId();
     const joinDateString = new Date().toLocaleDateString("en-GB");
 
     const newUserDoc = {
-      uid: user.uid,
+      uid: uid,
       userId,
       fullName,
       email,
@@ -117,8 +125,10 @@ export const registerUser = async (userData) => {
     };
 
     // ✅ STEP 3: Write both user doc & mark epin used in batch
+    // ✅ CRITICAL: Use the authenticated user's uid as document ID
+    // This is required by the Firestore rule: allow create: if request.auth.uid == uid
     const batch = writeBatch(db);
-    batch.set(doc(db, "users", user.uid), {
+    batch.set(doc(db, "users", uid), {
       ...newUserDoc,
       isOnHold: false, // Always set explicitly
       isReceivingHeld: false, // Always set explicitly
