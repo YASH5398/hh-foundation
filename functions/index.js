@@ -2,10 +2,15 @@ const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/
 const { onRequest: httpsOnRequest, onCall: httpsOnCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
+const { defineString } = require('firebase-functions/params');
 // const { onUserDeleted } = require('firebase-functions/v2/identity');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const crypto = require('crypto');
+const { OpenAI } = require('openai');
+
+// Firebase Params - API Keys and Configuration
+const OPENAI_API_KEY = defineString('OPENAI_API_KEY');
 
 admin.initializeApp();
 
@@ -1933,6 +1938,208 @@ exports.checkEpinHttp = httpsOnRequest(async (req, res) => {
   } catch (error) {
     console.error('checkEpinHttp error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================
+// HTTP FUNCTION: CHATBOT REPLY WITH AI (OpenAI Integration)
+// ============================
+
+// Rate limiter - simple in-memory store for dev; use Firestore for production
+const rateLimitStore = new Map(); // { uid/ip -> { count, resetTime } }
+
+const checkRateLimit = (identifier, limit = 10, windowMs = 60000) => {
+  const now = Date.now();
+  const record = rateLimitStore.get(identifier) || { count: 0, resetTime: now + windowMs };
+  
+  if (now > record.resetTime) {
+    // Reset window
+    rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: limit - 1 };
+  }
+  
+  if (record.count >= limit) {
+    return { allowed: false, remaining: 0, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+  }
+  
+  record.count += 1;
+  rateLimitStore.set(identifier, record);
+  return { allowed: true, remaining: limit - record.count };
+};
+
+const generateFallbackReply = (userMsg) => {
+  const msgLower = userMsg.toLowerCase();
+  
+  // Domain-specific fallback responses for HH Foundation
+  if (msgLower.includes('epin') || msgLower.includes('e-pin') || msgLower.includes('pin')) {
+    return 'E-PINs are entry credentials for HH Foundation members. You can request, transfer, or manage E-PINs in Dashboard → E-PIN Management. For more details, check the Help Center.';
+  }
+  if (msgLower.includes('upgrade') || msgLower.includes('level')) {
+    return 'To upgrade your level, visit Dashboard → Level Upgrade. Each level requires receiving a specific number of help confirmations. Check your progress in Dashboard → Profile.';
+  }
+  if (msgLower.includes('payment') || msgLower.includes('money') || msgLower.includes('transaction')) {
+    return 'For payment questions, visit Dashboard → Payment History or Support. All transactions are recorded and can be verified in your account.';
+  }
+  if (msgLower.includes('help') || msgLower.includes('send help') || msgLower.includes('receive help')) {
+    return 'Help Cycle is the core of HH Foundation. Send help to others when you receive it, and when you need help, request it from available members. Visit Dashboard → Help for details.';
+  }
+  
+  // Default fallback
+  return 'Thank you for contacting HH Foundation Support! Our chatbot service is temporarily unavailable. Please try again in a moment, or visit Dashboard → Support for direct assistance.';
+};
+
+const callOpenAI = async (message, attempt = 1, maxAttempts = 3) => {
+  const apiKey = OPENAI_API_KEY.value();
+  
+  if (!apiKey) {
+    console.error('chatbotReply: OPENAI_API_KEY not configured');
+    return null;
+  }
+
+  try {
+    console.log('chatbotReply: Calling OpenAI API', { messageLength: message.length, attempt });
+    
+    const client = new OpenAI({ apiKey });
+    
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful support assistant for HH Foundation, a mutual aid and financial assistance platform. Keep responses concise (under 200 words), friendly, and actionable.'
+        },
+        {
+          role: 'user',
+          content: message.substring(0, 500)
+        }
+      ],
+      max_tokens: 700,
+      temperature: 0.2
+    });
+
+    const reply = response.choices?.[0]?.message?.content?.trim();
+    
+    if (!reply) {
+      console.warn('chatbotReply: Empty reply from OpenAI');
+      return null;
+    }
+
+    console.log('chatbotReply: OpenAI success', {
+      messageLength: message.length,
+      replyLength: reply.length,
+      tokensUsed: response.usage?.total_tokens
+    });
+
+    if (reply.length > 1000) {
+      return reply.substring(0, 1000).trim() + '…';
+    }
+
+    return reply;
+  } catch (error) {
+    console.error(`chatbotReply: OpenAI error (attempt ${attempt}/${maxAttempts})`, {
+      error: error.message,
+      status: error.status
+    });
+
+    if ((error.status === 429 || error.status >= 500) && attempt < maxAttempts) {
+      const delay = Math.pow(2, attempt - 1) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callOpenAI(message, attempt + 1, maxAttempts);
+    }
+
+    return null;
+  }
+};
+
+exports.chatbotReply = httpsOnRequest(async (req, res) => {
+  // Set CORS headers for all responses
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Request logging (sanitized)
+  const timestamp = new Date().toISOString();
+  const clientIp = req.ip || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+
+  try {
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).json({ reply: 'OK' });
+      return;
+    }
+
+    // Handle POST
+    if (req.method === 'POST') {
+      const { message, history } = req.body;
+
+      // Validate input
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        console.warn('chatbotReplyWithAI: Invalid input', { timestamp, clientIp });
+        res.status(400).json({ error: 'Invalid message format' });
+        return;
+      }
+
+      const userMessage = message.trim();
+
+      // Rate limiting - use UID if available via auth token, otherwise IP
+      let identifier = clientIp;
+      try {
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+          const token = authHeader.substring(7);
+          // In production, decode Firebase token to get UID
+          // For now, use IP as identifier
+          identifier = clientIp;
+        }
+      } catch (e) {
+        // Ignore, use IP
+      }
+
+      const rateLimit = checkRateLimit(identifier, 10, 60000); // 10 requests per minute
+      if (!rateLimit.allowed) {
+        console.warn('chatbotReplyWithAI: Rate limit exceeded', {
+          identifier,
+          timestamp,
+          retryAfter: rateLimit.retryAfter
+        });
+        res.status(429).json({
+          error: 'Too many requests. Please wait before sending another message.',
+          retryAfter: rateLimit.retryAfter
+        });
+        return;
+      }
+
+      console.log('chatbotReplyWithAI: Request received', {
+        messageLength: userMessage.length,
+        timestamp,
+        clientIp
+      });
+
+      // Try OpenAI first, fall back to keyword-based response
+      let reply = await callOpenAI(userMessage);
+      
+      if (!reply) {
+        console.log('chatbotReplyWithAI: Using fallback response', { timestamp });
+        reply = generateFallbackReply(userMessage);
+      }
+
+      res.status(200).json({ reply });
+      return;
+    }
+
+    // Handle other methods
+    res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('chatbotReplyWithAI: Unhandled error', {
+      error: error.message,
+      stack: error.stack?.split('\n')[0],
+      timestamp
+    });
+    
+    // Always return a valid response
+    res.status(200).json({
+      reply: 'Our chatbot service is temporarily unavailable. Please try again in a few moments or contact support@hhfoundation.org.'
+    });
   }
 });
 
