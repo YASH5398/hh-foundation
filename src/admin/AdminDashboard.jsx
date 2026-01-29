@@ -29,7 +29,7 @@ const AdminDashboard = () => {
     gold: 0,
     silver: 0,
     star: 0,
-    paymentBlocked: 0,
+    onHold: 0,
     inactive15Days: 0,
     todaysSignups: 0,
     totalEarnings: 0,
@@ -136,7 +136,7 @@ const AdminDashboard = () => {
       // Level counts
       let star = 0, silver = 0, gold = 0, platinum = 0, diamond = 0;
       // 7 new summary cards calculations
-      let paymentBlocked = 0;
+      let onHold = 0;
       let inactive15Days = 0;
       let todaysSignups = 0;
       let totalEarnings = 0;
@@ -175,8 +175,8 @@ const AdminDashboard = () => {
           case 'diamond': diamond += 1; break;
           default: break;
         }
-        // Payment Blocked
-        if (user.paymentBlocked === true) paymentBlocked += 1;
+        // On Hold
+        if (user.isOnHold === true) onHold += 1;
         // Inactive 15+ days
         if (user.registrationTime && user.registrationTime.toDate) {
           const regDate = user.registrationTime.toDate();
@@ -207,7 +207,7 @@ const AdminDashboard = () => {
         gold,
         platinum,
         diamond,
-        paymentBlocked,
+        onHold,
         inactive15Days,
         todaysSignups,
         totalEarnings,
@@ -361,10 +361,10 @@ const AdminDashboard = () => {
 
             {/* System Metrics */}
             <StatCard
-              title="Payment Blocked"
-              value={stats.paymentBlocked}
-              icon="🚫"
-              subtitle="Users with restrictions"
+              title="On Hold"
+              value={stats.onHold}
+              icon="⏸️"
+              subtitle="Users temporarily on hold"
               delay={0.75}
             />
             <StatCard

@@ -378,7 +378,7 @@ const UserProfileView = ({ userId, onClose }) => {
                               <span className="text-lg">{getPaymentMethodIcon(record.paymentMethod)}</span>
                               <span className="font-medium">₹{(record.amount || 0).toLocaleString()}</span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                                {record.status || 'Unknown'}
+                                {record.status || 'N/A'}
                               </span>
                             </div>
                             <span className="text-sm text-gray-500">{formatDate(record.createdAt, { includeTime: true })}</span>
@@ -417,7 +417,7 @@ const UserProfileView = ({ userId, onClose }) => {
                               <span className="text-lg">{getPaymentMethodIcon(record.paymentMethod)}</span>
                               <span className="font-medium">₹{(record.amount || 0).toLocaleString()}</span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                                {record.status || 'Unknown'}
+                                {record.status || 'N/A'}
                               </span>
                             </div>
                             <span className="text-sm text-gray-500">{formatDate(record.createdAt, { includeTime: true })}</span>

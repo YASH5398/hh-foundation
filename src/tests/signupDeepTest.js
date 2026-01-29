@@ -100,7 +100,6 @@ export async function runSignupDeepTest() {
       helpReceived: 0,
       level: 1,
       referredUsers: [],
-      paymentBlocked: false,
       nextLevelPaymentDone: false,
       createdAt: serverTimestamp(),
       bank: {

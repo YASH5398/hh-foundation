@@ -356,7 +356,7 @@ export default function DocumentManager() {
   // Cleanup invalid receivers
   const handleCleanupInvalid = async () => {
     for (const r of receivers) {
-      if (r.isBlocked || r.isReceivingHeld || r.paymentBlocked) {
+      if (r.isBlocked || r.isReceivingHeld || r.isOnHold) {
         const assigned = sendHelpMap[r.userId] || [];
         for (const sh of assigned) {
           await deleteDoc(doc(db, 'sendHelp', sh.id));

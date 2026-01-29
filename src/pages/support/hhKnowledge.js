@@ -25,8 +25,8 @@ export const HH_KNOWLEDGE = {
     referralCountMismatch: 'If referral numbers do not match, contact support with specific examples.'
   },
   payments: {
-    nextIncome: 'Check your dashboard for your current level and next income amount. Upgrade may be required for continued income.',
-    upgradeRequired: 'If upgrade is required, the dashboard will show the amount and steps. Complete the upgrade to continue receiving income.',
+    nextIncome: 'Check your dashboard for your current level and next income amount. Level upgrade may be available for continued income.',
+    levelUpgrade: 'If level upgrade is available, the dashboard will show the amount and steps. Complete the upgrade to continue receiving income.',
     sponsorPayment: 'If sponsor payment is pending, pay the required amount as shown in your dashboard.'
   },
   foundation: {

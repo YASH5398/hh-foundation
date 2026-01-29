@@ -290,7 +290,6 @@ const DashboardHome = () => {
     upcomingPayment: 0
   });
   const [error, setError] = useState(null);
-  const [isUpgradeRequired, setIsUpgradeRequired] = useState(false);
 
   // CRITICAL: Check authentication before any Firebase operations
   useEffect(() => {

@@ -106,7 +106,6 @@ export async function runSendHelpEligibilityTest() {
         isBlocked: receiver.isBlocked,
         isOnHold: receiver.isOnHold,
         isReceivingHeld: receiver.isReceivingHeld,
-        paymentBlocked: receiver.paymentBlocked,
         helpReceived: receiver.helpReceived,
         levelType: typeof receiver.level,
         isActivatedType: typeof receiver.isActivated
@@ -122,7 +121,6 @@ export async function runSendHelpEligibilityTest() {
         isBlocked: receiver.isBlocked || false,
         isOnHold: receiver.isOnHold || false,
         isReceivingHeld: receiver.isReceivingHeld || false,
-        paymentBlocked: receiver.paymentBlocked || false,
         isSystemAccount: receiver.isSystemAccount || false
       };
     });
@@ -147,7 +145,7 @@ export async function runSendHelpEligibilityTest() {
       }
 
       // Check blocking
-      if (receiver.isBlocked || receiver.paymentBlocked) {
+      if (receiver.isBlocked || receiver.isOnHold || receiver.isReceivingHeld) {
         reasons.push('Blocked');
       }
 

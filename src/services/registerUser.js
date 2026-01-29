@@ -113,8 +113,7 @@ export const registerUser = async (userData) => {
         pan: bankDetails?.pan || '',
         level: 'Silver',
         levelStatus: 'Active',
-        nextLevelPaymentDone: false,
-        paymentBlocked: false
+        nextLevelPaymentDone: false
       },
       paymentMethod: {
         upi: paymentMethod?.upi || '',

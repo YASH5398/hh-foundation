@@ -190,7 +190,6 @@ export async function assignHelpForEligibleUsers() {
  * - isActivated: true
  * - isOnHold: false
  * - isReceivingHeld: false
- * - paymentBlocked: false
  * - levelStatus: "Star"
  * - Prefer higher referralCount
  *

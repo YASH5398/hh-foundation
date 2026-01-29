@@ -60,9 +60,9 @@ exports.onSendHelpReceiverAssigned = onDocumentUpdated('sendHelp/{docId}', async
     await notifyReceiverAssigned({
       sendHelpId: change.data.after.id,
       senderId: after.senderId,
-      senderName: senderData.fullName || senderData.name || 'Unknown',
+      senderName: senderData.fullName || senderData.name || '',
       receiverId: after.receiverId,
-      receiverName: receiverData.fullName || receiverData.name || 'Unknown',
+      receiverName: receiverData.fullName || receiverData.name || '',
       amount: after.amount,
       level: after.level || senderData.level || 'Star'
     });
@@ -99,7 +99,7 @@ exports.onSendHelpPaymentRequested = onDocumentUpdated('sendHelp/{docId}', async
     await notifyPaymentRequest({
       sendHelpId: change.data.after.id,
       senderId: after.senderId,
-      senderName: senderData.fullName || senderData.name || 'Unknown',
+      senderName: senderData.fullName || senderData.name || '',
       receiverId: after.receiverId,
       amount: after.amount
     });
@@ -136,9 +136,9 @@ exports.onSendHelpPaymentDone = onDocumentUpdated('sendHelp/{docId}', async (cha
     // EVENT 4: Notify receiver that payment is marked done
     await notifyPaymentDone({
       sendHelpId: change.data.after.id,
-      senderName: senderData.fullName || senderData.name || 'Unknown',
+      senderName: senderData.fullName || senderData.name || '',
       receiverId: after.receiverId,
-      receiverName: receiverData.fullName || receiverData.name || 'Unknown',
+      receiverName: receiverData.fullName || receiverData.name || '',
       amount: after.amount
     });
 
@@ -177,9 +177,9 @@ exports.onSendHelpPaymentConfirmed = onDocumentUpdated('sendHelp/{docId}', async
     await notifyPaymentConfirmed({
       sendHelpId: change.data.after.id,
       senderId: after.senderId,
-      senderName: senderSnap.data().fullName || senderSnap.data().name || 'Unknown',
+      senderName: senderSnap.data().fullName || senderSnap.data().name || '',
       receiverId: after.receiverId,
-      receiverName: receiverData.fullName || receiverData.name || 'Unknown',
+      receiverName: receiverData.fullName || receiverData.name || '',
       amount: after.amount
     });
 
@@ -220,9 +220,9 @@ exports.onReceiveHelpSenderAssigned = onDocumentUpdated('receiveHelp/{docId}', a
     await notifySenderAssigned({
       receiveHelpId: change.data.after.id,
       receiverId: after.receiverUid,
-      receiverName: receiverData.fullName || receiverData.name || 'Unknown',
+      receiverName: receiverData.fullName || receiverData.name || '',
       senderId: after.senderId,
-      senderName: senderData.fullName || senderData.name || 'Unknown',
+      senderName: senderData.fullName || senderData.name || '',
       amount: after.amount,
       level: senderData.level || 'Star'
     });
@@ -326,7 +326,7 @@ exports.onUserIncomeBlocked = onDocumentUpdated('users/{docId}', async (change) 
     // EVENT 8: Notify user about income block
     await notifyIncomeBlocked({
       userId: change.data.after.id,
-      blockReason: after.incomeBlockReason || 'unknown',
+      blockReason: after.incomeBlockReason || '',
       requiredAmount: after.incomeBlockRequiredAmount || null,
       blockType: after.incomeBlockType || 'general'
     });
@@ -354,7 +354,7 @@ exports.onUserIncomeUnblocked = onDocumentUpdated('users/{docId}', async (change
     // EVENT 9: Notify user about income unblock
     await notifyIncomeUnblocked({
       userId: change.data.after.id,
-      previousBlockReason: before.incomeBlockReason || 'unknown',
+      previousBlockReason: before.incomeBlockReason || '',
       paidAmount: after.incomeUnblockPaymentAmount || 0
     });
 

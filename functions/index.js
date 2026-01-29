@@ -41,8 +41,12 @@ const {
   validateUpgradePayment
 } = require('./shared/mlmCore');
 
-// Import eligibility utilities - SINGLE SOURCE OF TRUTH
-const { checkReceiveHelpEligibility, getEligibilityMessage } = require('./shared/eligibilityUtils');
+// Import shared eligibility utilities
+const { 
+  isReceiverEligibleStrict, 
+  getReceiverIneligibilityReason,
+  normalizeLevel 
+} = require('./shared/sharedEligibilityUtils');
 
 // ============================
 // HELP (SEND/RECEIVE) V2 - PRODUCTION FLOW
@@ -83,13 +87,8 @@ const allowedTransitions = Object.freeze({
 });
 
 const normalizeLevelName = (levelValue) => {
-  if (!levelValue) return 'Star';
-  if (typeof levelValue === 'string') return levelValue;
-  if (typeof levelValue === 'number') {
-    const levelMap = { 1: 'Star', 2: 'Silver', 3: 'Gold', 4: 'Platinum', 5: 'Diamond' };
-    return levelMap[levelValue] || 'Star';
-  }
-  return 'Star';
+  // Use shared normalize function - STANDARDIZED ON: level field
+  return normalizeLevel({ level: levelValue });
 };
 
 const assertAuth = (request) => {
@@ -115,47 +114,7 @@ const getReceiveLimitForLevel = (levelName) => {
   return LEVEL_RECEIVE_LIMITS[normalized] || LEVEL_RECEIVE_LIMITS.Star;
 };
 
-const isReceiverEligibleStrict = (userData) => {
-  // Use the single source of truth eligibility function
-  const { eligible } = checkReceiveHelpEligibility(userData);
-  
-  // Additional business logic checks (not covered by basic eligibility)
-  if (!eligible) return false;
-  
-  // Check upgrade and sponsor payment requirements
-  if (userData?.upgradeRequired === true) return false;
-  if (userData?.sponsorPaymentPending === true) return false;
-  
-  // Check receive limit
-  const limit = getReceiveLimitForLevel(userData?.levelStatus || userData?.level);
-  if ((userData?.activeReceiveCount || 0) >= limit) return false;
-  
-  return true;
-};
-
-const receiverIneligibilityReason = (userData) => {
-  // First check basic eligibility
-  const { eligible, reason } = checkReceiveHelpEligibility(userData);
-  if (!eligible) {
-    // Map our detailed reasons to the existing reason codes
-    if (reason.includes('isActivated')) return 'not_activated';
-    if (reason.includes('isBlocked')) return 'blocked';
-    if (reason.includes('isOnHold')) return 'on_hold';
-    if (reason.includes('isReceivingHeld')) return 'receiving_held';
-    if (reason.includes('paymentBlocked')) return 'payment_blocked';
-    if (reason.includes('helpVisibility')) return 'help_visibility_disabled';
-    if (reason.includes('levelStatus')) return 'level_status_missing';
-    return 'not_eligible';
-  }
-  
-  // Check additional business logic
-  if (userData?.upgradeRequired === true) return 'upgrade_required';
-  if (userData?.sponsorPaymentPending === true) return 'sponsor_payment_pending';
-  const limit = getReceiveLimitForLevel(userData?.levelStatus || userData?.level);
-  if ((userData?.activeReceiveCount || 0) >= limit) return 'receive_limit_reached';
-  
-  return 'not_eligible';
-};
+// Use shared eligibility functions directly - no need to redefine
 
 const buildHelpDocId = ({ receiverUid, senderUid, createdAtMs }) => {
   return `${receiverUid}_${senderUid}_${createdAtMs}`;
@@ -242,12 +201,13 @@ exports.getReceiveEligibility = httpsOnCall(async (request) => {
   }
   const userData = userSnap.data();
   const eligible = isReceiverEligibleStrict(userData);
-  const reasonCode = eligible ? null : receiverIneligibilityReason(userData);
+  const reasonCode = eligible ? null : getReceiverIneligibilityReason(userData);
+  
+  // Simplified block type mapping - REMOVED conflicting flags
   const blockType = !eligible ? (
-    reasonCode === 'upgrade_required' ? 'upgradeRequired' :
-    reasonCode === 'sponsor_payment_pending' ? 'sponsorPaymentPending' :
     reasonCode === 'receiving_held' ? 'isReceivingHeld' :
     reasonCode === 'blocked' ? 'isBlocked' :
+    reasonCode === 'on_hold' ? 'isOnHold' :
     null
   ) : null;
 
@@ -261,12 +221,11 @@ exports.getReceiveEligibility = httpsOnCall(async (request) => {
       flags: {
         isOnHold: userData?.isOnHold === true,
         isReceivingHeld: userData?.isReceivingHeld === true,
-        isBlocked: userData?.isBlocked === true,
-        upgradeRequired: userData?.upgradeRequired === true,
-        sponsorPaymentPending: userData?.sponsorPaymentPending === true
+        isBlocked: userData?.isBlocked === true
+        // REMOVED: upgradeRequired, sponsorPaymentPending, paymentBlocked
       },
       activeReceiveCount: userData?.activeReceiveCount || 0,
-      levelAllowedLimit: getReceiveLimitForLevel(userData?.levelStatus || userData?.level)
+      levelAllowedLimit: getReceiveLimitForLevel(userData?.level || userData?.levelStatus)
     }
   };
 });
@@ -388,7 +347,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         throw new HttpsError('failed-precondition', sender?.blockReason || 'Sender is blocked/on hold');
       }
 
-      const senderLevel = normalizeLevelName(sender.levelStatus || sender.level);
+      const senderLevel = normalizeLevelName(sender.level || sender.levelStatus);
 
       const activeSendQuery = db
         .collection('sendHelp')
@@ -421,22 +380,33 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         return defaultVal;
       };
 
-      // Main query: ONLY essential filters
-      const receiverQuery = db
-        .collection('users')
-        .where('helpVisibility', '==', true)
-        .where('isActivated', '==', true)
-        .where('isBlocked', '==', false)
-        .where('isReceivingHeld', '==', false)
-        .limit(500);
+      // UNIFIED RECEIVER QUERY - Apply SAME filters in both primary and fallback
+      const buildReceiverQuery = (isMainQuery = true) => {
+        let query = db.collection('users')
+          .where('isActivated', '==', true)
+          .where('isBlocked', '==', false)
+          .where('isReceivingHeld', '==', false)
+          .where('helpVisibility', '!=', false); // Allow null/undefined but block explicit false
+        
+        // Add level matching for main query only
+        if (isMainQuery) {
+          query = query.where('level', '==', senderLevel);
+        }
+        
+        return query.limit(500);
+      };
+
+      // Main query: Match sender level and all eligibility criteria
+      const receiverQuery = buildReceiverQuery(true);
 
       console.log('[startHelpAssignment] receiver.query.spec', {
         collection: 'users',
         filters: {
-          helpVisibility: '== true',
           isActivated: '== true',
-          isBlocked: '== false',
-          isReceivingHeld: '== false'
+          isBlocked: '== false', 
+          isReceivingHeld: '== false',
+          helpVisibility: '!= false',
+          level: `== ${senderLevel}`
         },
         limit: 500
       });
@@ -453,7 +423,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         isEmpty: receiverSnap.empty
       });
 
-      // Post-fetch processing in JavaScript with type normalization
+      // Post-fetch processing with shared eligibility logic
       let receiversToCheck = receiverSnap.docs
         .map(doc => ({
           ref: doc.ref,
@@ -465,16 +435,12 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
             isActivated: normalizeBoolean(doc.data()?.isActivated),
             isBlocked: normalizeBoolean(doc.data()?.isBlocked),
             isReceivingHeld: normalizeBoolean(doc.data()?.isReceivingHeld),
-            referralCount: normalizeNumber(doc.data()?.referralCount, 0)
+            referralCount: normalizeNumber(doc.data()?.referralCount, 0),
+            level: normalizeLevelName(doc.data()?.level || doc.data()?.levelStatus)
           }
         }))
-        // RE-VALIDATE: Re-check normalized types (in case Firestore filters weren't exact)
-        .filter(u => 
-          u._normalized.helpVisibility === true &&
-          u._normalized.isActivated === true &&
-          u._normalized.isBlocked === false &&
-          u._normalized.isReceivingHeld === false
-        )
+        // Apply shared eligibility logic
+        .filter(u => isReceiverEligibleStrict(u.data))
         // Exclude sender UID
         .filter(u => u.id !== senderUid)
         // Exclude system accounts
@@ -489,7 +455,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       const afterNormalization = receiversToCheck.length;
       console.log('[startHelpAssignment] receiver.filtering', { 
         afterQuery: receiverSnap.size,
-        afterNormalization: afterNormalization,
+        afterEligibilityCheck: afterNormalization,
         senderExcluded: receiverSnap.docs.some(d => d.id === senderUid) ? true : false
       });
 
@@ -508,22 +474,19 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         console.log('[startHelpAssignment] receiver.selected', { 
           selectedUid: chosen.id,
           userId: chosen.data?.userId || null,
-          referralCount: chosen._normalized.referralCount
+          referralCount: chosen._normalized.referralCount,
+          level: chosen._normalized.level
         });
       }
 
-      // FALLBACK STRATEGY: If zero eligible found, try relaxed query
+      // FALLBACK STRATEGY: If zero eligible found, try without level matching
       if (!chosenReceiverRef && !chosenReceiver) {
         console.log('[startHelpAssignment] fallback.trigger', {
           reason: 'zero_receivers_from_main_query',
-          attempting: 'relaxed_fallback_query'
+          attempting: 'fallback_without_level_matching'
         });
 
-        const fallbackQuery = db
-          .collection('users')
-          .where('isActivated', '==', true)
-          .where('isBlocked', '==', false)
-          .limit(500);
+        const fallbackQuery = buildReceiverQuery(false); // No level matching
 
         let fallbackSnap;
         try {
@@ -534,22 +497,19 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         }
 
         if (fallbackSnap && !fallbackSnap.empty) {
-          // Apply same normalization and filtering
+          // Apply same eligibility filtering
           const fallbackCandidates = fallbackSnap.docs
             .map(doc => ({
               ref: doc.ref,
               id: doc.id,
               data: doc.data(),
               _normalized: {
-                helpVisibility: normalizeBoolean(doc.data()?.helpVisibility),
-                isActivated: normalizeBoolean(doc.data()?.isActivated),
-                isBlocked: normalizeBoolean(doc.data()?.isBlocked),
-                isReceivingHeld: normalizeBoolean(doc.data()?.isReceivingHeld),
-                referralCount: normalizeNumber(doc.data()?.referralCount, 0)
+                referralCount: normalizeNumber(doc.data()?.referralCount, 0),
+                level: normalizeLevelName(doc.data()?.level || doc.data()?.levelStatus)
               }
             }))
-            // Apply eligibility filters
-            .filter(u => u._normalized.isActivated === true && u._normalized.isBlocked === false)
+            // Apply shared eligibility logic
+            .filter(u => isReceiverEligibleStrict(u.data))
             .filter(u => u.id !== senderUid)
             .filter(u => u.data?.isSystemAccount !== true)
             .sort((a, b) => b._normalized.referralCount - a._normalized.referralCount);
@@ -564,7 +524,8 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
             console.log('[startHelpAssignment] fallback.success', {
               selectedUid: chosen.id,
               userId: chosen.data?.userId || null,
-              candidatesAvailable: fallbackCandidates.length
+              candidatesAvailable: fallbackCandidates.length,
+              level: chosen._normalized.level
             });
           }
         }
@@ -609,7 +570,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         receiverUid: chosenReceiverUid,
         receiverUserId: chosenReceiver.userId || null,
         helpReceived: chosenReceiver.helpReceived || 0,
-        level: chosenReceiver.levelStatus || chosenReceiver.level || 'Star',
+        level: normalizeLevelName(chosenReceiver.level || chosenReceiver.levelStatus),
         activeReceiveCount: chosenReceiver.activeReceiveCount || 0,
         referralCount: chosenReceiver.referralCount || 0,
         lastReceiveAssignedAt: chosenReceiver.lastReceiveAssignedAt || null
@@ -620,7 +581,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       const sendHelpRef = db.collection('sendHelp').doc(helpId);
       const receiveHelpRef = db.collection('receiveHelp').doc(helpId);
 
-      const receiverLimit = getReceiveLimitForLevel(chosenReceiver.levelStatus || chosenReceiver.level);
+      const receiverLimit = getReceiveLimitForLevel(chosenReceiver.level || chosenReceiver.levelStatus);
       const receiverActiveCount = chosenReceiver.activeReceiveCount || 0;
       if (receiverActiveCount >= receiverLimit) {
         throw new HttpsError('failed-precondition', 'Receiver slot full');
@@ -639,13 +600,14 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         senderId,
         senderName: sender.fullName || sender.name || sender.displayName || null,
         senderPhone: sender.phone || null,
+        senderEmail: sender.email || null, // MANDATORY: Add senderEmail from sender profile
         senderLevel,
 
         receiverUid: chosenReceiverUid,
         receiverId: chosenReceiver.userId || null,
         receiverName: chosenReceiver.fullName || chosenReceiver.name || chosenReceiver.displayName || null,
         receiverPhone: chosenReceiver.phone || null,
-        receiverLevel: normalizeLevelName(chosenReceiver.levelStatus || chosenReceiver.level),
+        receiverLevel: normalizeLevelName(chosenReceiver.level || chosenReceiver.levelStatus),
 
         amount,
 
@@ -1464,11 +1426,12 @@ const internalResumeBlockedReceives = async (targetUid) => {
     const userRef = db.collection('users').doc(targetUid);
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists) return;
+    
+    // UNIFIED FLAG RESET - only reset the two main flags
     tx.update(userRef, {
       isReceivingHeld: false,
       isOnHold: false,
-      sponsorPaymentPending: false,
-      upgradeRequired: false,
+      // REMOVED: sponsorPaymentPending, upgradeRequired, paymentBlocked
       lastUnblockTime: admin.firestore.FieldValue.serverTimestamp()
     });
   });
@@ -1527,23 +1490,17 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
         totalReceived: (userData.totalReceived || 0) + (r.amount || 0)
       };
 
-      // Apply blocking logic and explicit reason flags
-      if (isIncomeBlocked({ ...userData, helpReceived: nextHelpReceived })) {
+      // Apply blocking logic using shared MLM core - UNIFIED FLAGS ONLY
+      const userWithNewCount = { ...userData, level: userData.level || userData.levelStatus, helpReceived: nextHelpReceived };
+      if (isIncomeBlocked(userWithNewCount)) {
         receiverUpdate.isReceivingHeld = true;
         receiverUpdate.isOnHold = true;
-
-        const required = getRequiredPaymentForUnblock({ ...userData, helpReceived: nextHelpReceived });
-        if (required?.type === 'upgrade') {
-          receiverUpdate.upgradeRequired = true;
-          receiverUpdate.sponsorPaymentPending = false;
-        }
-        if (required?.type === 'sponsor') {
-          receiverUpdate.sponsorPaymentPending = true;
-          receiverUpdate.upgradeRequired = false;
-        }
+        
+        // REMOVED: upgradeRequired and sponsorPaymentPending flags
+        // These are handled by external payment systems, not help eligibility
       }
 
-      if (nextHelpReceived >= getTotalHelpsByLevel(userData.level)) {
+      if (nextHelpReceived >= getTotalHelpsByLevel(userData.level || userData.levelStatus)) {
         receiverUpdate.levelStatus = 'completed';
       }
 

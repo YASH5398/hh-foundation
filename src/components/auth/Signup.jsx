@@ -356,7 +356,6 @@ const Signup = () => {
         isOnHold: false,
         isReceivingHeld: false,
         helpVisibility: true,
-        paymentBlocked: false,
         nextLevelPaymentDone: false,
         referralCount: 0,
         helpReceived: 0,

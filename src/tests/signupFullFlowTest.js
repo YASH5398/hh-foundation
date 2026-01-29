@@ -100,7 +100,6 @@ export async function runSignupFullFlowTest() {
       isOnHold: false,
       isReceivingHeld: false,
       helpVisibility: true,
-      paymentBlocked: false,
       nextLevelPaymentDone: false,
       referralCount: 0,
       helpReceived: 0,
@@ -155,7 +154,7 @@ export async function runSignupFullFlowTest() {
     const requiredFields = [
       'uid', 'userId', 'fullName', 'email', 'phone', 'whatsapp', 'sponsorId',
       'role', 'level', 'levelStatus', 'isActivated', 'isBlocked', 'isOnHold',
-      'isReceivingHeld', 'helpVisibility', 'paymentBlocked', 'nextLevelPaymentDone',
+      'isReceivingHeld', 'helpVisibility', 'nextLevelPaymentDone',
       'referralCount', 'helpReceived', 'totalEarnings', 'totalReceived', 'totalSent', 'totalTeam',
       'profileImage', 'deviceToken', 'paymentMethod', 'bank', 'kycDetails',
       'registrationTime', 'createdAt'

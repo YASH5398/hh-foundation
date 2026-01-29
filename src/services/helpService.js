@@ -29,7 +29,7 @@ import { waitForAuthReady } from './authReady';
 
 import { HELP_STATUS, canSubmitPayment, canConfirmPayment } from '../config/helpStatus';
 import { getAmountByLevel, getHelpLimitByLevel, validateAmountForLevel } from '../utils/amountUtils';
-import { checkReceiveHelpEligibility } from '../utils/eligibilityUtils';
+import { checkReceiveHelpEligibility, checkSendHelpEligibility, normalizeLevel } from '../utils/eligibilityUtils';
 import { isIncomeBlocked, LEVEL_CONFIG } from '../shared/mlmCore';
 import { sendPaymentRequestNotification } from './notificationService';
 
@@ -81,34 +81,6 @@ const mapFirebaseError = (error) => {
   return error.message || 'An unexpected error occurred. Please try again.';
 };
 
-/**
- * NORMALIZE LEVEL VALUE - Handle old numeric levels and new string levels
- * @param {any} levelValue - Level value from user data (number or string)
- * @returns {string} Normalized level name
- */
-const normalizeLevel = (levelValue) => {
-  if (!levelValue) return 'Star';
-
-  // If already a string, return as-is
-  if (typeof levelValue === 'string') {
-    return levelValue;
-  }
-
-  // Handle old numeric levels (backward compatibility)
-  if (typeof levelValue === 'number') {
-    const levelMap = {
-      1: 'Star',
-      2: 'Silver',
-      3: 'Gold',
-      4: 'Platinum',
-      5: 'Diamond'
-    };
-    return levelMap[levelValue] || 'Star';
-  }
-
-  return 'Star'; // Fallback
-};
-
 export async function getReceiveEligibility() {
   try {
     // ABSOLUTE REQUIREMENT: Auth guard (must be exact)
@@ -149,25 +121,15 @@ export async function checkSenderEligibility(currentUser) {
 
     const userData = userSnap.data();
 
-    // Basic eligibility checks - REMOVED activation check for send help
-    // Inactive users can send help to become activated
-    // if (!userData.isActivated) {
-    //   return { eligible: false, reason: 'User not activated' };
-    // }
-
-    // BLOCKED USER CHECK - Most critical check for deadline system
-    if (userData.isBlocked || userData.paymentBlocked) {
-      return {
-        eligible: false,
-        reason: userData.blockReason || 'Account is blocked due to payment deadline expiry',
-        blockReason: userData.blockReason,
-        blockedAt: userData.blockedAt,
-        isBlocked: true
-      };
+    // Use shared eligibility logic
+    const eligibilityResult = checkSendHelpEligibility(userData);
+    if (!eligibilityResult.eligible) {
+      return eligibilityResult;
     }
 
-    // Income blocking check
-    if (isIncomeBlocked(userData)) {
+    // Income blocking check using normalized level
+    const userLevel = normalizeLevel(userData);
+    if (isIncomeBlocked({ ...userData, level: userLevel })) {
       return { eligible: false, reason: 'Income is blocked - complete required payments' };
     }
 
@@ -200,15 +162,16 @@ export async function checkReceiverEligibility(userData) {
   try {
     await waitForAuthReady();
     
-    // Use the single source of truth eligibility function
+    // Use the shared eligibility function
     const { eligible, reason } = checkReceiveHelpEligibility(userData);
     
     if (!eligible) {
       return { eligible: false, reason };
     }
 
-    // Additional business logic checks (not covered by basic eligibility)
-    const helpLimit = getHelpLimitByLevel(normalizeLevel(userData.levelStatus || userData.level));
+    // Additional business logic checks using normalized level
+    const userLevel = normalizeLevel(userData);
+    const helpLimit = getHelpLimitByLevel(userLevel);
     const currentHelpReceived = userData.helpReceived || 0;
 
     if (currentHelpReceived >= helpLimit) {
@@ -643,7 +606,6 @@ export async function unblockUser(userUid, adminUid) {
         isBlocked: false,
         blockReason: null,
         blockedAt: null,
-        paymentBlocked: false,
         blockedHelpId: null,
         blockedBySystem: false,
         unblockedAt: serverTimestamp(),

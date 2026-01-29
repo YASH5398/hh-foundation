@@ -168,26 +168,38 @@ function ReceiveHelpRefactored() {
   };
 
   const getStatusBadge = (status) => {
-    let config, displayText;
-    
-    if (isPendingStatus(status)) {
-      config = { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock };
-      displayText = 'Pending';
-    } else if (isPaymentDoneStatus(status)) {
-      config = { bg: 'bg-blue-100', text: 'text-blue-800', icon: Send };
-      displayText = 'Paid';
-    } else if (isConfirmedStatusLocal(status)) {
-      config = { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle };
-      displayText = 'Confirmed';
-    } else {
-      config = { bg: 'bg-gray-100', text: 'text-gray-800', icon: AlertCircle };
-      displayText = 'Unknown';
+    let displayText;
+    let config;
+
+    const normalizedStatus = (status || '').toUpperCase().trim();
+
+    switch (normalizedStatus) {
+      case 'ASSIGNED':
+      case 'PAYMENT_REQUESTED':
+        displayText = 'Pending';
+        config = { bg: 'bg-yellow-100', text: 'text-yellow-800' };
+        break;
+      case 'PAYMENT_DONE':
+        displayText = 'Payment Done';
+        config = { bg: 'bg-blue-100', text: 'text-blue-800' };
+        break;
+      case 'CONFIRMED':
+        displayText = 'Received';
+        config = { bg: 'bg-green-100', text: 'text-green-800' };
+        break;
+      case 'TIMEOUT':
+      case 'CANCELLED':
+        displayText = 'Expired';
+        config = { bg: 'bg-red-100', text: 'text-red-800' };
+        break;
+      default:
+        displayText = 'Pending';
+        config = { bg: 'bg-gray-100', text: 'text-gray-800' };
+        break;
     }
     
-    const IconComponent = config.icon;
     return (
-      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${config.bg} ${config.text}`}>
-        <IconComponent className="w-4 h-4" />
+      <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold ${config.bg} ${config.text}`}>
         {displayText}
       </span>
     );
@@ -259,9 +271,6 @@ function ReceiveHelpRefactored() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-      {/* Header */}
-      {/* Header - Headline removed */}
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
@@ -329,118 +338,152 @@ function ReceiveHelpRefactored() {
         {!loading && !error && filteredReceiveHelps.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
-              {filteredReceiveHelps.map((help, index) => (
-                <motion.div
-                  key={help.id}
-                  layout
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
-                >
-                  {/* Card Header */}
-                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={getProfileImageUrl(help.senderProfileImage) || defaultImage}
-                          alt={help.senderName}
-                          className="w-12 h-12 rounded-full border-2 border-white object-cover"
-                        />
-                        <div>
-                          <h3 className="text-white font-semibold">
-                            {help.senderName || help.fullName || 'Unknown User'}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-purple-100">
-                            <User className="w-4 h-4 flex-shrink-0" />
-                            <span className="font-medium">ID: {help.senderId || help.userId || 'N/A'}</span>
+              {filteredReceiveHelps.map((help, index) => {
+                const whatsAppNumber = help.senderWhatsapp || help.senderPhone;
+                const canChat = !!whatsAppNumber;
+
+                return (
+                  <motion.div
+                    key={help.id}
+                    layout
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+                  >
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getProfileImageUrl(help.senderProfileImage) || defaultImage}
+                            alt={help.senderName}
+                            className="w-12 h-12 rounded-full border-2 border-white object-cover"
+                          />
+                          <div>
+                            <h3 className="text-white font-semibold">
+                              {help.senderName || help.fullName || 'Sender'}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-purple-100">
+                              <User className="w-4 h-4 flex-shrink-0" />
+                              <span className="font-medium">ID: {help.senderId || help.userId || 'N/A'}</span>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex-shrink-0">
+                          {getStatusBadge(help.status)}
+                        </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(help.status)}
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-5 space-y-5">
+                      {/* Amount */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 font-medium">Amount</span>
+                        <span className="text-2xl font-bold text-indigo-600">₹{help.amount || 0}</span>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Card Content */}
-                  <div className="p-5 space-y-5">
-                    {/* Amount */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 font-medium">Amount</span>
-                      <span className="text-2xl font-bold text-indigo-600">₹{help.amount || 0}</span>
-                    </div>
+                      {/* Sender Details */}
+                      <div className="border-t border-gray-200 pt-4 space-y-2">
+                        <h4 className="font-semibold text-gray-700">Sender Details</h4>
+                        {help.senderPhone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <span className="font-medium w-20">Phone:</span>
+                            <span>{help.senderPhone}</span>
+                          </div>
+                        )}
+                        {help.senderWhatsapp && help.senderWhatsapp !== help.senderPhone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                             <span className="font-medium w-20">WhatsApp:</span>
+                             <span>{help.senderWhatsapp}</span>
+                          </div>
+                        )}
+                        {help.senderEmail && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                             <span className="font-medium w-20">Email:</span>
+                             <span>{help.senderEmail}</span>
+                          </div>
+                        )}
+                        {!help.senderPhone && !help.senderWhatsapp && !help.senderEmail && (
+                            <p className="text-sm text-gray-500">Sender contact details not available.</p>
+                        )}
+                      </div>
 
-                    {/* Separator */}
-                    <div className="border-t border-gray-200"></div>
 
-                    {/* Date */}
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {help.createdAt?.toDate?.()?.toLocaleDateString?.() || 
-                         new Date(help.createdAt).toLocaleDateString?.() || 
-                         'Date unavailable'}
-                      </span>
-                    </div>
+                      {/* Separator */}
+                      <div className="border-t border-gray-200"></div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {isPaymentDoneStatus(help.status) && !isConfirmedStatusLocal(help.status) && (
+                      {/* Date */}
+                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {help.createdAt?.toDate?.()?.toLocaleDateString?.() ||
+                           new Date(help.createdAt).toLocaleDateString?.() ||
+                           'Date unavailable'}
+                        </span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        {isPaymentDoneStatus(help.status) && !isConfirmedStatusLocal(help.status) && (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              setSelectedHelpId(help.id);
+                              setShowConfirmModal(true);
+                            }}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors"
+                            disabled={confirmingId === help.id}
+                          >
+                            {confirmingId === help.id ? (
+                              <>
+                                <Loader className="inline-block w-4 h-4 mr-2 animate-spin" />
+                                Confirming...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="inline-block w-4 h-4 mr-2" />
+                                Confirm Payment
+                              </>
+                            )}
+                          </motion.button>
+                        )}
+
+                        {isPendingStatus(help.status) && (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleRequestPayment(help.id)}
+                            disabled={isRequestOnCooldown(help.id)}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Send className="inline-block w-4 h-4 mr-2" />
+                            Request Payment
+                          </motion.button>
+                        )}
+
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => {
-                            setSelectedHelpId(help.id);
-                            setShowConfirmModal(true);
+                            if (!canChat) return;
+                            console.log("CHAT CLICKED", help.id);
+                            window.open(`https://wa.me/${whatsAppNumber}`, '_blank', 'noopener,noreferrer');
                           }}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors"
-                          disabled={confirmingId === help.id}
+                          disabled={!canChat}
+                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {confirmingId === help.id ? (
-                            <>
-                              <Loader className="inline-block w-4 h-4 mr-2 animate-spin" />
-                              Confirming...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="inline-block w-4 h-4 mr-2" />
-                              Confirm Payment
-                            </>
-                          )}
+                          <MessageCircle className="inline-block w-4 h-4 mr-2" />
+                          {canChat ? 'Chat' : 'Chat unavailable'}
                         </motion.button>
-                      )}
-
-                      {isPendingStatus(help.status) && (
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => handleRequestPayment(help.id)}
-                          disabled={isRequestOnCooldown(help.id)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Send className="inline-block w-4 h-4 mr-2" />
-                          Request Payment
-                        </motion.button>
-                      )}
-
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          setSelectedChatHelp(help);
-                          setShowChat(true);
-                        }}
-                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded-lg transition-colors"
-                      >
-                        <MessageCircle className="inline-block w-4 h-4 mr-2" />
-                        Chat
-                      </motion.button>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
           </div>
         )}

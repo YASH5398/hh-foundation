@@ -36,7 +36,7 @@ export async function runSendHelpReceiverDebugTest() {
       const name = (user.fullName || 'Unknown').substring(0, 15);
       const level = user.levelStatus || 'N/A';
       const activated = user.isActivated ? '✅' : '❌';
-      const blocked = (user.isBlocked || user.paymentBlocked) ? '🚫' : '✅';
+      const blocked = (user.isBlocked || user.isOnHold) ? '🚫' : '✅';
 
       console.log(`| ${uid} | ${name.padEnd(15)} | ${level.padEnd(12)} | ${activated} | ${blocked} |`);
     });

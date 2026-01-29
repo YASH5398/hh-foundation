@@ -117,7 +117,7 @@ const PaymentErrors = () => {
   const formatErrorType = (errorType) => {
     return errorType?.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ') || 'Unknown';
+    ).join(' ') || '';
   };
 
 
@@ -264,7 +264,7 @@ const PaymentErrors = () => {
                           </h3>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(error.status)}`}>
                             {getStatusIcon(error.status)}
-                            <span className="ml-1">{error.status?.toUpperCase() || 'UNKNOWN'}</span>
+                            <span className="ml-1">{error.status?.toUpperCase() || 'N/A'}</span>
                           </span>
                           <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getErrorTypeColor(error.errorType)}`}>
                             {formatErrorType(error.errorType)}
@@ -278,13 +278,13 @@ const PaymentErrors = () => {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-600">User</p>
-                            <p className="text-sm text-gray-900">{error.userName || 'Unknown User'}</p>
+                            <p className="text-sm text-gray-900">{error.userName || 'User N/A'}</p>
                             <p className="text-xs text-gray-500">{error.userEmail}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-600">Payment Method</p>
                             <p className="text-sm text-gray-900">
-                              {error.paymentMethod || 'Unknown'}
+                              {error.paymentMethod || 'N/A'}
                               {error.cardLast4 && ` ****${error.cardLast4}`}
                             </p>
                           </div>
@@ -308,7 +308,7 @@ const PaymentErrors = () => {
                           </div>
                           <div className="flex items-center">
                             <FiCreditCard className="w-4 h-4 mr-1" />
-                            <span>Gateway: {error.paymentGateway || 'Unknown'}</span>
+                            <span>Gateway: {error.paymentGateway || 'N/A'}</span>
                           </div>
                           {error.retryCount > 0 && (
                             <div className="flex items-center">

@@ -19,6 +19,7 @@ import DashboardHome from './components/dashboard/DashboardHome';
 import AdminDashboard from './admin/AdminDashboard';
 import SendHelp from './components/help/SendHelp';
 import ReceiveHelp from './components/help/ReceiveHelp';
+import ChatPage from './pages/ChatPage';
 import UserDetails from './pages/UserDetails';
 import Leaderboard from './components/leaderboard/Leaderboard';
 import ProfileSettings from './components/profile/ProfileSettings';
@@ -151,6 +152,7 @@ export const router = createBrowserRouter([
       { path: 'leaderboard', element: <Leaderboard /> },
       { path: 'upcoming-payment', element: <UpcomingPayments /> },
       { path: 'receive-help', element: <ReceiveHelp /> },
+      { path: 'chat/:helpId', element: <ChatPage /> },
       { path: 'tasks', element: <Tasks /> },
       {
         path: 'epins',

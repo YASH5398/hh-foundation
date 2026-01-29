@@ -349,7 +349,7 @@ const Dashboard = () => {
           amount: data.amount || 0,
           status: statusLabel,
           createdAt: data.createdAt,
-          receiverName: data.receiverName || 'Unknown',
+          receiverName: data.receiverName || '',
           receiverUserId: data.receiverUserId || 'N/A'
         });
       });
@@ -944,7 +944,7 @@ const Dashboard = () => {
                     onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'Unknown User'}</div>
+                    <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'User N/A'}</div>
                     <div className="text-sm text-gray-600 font-mono">ID: {receiver.userId || 'N/A'}</div>
                     <div className="text-sm text-gray-600">📞 {receiver.phone || 'N/A'}</div>
                   </div>
@@ -975,7 +975,7 @@ const Dashboard = () => {
                     onError={e => { e.target.onerror = null; e.target.src = getProfileImageUrl(null); }}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'Unknown User'}</div>
+                    <div className="text-base font-semibold text-gray-900 truncate">{receiver.fullName || 'User N/A'}</div>
                     <div className="text-sm text-gray-600 font-mono">ID: {receiver.userId || 'N/A'}</div>
                     <div className="text-sm text-gray-600">Amount: ₹{sendHelpReminder.amount || 0}</div>
                   </div>
@@ -1091,7 +1091,7 @@ function StatusBadge({ status }) {
       break;
     default:
       color = 'bg-gray-200 text-gray-600';
-      label = status || 'Unknown';
+      label = status || 'N/A';
   }
   
   return (

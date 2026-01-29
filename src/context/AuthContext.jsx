@@ -326,7 +326,7 @@ export const AuthProvider = ({ children }) => {
         } catch (e) {
           // Fail closed: if eligibility check fails, don't hard-block the UI
           setReceiveEligibility(null);
-          setIsBlocked(!!(profile?.isBlocked || profile?.paymentBlocked));
+          setIsBlocked(!!(profile?.isBlocked || profile?.isOnHold));
           setBlockReason(profile?.blockReason || profile?.blockedReason || null);
           setBlockedAt(profile?.blockedAt || null);
         }

@@ -127,10 +127,10 @@ export const checkUserEligibility = async (userId) => {
     
     const basicPassed = Object.values(basicEligibility).every(Boolean);
     
-    // LAYER B: MLM enforcement checks
+    // LAYER B: MLM enforcement checks - UNIFIED FLAGS ONLY
     const mlmStatus = {
-      upgradeRequired: userData.upgradeRequired === true,
-      sponsorPaymentPending: userData.sponsorPaymentPending === true,
+      isOnHold: userData.isOnHold === true,
+      isReceivingHeld: userData.isReceivingHeld === true,
       forceReceiveOverride: userData.forceReceiveOverride === true
     };
     
@@ -158,7 +158,7 @@ export const checkUserEligibility = async (userId) => {
     const hasActiveReceive = !activeReceiveSnap.empty;
     
     // Determine overall eligibility
-    const mlmBlocked = mlmStatus.upgradeRequired || mlmStatus.sponsorPaymentPending;
+    const mlmBlocked = mlmStatus.isOnHold || mlmStatus.isReceivingHeld;
     const canReceive = basicPassed && !mlmBlocked && slotStatus.slotsAvailable && !hasActiveReceive;
     const canReceiveWithOverride = basicPassed && slotStatus.slotsAvailable && !hasActiveReceive;
     
@@ -514,7 +514,6 @@ export const adminUnblockUser = async (userUid, adminUid) => {
         isBlocked: false,
         blockReason: null,
         blockedAt: null,
-        paymentBlocked: false,
         blockedBySystem: false,
         unblockedAt: serverTimestamp(),
         unblockedBy: adminUid

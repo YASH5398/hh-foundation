@@ -48,9 +48,9 @@ const UplinePayment = () => {
       const paymentRef = doc(db, 'uplinePayments', paymentId);
       await updateDoc(paymentRef, { status: 'Completed' });
 
-      // Unblock sender's paymentBlocked status
+      // Unblock sender's status
       const senderRef = doc(db, 'users', senderId);
-      await updateDoc(senderRef, { paymentBlocked: false, uplinePaymentDue: false });
+      await updateDoc(senderRef, { isOnHold: false, uplinePaymentDue: false });
 
       // Log in helpHistory
       await addDoc(collection(db, 'helpHistory'), {
