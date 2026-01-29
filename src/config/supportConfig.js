@@ -8,7 +8,7 @@ export const supportConfig = {
   whatsapp: {
     number: '+919876543210', // Update with your actual WhatsApp number
     message: 'Hello! I need support from HH Foundation',
-    url: 'https://wa.me/919876543210?text=Hello! I need support from HH Foundation'
+    url: 'mailto:support@helpinghandsfoundation.in?subject=Support Request&body=Hello! I need support from HH Foundation'
   },
   
   email: {

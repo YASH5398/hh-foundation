@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../config/firebase";
 import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, updateDoc, onSnapshot, orderBy, limit } from "firebase/firestore";
-import { FaYoutube, FaGoogleDrive, FaWhatsapp, FaTelegramPlane, FaStar, FaCheckCircle, FaGift, FaVideo } from "react-icons/fa";
+import { FaYoutube, FaGoogleDrive, FaWhatsapp, FaTelegramPlane, FaStar, FaCheckCircle, FaGift, FaVideo, FaEnvelope } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { setNotificationRead } from "../services/notificationActions";
@@ -433,16 +433,18 @@ const EarnFreeEPIN = () => {
                 >
                   {waCopied ? "Copied!" : "Copy Message"}
                 </button>
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1 rounded bg-green-500 text-white text-sm font-medium hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 flex items-center gap-1"
+                <button
+                  onClick={() => {
+                    const emailSubject = 'Free E-PIN Request - Video Testimonial';
+                    const emailBody = waMessagePlain;
+                    window.open(`mailto:support@helpinghandsfoundation.in?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
+                  }}
+                  className="px-3 py-1 rounded bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center gap-1"
                 >
-                  <FaWhatsapp /> Open WhatsApp
-                </a>
+                  <FaEnvelope /> Send Email
+                </button>
               </div>
-              <div className="text-xs text-gray-500">Paste the message and send your video to our admin WhatsApp.</div>
+              <div className="text-xs text-gray-500">Copy the message and send your video to our admin email.</div>
             </div>
           )}
           {method === "telegram" && (

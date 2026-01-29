@@ -138,10 +138,10 @@ const ChatPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen w-full flex flex-col bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-white shadow-sm border-b flex-shrink-0">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
@@ -161,27 +161,29 @@ const ChatPage = () => {
         </div>
       </div>
 
-      {/* Chat Window */}
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Chat Window - Takes remaining vertical space */}
+      <div className="flex-grow p-0 bg-white">
+        <div className="h-full bg-white overflow-hidden flex flex-col">
           {/* DEBUG: Show chat is loading */}
-          <div className="p-4 border-b bg-gray-50">
+          <div className="p-4 border-b bg-gray-50 flex-shrink-0">
             <p className="text-sm text-gray-600">
               💬 Chat Loading - Help ID: {helpId} | Sender: {senderName} | Receiver: {receiverName}
             </p>
           </div>
           
-          <ChatWindow
-            isOpen={true}
-            onClose={() => navigate('/dashboard/receive-help')}
-            receiverId={receiverId}
-            senderId={senderId}
-            receiverName={receiverName}
-            senderName={senderName}
-            receiverAvatar={null}
-            receiverPhone={helpData.senderPhone || helpData.receiverPhone}
-            receiverWhatsapp={helpData.senderWhatsapp || helpData.receiverWhatsapp}
-          />
+          <div className="flex-grow overflow-hidden">
+            <ChatWindow
+              isOpen={true}
+              onClose={() => navigate('/dashboard/receive-help')}
+              receiverId={receiverId}
+              senderId={senderId}
+              receiverName={receiverName}
+              senderName={senderName}
+              receiverAvatar={null}
+              receiverPhone={helpData.senderPhone || helpData.receiverPhone}
+              receiverWhatsapp={helpData.senderWhatsapp || helpData.receiverWhatsapp}
+            />
+          </div>
         </div>
       </div>
     </div>

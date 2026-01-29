@@ -8,15 +8,6 @@ const SupportButton = () => {
 
   const supportOptions = [
     {
-      icon: <FaWhatsapp className="text-2xl" />,
-      label: 'WhatsApp Support',
-      action: () => {
-        window.open('https://wa.me/916299261088', '_blank');
-      },
-      color: 'bg-green-600 hover:bg-green-700',
-      description: 'Get instant help via WhatsApp'
-    },
-    {
       icon: <FaEnvelope className="text-2xl" />,
       label: 'Email Support',
       action: () => {

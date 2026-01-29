@@ -25,12 +25,12 @@ import {
   Gift
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import defaultImage from '../../assets/default-avatar.png';
-import TransactionChat from '../chat/TransactionChat';
 import { getProfileImageUrl } from '../../utils/profileUtils';
 import { useReceiveHelpFlow } from '../../hooks/useHelpFlow';
 import { useAuth } from '../../context/AuthContext';
-import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
+import { HELP_STATUS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
 import { useCountdown } from '../../hooks/useCountdown';
 import { isIncomeBlocked, getRequiredPaymentForUnblock } from '../../shared/mlmCore';
 
@@ -46,6 +46,7 @@ const UI_STATES = {
 
 function ReceiveHelpRefactored() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedProof, setSelectedProof] = useState(null);
   const [showProofModal, setShowProofModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -53,8 +54,6 @@ function ReceiveHelpRefactored() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedCancelHelp, setSelectedCancelHelp] = useState(null);
   const [requestCooldowns, setRequestCooldowns] = useState({});
-  const [showChat, setShowChat] = useState(false);
-  const [selectedChatHelp, setSelectedChatHelp] = useState(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserHelp, setSelectedUserHelp] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -339,8 +338,6 @@ function ReceiveHelpRefactored() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
               {filteredReceiveHelps.map((help, index) => {
-                const whatsAppNumber = help.senderWhatsapp || help.senderPhone;
-                const canChat = !!whatsAppNumber;
 
                 return (
                   <motion.div
@@ -464,21 +461,20 @@ function ReceiveHelpRefactored() {
                             Request Payment
                           </motion.button>
                         )}
-
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            if (!canChat) return;
-                            console.log("CHAT CLICKED", help.id);
-                            window.open(`https://wa.me/${whatsAppNumber}`, '_blank', 'noopener,noreferrer');
+                      </div>
+                      
+                      <div className="flex justify-center mt-4">
+                        <button
+                          type="button"
+                          className="w-full max-w-xs py-3 rounded-xl bg-purple-600 text-white font-semibold text-lg hover:bg-purple-700 transition"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/dashboard/chat/${help.id}`);
                           }}
-                          disabled={!canChat}
-                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <MessageCircle className="inline-block w-4 h-4 mr-2" />
-                          {canChat ? 'Chat' : 'Chat unavailable'}
-                        </motion.button>
+                          Chat
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -490,20 +486,6 @@ function ReceiveHelpRefactored() {
       </div>
 
 
-
-      {/* Chat Modal */}
-      <AnimatePresence>
-        {showChat && selectedChatHelp && (
-          <TransactionChat
-            helpId={selectedChatHelp.id}
-            otherUserName={selectedChatHelp.senderName}
-            onClose={() => {
-              setShowChat(false);
-              setSelectedChatHelp(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Confirm Payment Modal */}
       <AnimatePresence>

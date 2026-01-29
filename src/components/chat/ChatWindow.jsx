@@ -340,16 +340,6 @@ const ChatWindow = ({
                   <Phone className="w-5 h-5" />
                 </a>
               )}
-              {receiverWhatsapp && (
-                <a
-                  href={`https://wa.me/${receiverWhatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 hover:bg-green-700 rounded-full transition-colors hidden sm:block"
-                >
-                  <Video className="w-5 h-5" />
-                </a>
-              )}
               <button 
                 onClick={onClose}
                 className="p-2 hover:bg-green-700 rounded-full transition-colors hidden sm:block"
