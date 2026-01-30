@@ -735,11 +735,23 @@ exports.requestPayment = httpsOnCall(async (request) => {
     if (r.status === HELP_STATUSES.PAYMENT_REQUESTED) return;
     if (!canTransition(r.status, HELP_STATUSES.PAYMENT_REQUESTED)) throw new HttpsError('failed-precondition', 'Invalid status transition');
 
+    // Check 2-hour cooldown
+    if (r.lastPaymentRequestAt) {
+      const lastRequestTime = r.lastPaymentRequestAt.toMillis ? r.lastPaymentRequestAt.toMillis() : r.lastPaymentRequestAt;
+      const cooldownMs = 2 * 60 * 60 * 1000; // 2 hours
+      const timeSinceLastRequest = Date.now() - lastRequestTime;
+      if (timeSinceLastRequest < cooldownMs) {
+        const remainingMs = cooldownMs - timeSinceLastRequest;
+        const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+        throw new HttpsError('failed-precondition', `You can request payment once every 2 hours. Please wait ${remainingHours} hour(s).`);
+      }
+    }
+
     // Re-check receiver eligibility at action time
     const receiverUserSnap = await tx.get(db.collection('users').doc(uid));
     if (!receiverUserSnap.exists) throw new HttpsError('not-found', 'Receiver user not found');
     const receiverUser = receiverUserSnap.data();
-    if (!isReceiverEligibleStrict(receiverUser)) throw new HttpsError('failed-precondition', `Receiver not eligible: ${receiverIneligibilityReason(receiverUser)}`);
+    if (!isReceiverEligibleStrict(receiverUser)) throw new HttpsError('failed-precondition', `Receiver not eligible: ${getReceiverIneligibilityReason(receiverUser)}`);
 
     const paymentRequestedAtMs = Date.now();
     const nextTimeoutAtMs = paymentRequestedAtMs + PAYMENT_REQUEST_TO_DONE_TIMEOUT_MS;
@@ -749,6 +761,8 @@ exports.requestPayment = httpsOnCall(async (request) => {
       paymentRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
       paymentRequestedAtMs,
       nextTimeoutAtMs,
+      paymentRequested: true, // Set payment request flag
+      lastPaymentRequestAt: admin.firestore.FieldValue.serverTimestamp(), // Track last request time for cooldown
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     tx.update(receiveRef, patch);
@@ -957,6 +971,7 @@ exports.submitPayment = httpsOnCall(async (request) => {
       paymentDoneAt: admin.firestore.FieldValue.serverTimestamp(),
       paymentDoneAtMs,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentRequested: false, // Reset payment request flag when payment is done
       payment: {
         utr: normalizedUtr,
         method: method || null,

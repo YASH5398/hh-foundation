@@ -95,6 +95,19 @@ service cloud.firestore {
       allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
+      
+      // Allow receiver to update payment request fields
+      allow update: if isAuth()
+        && request.auth.uid == resource.data.receiverUid
+        && (request.resource.data.keys().hasOnly(['paymentRequested', 'lastPaymentRequestAt'])
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentRequested', 'lastPaymentRequestAt']));
+      
+      // Allow sender to reset payment requested flag when payment is done
+      allow update: if isAuth()
+        && request.auth.uid == resource.data.senderUid
+        && request.resource.data.keys().hasOnly(['paymentRequested'])
+        && request.resource.data.paymentRequested == false;
+      
       allow write: if isAdmin();
     }
 
@@ -103,6 +116,19 @@ service cloud.firestore {
       allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid);
+      
+      // Allow receiver to update payment request fields
+      allow update: if isAuth()
+        && request.auth.uid == resource.data.receiverUid
+        && (request.resource.data.keys().hasOnly(['paymentRequested', 'lastPaymentRequestAt'])
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentRequested', 'lastPaymentRequestAt']));
+      
+      // Allow sender to reset payment requested flag when payment is done
+      allow update: if isAuth()
+        && request.auth.uid == resource.data.senderUid
+        && request.resource.data.keys().hasOnly(['paymentRequested'])
+        && request.resource.data.paymentRequested == false;
+      
       allow write: if isAdmin();
     }
 
@@ -114,6 +140,43 @@ service cloud.firestore {
       match /messages/{msgId} {
         allow read, create: if isAuth()
           && request.auth.uid == uid;
+      }
+    }
+
+    /* ================= CHATS ================= */
+    match /chats/{chatId} {
+      // CREATE: Allow if user is in participants array
+      allow create: if isAuth()
+        && request.auth.uid in request.resource.data.participants;
+      
+      // READ/UPDATE: Allow if user is in participants array
+      allow read, get, update: if isAuth()
+        && request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // READ: Allow if user is in parent chat participants
+        allow read, list: if isAuth()
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        
+        // CREATE: Allow if user is the sender
+        allow create: if isAuth()
+          && request.auth.uid == request.resource.data.senderUid;
+        
+        // UPDATE: Allow if user is participant (for status updates)
+        allow update: if isAuth()
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+
+      // Typing subcollection
+      match /typing/{userId} {
+        // READ: Allow if user is participant
+        allow read: if isAuth()
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        
+        // WRITE: Allow if user is writing their own status
+        allow write: if isAuth()
+          && request.auth.uid == userId;
       }
     }
 

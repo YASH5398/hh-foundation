@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Request UI Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .popup.show {
+            display: flex;
+        }
+        .popup-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .popup-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .popup-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px;
+        }
+        .status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status.payment-done {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .status.confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+        }
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Payment Request UI Test</h1>
+    <p>This page tests the Payment Request feature UI components and flow.</p>
+
+    <!-- Receive Help Section -->
+    <div class="test-section">
+        <h2>📥 Receive Help Page (Receiver Side)</h2>
+        <p>Simulate a receiver viewing their help cards with "Request Payment" buttons.</p>
+        
+        <div class="card">
+            <h3>Help from John Doe</h3>
+            <p><strong>Amount:</strong> ₹300</p>
+            <p><strong>Status:</strong> <span class="status pending">Pending</span></p>
+            <p><strong>Sender ID:</strong> USER123</p>
+            <button class="button" onclick="requestPayment('help-1')">
+                📤 Request Payment
+            </button>
+            <button class="button" style="background: #6b7280;">
+                💬 Chat
+            </button>
+        </div>
+
+        <div class="card">
+            <h3>Help from Jane Smith</h3>
+            <p><strong>Amount:</strong> ₹300</p>
+            <p><strong>Status:</strong> <span class="status payment-done">Payment Done</span></p>
+            <p><strong>Sender ID:</strong> USER456</p>
+            <button class="button" style="background: #10b981;">
+                ✅ Confirm Payment
+            </button>
+            <button class="button" style="background: #6b7280;">
+                💬 Chat
+            </button>
+        </div>
+
+        <div class="card">
+            <h3>Help from Bob Wilson</h3>
+            <p><strong>Amount:</strong> ₹300</p>
+            <p><strong>Status:</strong> <span class="status confirmed">Confirmed</span></p>
+            <p><strong>Sender ID:</strong> USER789</p>
+            <p style="color: #10b981; font-weight: bold;">✅ Payment Received</p>
+        </div>
+    </div>
+
+    <!-- Send Help Section -->
+    <div class="test-section">
+        <h2>📤 Send Help Page (Sender Side)</h2>
+        <p>Simulate a sender viewing their assigned receiver with real-time popup.</p>
+        
+        <div class="card">
+            <h3>Your Assigned Receiver</h3>
+            <p><strong>Name:</strong> Alice Johnson</p>
+            <p><strong>Amount to Send:</strong> ₹300</p>
+            <p><strong>Status:</strong> <span id="sender-status" class="status pending">Assigned</span></p>
+            <button class="button" onclick="showPaymentFlow()">
+                💳 Pay Now
+            </button>
+            <button class="button" style="background: #6b7280;">
+                💬 Chat with Receiver
+            </button>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="button" onclick="simulatePaymentRequest()" style="background: #f59e0b;">
+                🧪 Simulate Payment Request (Test)
+            </button>
+            <button class="button" onclick="simulatePaymentDone()" style="background: #10b981;">
+                🧪 Simulate Payment Done (Test)
+            </button>
+        </div>
+    </div>
+
+    <!-- Sound Test Section -->
+    <div class="test-section">
+        <h2>🔊 Sound Test</h2>
+        <p>Test the notification sound that plays when payment is requested.</p>
+        
+        <button class="button" onclick="playNotificationSound('payment')">
+            🔊 Play Payment Sound
+        </button>
+        <button class="button" onclick="playNotificationSound('success')">
+            🔊 Play Success Sound
+        </button>
+        <button class="button" onclick="playNotificationSound('warning')">
+            🔊 Play Warning Sound
+        </button>
+    </div>
+
+    <!-- Log Section -->
+    <div class="test-section">
+        <h2>📋 Test Log</h2>
+        <div id="log" class="log">
+            Ready to test...\n
+        </div>
+        <button class="button" onclick="clearLog()" style="background: #6b7280;">
+            🗑️ Clear Log
+        </button>
+    </div>
+
+    <!-- Payment Request Popup -->
+    <div id="payment-popup" class="popup">
+        <div class="popup-content">
+            <div class="popup-icon">⚠️</div>
+            <h2>Payment Requested</h2>
+            <p>The receiver has requested you to complete the payment of ₹300.</p>
+            <div class="popup-buttons">
+                <button class="button" onclick="closePopup()" style="background: #6b7280;">
+                    Later
+                </button>
+                <button class="button" onclick="payNow()" style="background: #f59e0b;">
+                    💳 Pay Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple logging function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = 'Log cleared...\n';
+        }
+
+        // Simulate request payment button click
+        function requestPayment(helpId) {
+            log(`🎯 Request Payment clicked for ${helpId}`);
+            log(`📡 Sending payment request to sender...`);
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                log(`✅ Payment request sent successfully!`);
+                log(`🔔 Sender should receive popup notification`);
+            }, 500);
+        }
+
+        // Simulate payment request received (sender side)
+        function simulatePaymentRequest() {
+            log(`🚨 Payment request received from receiver`);
+            log(`🔊 Playing notification sound...`);
+            
+            // Play sound
+            playNotificationSound('payment');
+            
+            // Show popup
+            document.getElementById('payment-popup').classList.add('show');
+            document.getElementById('sender-status').textContent = 'Payment Requested';
+            document.getElementById('sender-status').className = 'status';
+            document.getElementById('sender-status').style.background = '#fef3c7';
+            document.getElementById('sender-status').style.color = '#92400e';
+            
+            log(`📱 Payment request popup displayed`);
+        }
+
+        // Simulate payment completion
+        function simulatePaymentDone() {
+            log(`💳 Payment completed by sender`);
+            
+            // Hide popup
+            document.getElementById('payment-popup').classList.remove('show');
+            document.getElementById('sender-status').textContent = 'Payment Done';
+            document.getElementById('sender-status').className = 'status payment-done';
+            
+            log(`🔄 Payment request popup hidden`);
+            log(`✅ Status updated to Payment Done`);
+        }
+
+        // Close popup
+        function closePopup() {
+            document.getElementById('payment-popup').classList.remove('show');
+            log(`❌ Payment popup closed by user`);
+        }
+
+        // Pay now button
+        function payNow() {
+            document.getElementById('payment-popup').classList.remove('show');
+            log(`💳 Pay Now clicked - opening payment flow`);
+            showPaymentFlow();
+        }
+
+        // Show payment flow
+        function showPaymentFlow() {
+            log(`🔄 Opening payment flow interface`);
+            alert('Payment flow would open here (4-step process)');
+        }
+
+        // Sound synthesis function
+        function playNotificationSound(type = 'payment') {
+            log(`🔊 Playing ${type} notification sound`);
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Sound configurations
+                const configs = {
+                    payment: { frequency: 800, duration: 0.3 },
+                    success: { frequency: 600, duration: 0.4 },
+                    warning: { frequency: 400, duration: 0.5 }
+                };
+                
+                const config = configs[type] || configs.payment;
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(config.frequency, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                const now = audioContext.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + config.duration);
+                
+                oscillator.start();
+                oscillator.stop(now + config.duration);
+                
+                log(`✅ ${type} sound played successfully`);
+                
+            } catch (error) {
+                log(`❌ Failed to play sound: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        log('🚀 Payment Request UI Test initialized');
+        log('📋 Test the buttons above to simulate the payment request flow');
+    </script>
+</body>
+</html>

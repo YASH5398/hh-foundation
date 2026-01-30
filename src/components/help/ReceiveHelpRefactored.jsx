@@ -143,12 +143,34 @@ function ReceiveHelpRefactored() {
     return Date.now() - lastRequest < cooldownMs;
   };
 
+  const getRemainingCooldownTime = (helpId) => {
+    const lastRequest = requestCooldowns[helpId];
+    if (!lastRequest) return 0;
+    const cooldownMs = 2 * 60 * 60 * 1000;
+    const remainingMs = cooldownMs - (Date.now() - lastRequest);
+    return Math.max(0, remainingMs);
+  };
+
+  const formatTime = (milliseconds) => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
   const handleRequestPayment = async (helpId) => {
     if (isRequestOnCooldown(helpId)) {
-      const lastRequest = requestCooldowns[helpId];
-      const remainingMs = (2 * 60 * 60 * 1000) - (Date.now() - lastRequest);
-      const hours = Math.ceil(remainingMs / (60 * 60 * 1000));
-      toast.error(`Please wait ${hours} hour(s) before requesting again`);
+      const remainingMs = getRemainingCooldownTime(helpId);
+      const formattedTime = formatTime(remainingMs);
+      toast.error(`You can request payment once every 2 hours. Remaining: ${formattedTime}`);
       return;
     }
 
@@ -160,7 +182,7 @@ function ReceiveHelpRefactored() {
       };
       setRequestCooldowns(newCooldowns);
       localStorage.setItem('paymentRequestCooldowns', JSON.stringify(newCooldowns));
-      toast.success('Payment request sent');
+      toast.success('Payment request sent to sender!');
     } catch (err) {
       toast.error(err?.message || 'Failed to request payment');
     }
@@ -423,56 +445,27 @@ function ReceiveHelpRefactored() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2">
-                        {isPaymentDoneStatus(help.status) && !isConfirmedStatusLocal(help.status) && (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              setSelectedHelpId(help.id);
-                              setShowConfirmModal(true);
-                            }}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors"
-                            disabled={confirmingId === help.id}
-                          >
-                            {confirmingId === help.id ? (
-                              <>
-                                <Loader className="inline-block w-4 h-4 mr-2 animate-spin" />
-                                Confirming...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="inline-block w-4 h-4 mr-2" />
-                                Confirm Payment
-                              </>
-                            )}
-                          </motion.button>
-                        )}
-
-                        {isPendingStatus(help.status) && (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleRequestPayment(help.id)}
-                            disabled={isRequestOnCooldown(help.id)}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Send className="inline-block w-4 h-4 mr-2" />
-                            Request Payment
-                          </motion.button>
-                        )}
-                      </div>
-                      
-                      <div className="flex justify-center mt-4">
+                      <div className="space-y-2">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleRequestPayment(help.id)}
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 rounded-lg transition-colors"
+                        >
+                          <Send className="inline-block w-4 h-4 mr-2" />
+                          Request Payment
+                        </motion.button>
+                        
                         <button
                           type="button"
-                          className="w-full max-w-xs py-3 rounded-xl bg-purple-600 text-white font-semibold text-lg hover:bg-purple-700 transition"
+                          className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             navigate(`/dashboard/chat/${help.id}`);
                           }}
                         >
+                          <MessageCircle className="inline-block w-4 h-4 mr-2" />
                           Chat
                         </button>
                       </div>

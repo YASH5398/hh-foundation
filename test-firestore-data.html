@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firestore Data Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <h1>Firestore Data Test</h1>
+    <div id="results"></div>
+
+    <script>
+        // This is a test script to check Firestore data
+        // Replace with your actual Firebase config
+        const firebaseConfig = {
+            // Add your config here
+        };
+
+        // Initialize Firebase (commented out for now)
+        // firebase.initializeApp(firebaseConfig);
+        // const db = firebase.firestore();
+
+        async function testFirestoreData() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing Firestore data...</p>';
+
+            try {
+                // Test 1: Check sendHelp collection
+                results.innerHTML += '<h2>1. Checking sendHelp collection</h2>';
+                
+                // Simulate what we expect to find
+                const mockSendHelp = {
+                    id: 'test-123',
+                    status: 'assigned',
+                    senderUid: 'user-123',
+                    receiverUid: 'user-456',
+                    paymentRequested: false
+                };
+                
+                results.innerHTML += `<p>Mock sendHelp data: ${JSON.stringify(mockSendHelp, null, 2)}</p>`;
+                
+                // Test 2: Check receiveHelp collection
+                results.innerHTML += '<h2>2. Checking receiveHelp collection</h2>';
+                
+                const mockReceiveHelp = {
+                    id: 'test-123',
+                    status: 'assigned',
+                    senderUid: 'user-123',
+                    receiverUid: 'user-456',
+                    paymentRequested: false
+                };
+                
+                results.innerHTML += `<p>Mock receiveHelp data: ${JSON.stringify(mockReceiveHelp, null, 2)}</p>`;
+                
+                // Test 3: Simulate payment request
+                results.innerHTML += '<h2>3. Simulating payment request</h2>';
+                
+                const afterRequest = {
+                    ...mockSendHelp,
+                    status: 'payment_requested',
+                    paymentRequested: true,
+                    lastPaymentRequestAt: new Date()
+                };
+                
+                results.innerHTML += `<p>After payment request: ${JSON.stringify(afterRequest, null, 2)}</p>`;
+                
+                // Test 4: Check if UI should show popup
+                results.innerHTML += '<h2>4. UI Logic Test</h2>';
+                
+                const shouldShowPopup = afterRequest.paymentRequested === true;
+                results.innerHTML += `<p>Should show popup: ${shouldShowPopup}</p>`;
+                
+                if (shouldShowPopup) {
+                    results.innerHTML += '<p style="color: green;">✅ Payment Request popup should appear</p>';
+                } else {
+                    results.innerHTML += '<p style="color: red;">❌ Payment Request popup will NOT appear</p>';
+                }
+                
+            } catch (error) {
+                results.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Run the test
+        testFirestoreData();
+    </script>
+</body>
+</html>

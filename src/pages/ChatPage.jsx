@@ -162,17 +162,8 @@ const ChatPage = () => {
       </div>
 
       {/* Chat Window - Takes remaining vertical space */}
-      <div className="flex-grow p-0 bg-white">
-        <div className="h-full bg-white overflow-hidden flex flex-col">
-          {/* DEBUG: Show chat is loading */}
-          <div className="p-4 border-b bg-gray-50 flex-shrink-0">
-            <p className="text-sm text-gray-600">
-              💬 Chat Loading - Help ID: {helpId} | Sender: {senderName} | Receiver: {receiverName}
-            </p>
-          </div>
-          
-          <div className="flex-grow overflow-hidden">
-            <ChatWindow
+      <div className="flex-grow overflow-hidden">
+        <ChatWindow
               isOpen={true}
               onClose={() => navigate('/dashboard/receive-help')}
               receiverId={receiverId}
@@ -182,9 +173,7 @@ const ChatPage = () => {
               receiverAvatar={null}
               receiverPhone={helpData.senderPhone || helpData.receiverPhone}
               receiverWhatsapp={helpData.senderWhatsapp || helpData.receiverWhatsapp}
-            />
-          </div>
-        </div>
+          />
       </div>
     </div>
   );

@@ -222,6 +222,17 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
 const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick, showChat, setShowChat, transactionId }) => {
   const status = normalizeStatus(helpStatus);
   const showPayButton = status === HELP_STATUS.ASSIGNED || status === HELP_STATUS.PAYMENT_REQUESTED;
+  const isPaymentRequested = helpData?.paymentRequested === true;
+
+  console.log('🎯 ReceiverAssignedState render:', {
+    helpStatus,
+    status,
+    helpData,
+    paymentRequested: helpData?.paymentRequested,
+    isPaymentRequested,
+    showPayButton,
+    lastPaymentRequestAt: helpData?.lastPaymentRequestAt
+  });
 
   return (
     <motion.div
@@ -229,6 +240,23 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
       animate={{ opacity: 1, scale: 1 }}
       className="bg-white rounded-lg p-8 max-w-md w-full shadow-sm"
     >
+      {/* Payment Request Alert */}
+      {isPaymentRequested && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg"
+        >
+          <div className="flex items-center gap-3">
+            <FiAlertTriangle className="w-5 h-5 text-orange-600" />
+            <div>
+              <h4 className="font-semibold text-orange-800">Payment Requested</h4>
+              <p className="text-sm text-orange-700">The receiver has requested you to complete the payment.</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Receiver Info */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -280,10 +308,14 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onPaymentClick}
-            className="w-full py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+            className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+              isPaymentRequested 
+                ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' 
+                : 'bg-slate-900 hover:bg-slate-800 text-white'
+            }`}
           >
             <FiCreditCard className="w-4 h-4" />
-            Pay Now
+            {isPaymentRequested ? 'Complete Payment Now' : 'Pay Now'}
           </motion.button>
         )}
 
@@ -528,6 +560,7 @@ const SendHelpRefactored = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentRequestHelp, setPaymentRequestHelp] = useState(null);
   
   // Payment flow states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -558,6 +591,14 @@ const SendHelpRefactored = () => {
     const unsub = listenToHelpStatus(helpId, (docData) => {
       if (!docData) return;
       
+      console.log('🔥 SendHelp listener received data:', {
+        helpId,
+        status: docData.status,
+        paymentRequested: docData.paymentRequested,
+        lastPaymentRequestAt: docData.lastPaymentRequestAt,
+        fullData: docData
+      });
+      
       setHelpData(docData);
       setHelpStatus(docData.status);
       setTransactionId(helpId);
@@ -568,6 +609,18 @@ const SendHelpRefactored = () => {
         phone: docData.receiverPhone,
         profileImage: docData.receiverProfileImage
       });
+      
+      // Show payment request popup if paymentRequested is true
+      if (docData.paymentRequested === true) {
+        console.log('🚨 Payment requested! Setting paymentRequestHelp...');
+        console.log('🔍 Help data for popup:', docData);
+        setPaymentRequestHelp(docData);
+        
+        // Play notification sound will be handled by useEffect
+      } else if (docData.paymentRequested === false) {
+        console.log('🔄 Payment request cleared, clearing paymentRequestHelp...');
+        setPaymentRequestHelp(null);
+      }
       
       // Update UI state based on new status
       updateUIState(docData.status, true, false, false, null, false);
@@ -700,6 +753,7 @@ const SendHelpRefactored = () => {
       });
 
       setShowPaymentProofForm(false);
+      setPaymentRequestHelp(null); // Clear payment request popup
       toast.success('Payment proof submitted successfully!');
       
     } catch (error) {
@@ -709,6 +763,26 @@ const SendHelpRefactored = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Handle payment request popup actions
+  const handlePaymentRequestPopupClose = () => {
+    setPaymentRequestHelp(null);
+  };
+
+  const handlePaymentRequestPopupPay = () => {
+    setPaymentRequestHelp(null);
+    handlePayNowClick();
+  };
+
+  // Sound effect when new payment request is received
+  useEffect(() => {
+    if (paymentRequestHelp?.id) {
+      console.log('🔊 Playing payment request sound for helpId:', paymentRequestHelp.id);
+      import('../../services/soundService').then(({ soundService }) => {
+        soundService.playNotificationSound('payment', 'high');
+      }).catch(err => console.warn('Failed to play sound:', err));
+    }
+  }, [paymentRequestHelp?.id]);
 
   // Auth state listener
   useEffect(() => {
@@ -885,8 +959,74 @@ const SendHelpRefactored = () => {
         )}
       </AnimatePresence>
 
+      {/* Payment Request Popup */}
+      <PaymentRequestPopup
+        isOpen={paymentRequestHelp !== null}
+        onClose={handlePaymentRequestPopupClose}
+        onPay={handlePaymentRequestPopupPay}
+        receiver={receiver}
+        helpData={paymentRequestHelp}
+      />
 
     </div>
+  );
+};
+
+// Payment Request Popup Component
+const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => {
+  console.log('🎭 PaymentRequestPopup render:', { isOpen, receiver: receiver?.name, helpData });
+  
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Alert Icon */}
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FiAlertTriangle className="w-8 h-8 text-orange-600" />
+          </div>
+
+          {/* Title */}
+          <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">Payment Requested</h2>
+          
+          {/* Message */}
+          <p className="text-gray-600 mb-6 text-center">
+            Receiver is requesting payment. Please complete the payment.
+          </p>
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
+            >
+              Later
+            </button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onPay}
+              className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Pay Now
+            </motion.button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

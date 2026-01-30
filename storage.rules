@@ -34,6 +34,13 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    // Chat images - allow authenticated users to upload and read if they are chat participants
+    match /chat_images/{chatId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
     // System images - read access for all, write for admins
     match /system/{fileName} {
       allow read: if true;

@@ -346,7 +346,7 @@ export async function requestPayment(helpId) {
 
 /**
  * SUBMIT PAYMENT PROOF
- * Sender marks payment as done
+ * Sender marks payment as done and automatically resets paymentRequested flag
  */
 export async function submitPaymentProof(helpId, paymentData) {
   if (!helpId || !paymentData?.utr) {
@@ -368,7 +368,8 @@ export async function submitPaymentProof(helpId, paymentData) {
       screenshotUrl: paymentData.screenshotUrl || null,
       screenshotPath: paymentData.screenshotPath || null,
       screenshotContentType: paymentData.screenshotContentType || null,
-      screenshotSize: paymentData.screenshotSize || null
+      screenshotSize: paymentData.screenshotSize || null,
+      resetPaymentRequested: true // Automatically reset payment request flag
     });
     return { success: !!res.data.data?.ok };
   } catch (error) {

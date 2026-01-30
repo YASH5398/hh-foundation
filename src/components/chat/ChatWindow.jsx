@@ -282,21 +282,7 @@ const ChatWindow = ({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md h-[90vh] sm:h-[600px] flex flex-col overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <div className="h-full w-full flex flex-col bg-white">
           {/* Header */}
           <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -565,9 +551,7 @@ const ChatWindow = ({
               </button>
             </form>
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </div>
   );
 };
 
