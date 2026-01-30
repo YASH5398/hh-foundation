@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FiSearch, FiFilter, FiUser, FiClock, FiMessageSquare,
-  FiPaperclip, FiChevronRight, FiX, FiSend, FiAlertCircle,
-  FiCheckCircle, FiRefreshCw, FiEdit3, FiFlag, FiFileText, FiPlus
+  FiX, FiSend, FiCheckCircle, FiRefreshCw, FiAlertCircle,
+  FiFlag, FiBox, FiCheck, FiChevronRight, FiMaximize2, FiArrowLeft
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   collection, query, where, onSnapshot, orderBy,
-  doc, updateDoc, addDoc, serverTimestamp, getDoc
+  doc, updateDoc, addDoc, serverTimestamp, getDoc, limit
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAgentAuth } from '../../context/AgentAuthContext';
@@ -18,535 +18,351 @@ const SupportTickets = () => {
   const user = currentUser || null;
 
   const [tickets, setTickets] = useState([]);
-  const [filteredTickets, setFilteredTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [assignmentFilter, setAssignmentFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'assigned', 'all'
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  // ── Raise Ticket Modal State ───────────────────────────────
-  const [showRaiseTicketModal, setShowRaiseTicketModal] = useState(false);
-  const [newTicket, setNewTicket] = useState({
-    subject: '',
-    description: '',
-    priority: 'medium'
-  });
+  const scrollRef = useRef(null);
 
-  // Fetch tickets with real-time updates - filtered by logged-in user
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Fetch tickets based on tab
   useEffect(() => {
     if (!user?.uid) return;
 
-    const ticketsQuery = query(
-      collection(db, 'supportTickets'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
+    let ticketsQuery;
+    if (activeTab === 'pending') {
+      ticketsQuery = query(
+        collection(db, 'supportTickets'),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'desc')
+      );
+    } else if (activeTab === 'assigned') {
+      ticketsQuery = query(
+        collection(db, 'supportTickets'),
+        where('assignedAgent', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      ticketsQuery = query(
+        collection(db, 'supportTickets'),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
+    }
+
     const unsubscribe = onSnapshot(ticketsQuery, (snapshot) => {
       const ticketsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+        createdAt: doc.data().createdAt?.toDate?.() || new Date()
       }));
       setTickets(ticketsData);
       setLoading(false);
     }, (error) => {
       console.error('Error fetching tickets:', error);
-      toast.error('Failed to load tickets');
+      toast.error('Protocol breach in data fetch');
       setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [user?.uid, activeTab]);
 
-  useEffect(() => {
-    let filtered = tickets;
-    if (searchTerm) {
-      filtered = filtered.filter(ticket =>
-        ticket.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(ticket => ticket.status === statusFilter);
-    }
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(ticket => ticket.priority === priorityFilter);
-    }
-    setFilteredTickets(filtered);
-  }, [tickets, searchTerm, statusFilter, priorityFilter]);
-
+  // Fetch messages for selected ticket
   useEffect(() => {
     if (!selectedTicket?.id) {
       setMessages([]);
       return;
     }
+
     const messagesQuery = query(
       collection(db, 'supportTickets', selectedTicket.id, 'messages'),
       orderBy('createdAt', 'asc')
     );
+
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messagesData = snapshot.docs.map(doc => ({
+      setMessages(snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate?.() || new Date()
-      }));
-      setMessages(messagesData);
+      })));
     });
+
     return () => unsubscribe();
   }, [selectedTicket?.id]);
 
-  // ── Existing handlers (unchanged) ─────────────────────────────
-  const handleAssignToMe = async (ticketId) => { /* ... unchanged ... */ };
-  const handleStatusChange = async (ticketId, newStatus) => { /* ... unchanged ... */ };
-  const handleSendMessage = async (e) => { /* ... unchanged ... */ };
-
-  // ── Raise Ticket Handlers (only UI + basic validation) ───────
-  const handleRaiseTicketChange = (e) => {
-    const { name, value } = e.target;
-    setNewTicket(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleRaiseTicketSubmit = async (e) => {
-    e.preventDefault();
-    if (!newTicket.subject.trim() || !newTicket.description.trim()) {
-      toast.error('Subject and description are required');
-      return;
-    }
-
+  const handleAssignToMe = async (ticketId) => {
     try {
-      await addDoc(collection(db, 'supportTickets'), {
-        ...newTicket,
-        userId: user?.uid,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        agentId: null
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        assignedAgent: user.uid,
+        agentName: user.displayName || user.email,
+        status: 'in-progress',
+        updatedAt: serverTimestamp()
       });
-      toast.success('Ticket raised successfully');
-      setShowRaiseTicketModal(false);
-      setNewTicket({ subject: '', description: '', priority: 'medium' });
+      toast.success('Ticket assigned to your station');
     } catch (err) {
-      console.error('Failed to create ticket:', err);
-      toast.error('Failed to raise ticket');
+      toast.error('Assignment failed');
     }
   };
 
-  // Color helpers (unchanged)
-  const getStatusColor = (status) => { /* ... unchanged ... */ };
-  const getPriorityColor = (priority) => { /* ... unchanged ... */ };
-  const formatTimestamp = (timestamp) => { /* ... unchanged ... */ };
+  const handleStatusChange = async (ticketId, newStatus) => {
+    try {
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      toast.success(`Ticket marked as ${newStatus}`);
+    } catch (err) {
+      toast.error('Status update failed');
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-950 to-purple-950 pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse space-y-6">
-            <div className="h-10 bg-white/10 rounded-lg w-1/3"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 bg-white/5 rounded-xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedTicket || sendingMessage) return;
+
+    setSendingMessage(true);
+    try {
+      await addDoc(collection(db, 'supportTickets', selectedTicket.id, 'messages'), {
+        content: newMessage,
+        senderId: user.uid,
+        senderName: user.displayName || user.email,
+        senderType: 'agent',
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, 'supportTickets', selectedTicket.id), {
+        updatedAt: serverTimestamp(),
+        lastMessage: newMessage
+      });
+
+      setNewMessage('');
+    } catch (err) {
+      toast.error('Transmission failed');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const filteredTickets = tickets.filter(t =>
+    t.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-950 to-purple-950 pt-20 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header + Raise Ticket Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">My Support Tickets</h1>
-            <p className="mt-1 text-blue-200">View and manage your support ticket history</p>
-          </div>
-
-          <button
-            onClick={() => setShowRaiseTicketModal(true)}
-            className="mt-4 sm:mt-0 inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 
-                     text-white font-medium rounded-lg shadow-lg shadow-blue-900/30 
-                     transition-all duration-200 active:scale-95"
-          >
-            <FiPlus className="w-5 h-5 mr-2" />
-            Raise New Ticket
-          </button>
-        </div>
-
-        {/* Search + Filters */}
-        <div className="mb-8 space-y-5 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-          <div className="relative">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search tickets by subject or description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-5 py-3 bg-white/10 border border-white/20 rounded-lg
-                       text-white placeholder-blue-300 focus:outline-none focus:ring-2
-                       focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          {/* Filters toggle + panel */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 text-sm bg-white/10 hover:bg-white/15 
-                       text-blue-100 rounded-lg border border-white/20 transition-colors"
-            >
-              <FiFilter className="w-4 h-4 mr-2" />
-              Filters
-            </button>
-          </div>
-
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-3"
-              >
-                {/* Status, Priority, Assignment selects – same logic, modern styling */}
-                <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-1.5">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg 
-                             text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-1.5">Priority</label>
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg
-                             text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Priorities</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Ticket List */}
-          <div className="space-y-4">
-            {filteredTickets.length > 0 ? (
-              filteredTickets.map((ticket) => (
-                <motion.div
-                  key={ticket.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`p-5 rounded-xl border transition-all duration-200 cursor-pointer backdrop-blur-sm
-                    ${selectedTicket?.id === ticket.id
-                      ? 'bg-white/15 border-blue-400/50 shadow-lg shadow-blue-900/40'
-                      : 'bg-white/8 border-white/10 hover:bg-white/12 hover:border-white/20'}`}
-                  onClick={() => setSelectedTicket(ticket)}
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-950/20 lg:rounded-[2.5rem] rounded-xl overflow-hidden border border-slate-800 shadow-2xl backdrop-blur-xl">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar: Ticket List */}
+        <div className={`w-full lg:w-96 border-r border-slate-800 flex-col bg-slate-900/40 ${selectedTicket ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-6 border-b border-slate-800 space-y-4">
+            <h1 className="text-2xl font-black text-white px-1 tracking-tight">Support Node</h1>
+            <div className="flex gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+              {['pending', 'assigned', 'all'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-slate-500 hover:text-slate-300'
+                    }`}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-white truncate mb-1">
-                        {ticket.subject || 'No Subject'}
-                      </h3>
-                      <p className="text-sm text-blue-200">ID: {ticket.id}</p>
-                    </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <span className={`px-3 py-1 text-xs rounded-full font-medium border ${
-                        ticket.status === 'pending' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200' :
-                        ticket.status === 'in-progress' ? 'bg-blue-500/20 border-blue-500/30 text-blue-200' :
-                        ticket.status === 'resolved' ? 'bg-green-500/20 border-green-500/30 text-green-200' :
-                        'bg-gray-500/20 border-gray-500/30 text-gray-200'
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search ticket stream..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <AnimatePresence mode="popLayout">
+              {filteredTickets.map(ticket => (
+                <motion.div
+                  layout
+                  key={ticket.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={() => setSelectedTicket(ticket)}
+                  className={`p-5 cursor-pointer border-b border-slate-800/50 transition-all relative group ${selectedTicket?.id === ticket.id ? 'bg-blue-600/10 border-l-4 border-l-blue-600' : 'hover:bg-slate-800/30'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter font-mono">#{ticket.id.slice(-6)}</span>
+                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.priority === 'high' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                      ticket.priority === 'medium' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                        'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                       }`}>
-                        {ticket.status}
-                      </span>
-                      {ticket.priority && (
-                        <span className={`px-3 py-1 text-xs rounded-full font-medium border ${
-                          ticket.priority === 'high' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
-                          ticket.priority === 'medium' ? 'bg-orange-500/20 border-orange-500/30 text-orange-200' :
-                          'bg-green-500/20 border-green-500/30 text-green-200'
-                        }`}>
-                          {ticket.priority}
-                        </span>
-                      )}
-                    </div>
+                      {ticket.priority || 'medium'}
+                    </span>
                   </div>
-
-                  <p className="text-blue-100 mb-4 line-clamp-2 leading-relaxed">
-                    {ticket.description || 'No description provided'}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-blue-200">
-                    <div className="flex items-center space-x-4">
-                      <span className="flex items-center">
-                        <FiUser className="w-4 h-4 mr-2" />
-                        {ticket.userId || 'Unknown'}
-                      </span>
-                      <span className="flex items-center">
-                        <FiClock className="w-4 h-4 mr-2" />
-                        {formatTimestamp(ticket.createdAt)}
-                      </span>
-                    </div>
+                  <h3 className="text-sm font-bold text-slate-200 truncate pr-4 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{ticket.subject}</h3>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">{ticket.lastMessage || ticket.description}</p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className={`w-2 h-2 rounded-full ${ticket.status === 'pending' ? 'bg-yellow-500 animate-pulse' :
+                      ticket.status === 'in-progress' ? 'bg-blue-500' :
+                        'bg-slate-600'
+                      }`}></div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">{ticket.status}</span>
                   </div>
                 </motion.div>
-              ))
-            ) : (
-              <div className="text-center py-20 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
-                <FiFileText className="h-16 w-16 text-blue-400/40 mx-auto mb-6" />
-                <p className="text-xl text-white/80 font-medium">No tickets found</p>
-                <p className="mt-2 text-blue-200">Try adjusting your search or filters</p>
+              ))}
+            </AnimatePresence>
+            {filteredTickets.length === 0 && !loading && (
+              <div className="py-20 text-center opacity-20">
+                <FiBox className="w-12 h-12 mx-auto mb-4" />
+                <p className="text-xs font-black uppercase tracking-widest">Buffer Empty</p>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Ticket Detail Panel */}
-          <div className="lg:sticky lg:top-6">
-            {selectedTicket ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden shadow-2xl"
-              >
-                {/* Ticket Header */}
-                <div className="p-6 border-b border-white/20">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h2 className="text-xl font-semibold text-white mb-1">
-                        {selectedTicket.subject || 'No Subject'}
-                      </h2>
-                      <p className="text-blue-200">ID: {selectedTicket.id}</p>
-                    </div>
+        {/* Main Content: Ticket View */}
+        <div className={`flex-1 flex-col bg-slate-950/40 relative ${selectedTicket ? 'flex' : 'hidden lg:flex'}`}>
+          {selectedTicket ? (
+            <>
+              {/* Header */}
+              <div className="p-4 lg:p-8 border-b border-slate-800 bg-slate-900/20 backdrop-blur-md sticky top-0 z-20">
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col gap-2">
+                    {/* Mobile Back Button */}
                     <button
                       onClick={() => setSelectedTicket(null)}
-                      className="p-2 text-blue-300 hover:text-white bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300"
+                      className="lg:hidden flex items-center gap-2 text-slate-400 hover:text-white mb-2"
                     >
-                      <FiX className="w-5 h-5" />
+                      <FiArrowLeft /> <span className="text-xs font-bold uppercase">Back</span>
                     </button>
-                  </div>
 
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className={`px-3 py-1 text-sm rounded-full font-medium border ${
-                      selectedTicket.status === 'pending' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200' :
-                      selectedTicket.status === 'in-progress' ? 'bg-blue-500/20 border-blue-500/30 text-blue-200' :
-                      selectedTicket.status === 'resolved' ? 'bg-green-500/20 border-green-500/30 text-green-200' :
-                      'bg-gray-500/20 border-gray-500/30 text-gray-200'
-                    }`}>
-                      {selectedTicket.status}
-                    </span>
-                    {selectedTicket.priority && (
-                      <span className={`px-3 py-1 text-sm rounded-full font-medium border ${
-                        selectedTicket.priority === 'high' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
-                        selectedTicket.priority === 'medium' ? 'bg-orange-500/20 border-orange-500/30 text-orange-200' :
-                        'bg-green-500/20 border-green-500/30 text-green-200'
-                      }`}>
-                        {selectedTicket.priority}
-                      </span>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-xl lg:text-2xl font-black text-white tracking-tight uppercase leading-none">{selectedTicket.subject}</h2>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-bold">
+                      <span className="text-slate-500 flex items-center gap-1"><FiUser className="text-blue-500" /> {selectedTicket.userId}</span>
+                      <span className="text-slate-500 flex items-center gap-1"><FiClock className="text-indigo-500" /> {selectedTicket.createdAt.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    {selectedTicket.status === 'pending' && (
+                      <button
+                        onClick={() => handleAssignToMe(selectedTicket.id)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/40"
+                      >
+                        Claim
+                      </button>
                     )}
-                    <span className="text-sm text-blue-200">
-                      Created {formatTimestamp(selectedTicket.createdAt)}
-                    </span>
+                    {selectedTicket.assignedAgent === user.uid && (
+                      <>
+                        <button
+                          onClick={() => handleStatusChange(selectedTicket.id, 'resolved')}
+                          className="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-600/20 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                          Resolve
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(selectedTicket.id, 'closed')}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                          Close
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Messages */}
-                <div className="h-96 overflow-y-auto p-6 space-y-4">
-                  {/* Initial Description */}
-                  {selectedTicket.description && (
-                    <div className="bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-                      <div className="flex items-center mb-3">
-                        <div className="w-8 h-8 bg-blue-600/50 rounded-lg flex items-center justify-center mr-3">
-                          <FiUser className="w-4 h-4 text-blue-200" />
-                        </div>
-                        <span className="text-sm font-medium text-white">
-                          {selectedTicket.userId || 'User'}
-                        </span>
-                        <span className="text-xs text-blue-200 ml-2">
-                          {formatTimestamp(selectedTicket.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-blue-100 leading-relaxed">{selectedTicket.description}</p>
-                    </div>
-                  )}
+              {/* Chat View */}
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 custom-scrollbar">
+                {/* Initial Dossier */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-900/60 border border-slate-800 p-6 rounded-[2rem] max-w-2xl mx-auto mb-8 shadow-inner"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <FiFlag className="text-red-500 w-4 h-4" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Initial Incident Report</span>
+                  </div>
+                  <p className="text-slate-200 text-sm leading-relaxed font-medium">{selectedTicket.description}</p>
+                </motion.div>
 
-                  {/* Chat Messages */}
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl ${
-                          message.senderType === 'agent'
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
-                            : 'bg-white/10 backdrop-blur-sm text-blue-100 border border-white/20'
-                        }`}
-                      >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <p className={`text-xs mt-2 ${
-                          message.senderType === 'agent' ? 'text-blue-100' : 'text-blue-200'
+                {messages.map((msg, i) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, x: msg.senderType === 'agent' ? 20 : -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[85%] lg:max-w-[80%] ${msg.senderType === 'agent' ? 'flex flex-row-reverse' : 'flex'}`}>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 ${msg.senderType === 'agent' ? 'bg-blue-600/20 border-blue-600/30 ml-3' : 'bg-slate-800 border-slate-700 mr-3'
                         }`}>
-                          {message.senderName} • {formatTimestamp(message.createdAt)}
+                        {msg.senderType === 'agent' ? <FiUser className="w-4 h-4 text-blue-400" /> : <FiUser className="w-4 h-4 text-slate-400" />}
+                      </div>
+                      <div>
+                        <div className={`p-4 rounded-[1.5rem] shadow-sm ${msg.senderType === 'agent'
+                          ? 'bg-blue-600 text-white rounded-tr-none'
+                          : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                          }`}>
+                          <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
+                        </div>
+                        <p className={`text-[9px] font-black uppercase tracking-widest mt-2 ${msg.senderType === 'agent' ? 'text-right text-blue-500' : 'text-slate-600'}`}>
+                          {msg.senderName} • {msg.createdAt.toLocaleTimeString()}
                         </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </motion.div>
+                ))}
+              </div>
 
-                {/* Message Input */}
-                {selectedTicket.agentId === user?.uid && selectedTicket.status !== 'closed' && (
-                  <form onSubmit={handleSendMessage} className="p-6 border-t border-white/20">
-                    <div className="flex space-x-3">
+              {/* Input Area */}
+              {selectedTicket.assignedAgent === user.uid && selectedTicket.status !== 'closed' && (
+                <div className="p-4 lg:p-8 bg-slate-900/40 border-t border-slate-800">
+                  <form onSubmit={handleSendMessage} className="relative">
+                    <div className="absolute inset-0 bg-blue-600/5 blur-xl pointer-events-none"></div>
+                    <div className="relative flex gap-4 bg-slate-950 border border-slate-800 p-2 rounded-2xl shadow-inner group focus-within:border-blue-500/50 transition-all">
                       <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300"
-                        disabled={sendingMessage}
+                        placeholder="Encrypted reply to user..."
+                        className="flex-1 bg-transparent border-none outline-none text-white px-4 py-2 text-sm placeholder:text-slate-700 font-medium w-full min-w-0"
                       />
                       <button
                         type="submit"
                         disabled={!newMessage.trim() || sendingMessage}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="bg-blue-600 hover:bg-blue-500 text-white w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-blue-900/40 disabled:opacity-50 shrink-0"
                       >
-                        {sendingMessage ? (
-                          <FiRefreshCw className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <FiSend className="w-5 h-5" />
-                        )}
+                        {sendingMessage ? <FiRefreshCw className="animate-spin" /> : <FiSend />}
                       </button>
                     </div>
                   </form>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-12 text-center shadow-lg"
-              >
-                <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <FiMessageSquare className="w-8 h-8 text-blue-300" />
                 </div>
-                <p className="text-xl font-semibold text-white mb-2">Select a ticket to view details</p>
-                <p className="text-blue-200">Click on any ticket from the list to start managing it</p>
-              </motion.div>
-            )}
-          </div>
+              )}
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-20">
+              <FiMaximize2 className="w-24 h-24 mb-6 stroke-[1]" />
+              <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-white">Select Intercept</h2>
+              <p className="text-sm font-bold uppercase tracking-widest mt-2">Awaiting target selection from the left stream</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* ── Raise Ticket Modal ─────────────────────────────────────── */}
-      <AnimatePresence>
-        {showRaiseTicketModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowRaiseTicketModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-gradient-to-b from-blue-900 to-indigo-950 rounded-2xl shadow-2xl max-w-lg w-full border border-blue-700/30 overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-6 border-b border-blue-800/40">
-                <h3 className="text-2xl font-bold text-white">Raise New Support Ticket</h3>
-              </div>
-
-              <form onSubmit={handleRaiseTicketSubmit} className="p-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-2">Subject</label>
-                  <input
-                    type="text"
-                    name="subject"
-                    value={newTicket.subject}
-                    onChange={handleRaiseTicketChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white 
-                             placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Brief summary of the issue"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-2">Description</label>
-                  <textarea
-                    name="description"
-                    value={newTicket.description}
-                    onChange={handleRaiseTicketChange}
-                    rows={5}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white 
-                             placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    placeholder="Please describe your issue in detail..."
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-2">Priority</label>
-                  <select
-                    name="priority"
-                    value={newTicket.priority}
-                    onChange={handleRaiseTicketChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white 
-                             focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-
-                <div className="flex justify-end gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowRaiseTicketModal(false)}
-                    className="px-6 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg 
-                             shadow-lg shadow-blue-900/30 transition-all"
-                  >
-                    Submit Ticket
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

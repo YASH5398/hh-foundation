@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageCircle, User, Bot, Clock, Phone, Mail, Loader } from 'lucide-react';
+import { Send, MessageCircle, User, Bot, Clock, Phone, Mail, Loader, Image as ImageIcon, Smile, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../config/firebase';
+import { db, storage } from '../config/firebase'; // Ensure storage is exported from firebase config
 import { doc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, getDoc, updateDoc, where, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
+import EmojiPicker from 'emoji-picker-react';
 
 const LiveChat = () => {
   const { user } = useAuth();
@@ -19,9 +21,14 @@ const LiveChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [chatRequestId, setChatRequestId] = useState(null);
-  const [chatStatus, setChatStatus] = useState('waiting'); // waiting, connecting, connected
+  const [chatStatus, setChatStatus] = useState('waiting');
   const [assignedAgent, setAssignedAgent] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,7 +36,18 @@ const LiveChat = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isUploading]);
+
+  // Handle outside click for emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Listen for chat request status changes
   useEffect(() => {
@@ -43,10 +61,10 @@ const LiveChat = () => {
           setChatStatus('connected');
           setAssignedAgent({
             id: data.assignedAgentId,
-            name: data.assignedAgentName || 'Agent'
+            name: data.assignedAgentName || 'Agent',
+            photo: data.assignedAgentPhoto
           });
 
-          // Add system message
           const systemMessage = {
             id: Date.now(),
             type: 'system',
@@ -54,8 +72,6 @@ const LiveChat = () => {
             timestamp: new Date()
           };
           setMessages(prev => [...prev, systemMessage]);
-
-          // Start listening to the chat room
           startChatRoomListener(chatRequestId);
         }
       }
@@ -75,35 +91,82 @@ const LiveChat = () => {
         timestamp: doc.data().timestamp?.toDate() || new Date()
       }));
 
-      // Filter out messages from current user (we already have them)
       const agentMessages = chatMessages.filter(msg => msg.senderType === 'agent');
 
       setMessages(prev => {
-        // Remove old agent messages and add new ones
         const userMessages = prev.filter(msg => msg.senderType !== 'agent');
-        return [...userMessages, ...agentMessages];
+        return [...userMessages, ...agentMessages].sort((a, b) => a.timestamp - b.timestamp);
       });
     });
 
     return unsubscribe;
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user?.uid) return;
+  // Image Upload Handler
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Upload to Firebase Storage
+      const storageRef = ref(storage, `chat-images/${user.uid}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const imageUrl = await getDownloadURL(storageRef);
+
+      // 2. Send Message with Image URL
+      await handleSendMessage(null, imageUrl);
+
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleEmojiClick = (emojiObject) => {
+    setNewMessage(prev => prev + emojiObject.emoji);
+  };
+
+  const handleSendMessage = async (e, imageUrl = null) => {
+    if (e) e.preventDefault();
+    if ((!newMessage.trim() && !imageUrl) || !user?.uid) return;
 
     const messageText = newMessage.trim();
-    setNewMessage('');
+    if (!imageUrl) setNewMessage(''); // Only clear text input if it was a text message
+    setShowEmojiPicker(false);
 
-    // If this is the first message, create a chat request
+    // Initial Chat Request Logic (Only supports text for now to keep simple)
     if (chatStatus === 'waiting' && !chatRequestId) {
+      if (imageUrl) {
+        toast.error("Please wait for an agent to connect before sending images.");
+        return;
+      }
       await createChatRequest(messageText);
       return;
     }
 
-    // If connected to agent, send message to chat room
+    // Connected Logic
     if (chatStatus === 'connected' && chatRequestId) {
-      await sendMessageToChatRoom(messageText);
+      await sendMessageToChatRoom(messageText, imageUrl);
+    } else if (chatStatus === 'connecting') {
+      // Queueing logic could be added here, but for now simple toast
+      toast.error('Please wait for agent connection...');
     }
   };
 
@@ -124,7 +187,6 @@ const LiveChat = () => {
       setChatRequestId(docRef.id);
       setChatStatus('connecting');
 
-      // Add user message to local state
       const userMessage = {
         id: Date.now(),
         type: 'user',
@@ -135,7 +197,6 @@ const LiveChat = () => {
       };
       setMessages(prev => [...prev, userMessage]);
 
-      // Add connecting message
       const connectingMessage = {
         id: Date.now() + 1,
         type: 'system',
@@ -150,25 +211,27 @@ const LiveChat = () => {
     }
   };
 
-  const sendMessageToChatRoom = async (messageText) => {
+  const sendMessageToChatRoom = async (messageText, imageUrl = null) => {
     try {
       const messageData = {
         senderUid: user.uid,
         senderType: 'user',
         senderName: user.displayName || user.email,
         text: messageText,
+        imageUrl: imageUrl, // Add image URL to document
         timestamp: serverTimestamp()
       };
 
       await addDoc(collection(db, 'agentChats', chatRequestId, 'messages'), messageData);
 
-      // Add to local messages
+      // Optimistic Update
       const userMessage = {
         id: Date.now(),
         type: 'user',
         senderType: 'user',
         senderName: user.displayName || user.email,
         message: messageText,
+        imageUrl: imageUrl,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, userMessage]);
@@ -189,7 +252,6 @@ const LiveChat = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pt-16">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 shadow-sm sticky top-16 z-10">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center">
@@ -211,18 +273,8 @@ const LiveChat = () => {
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-12">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
-              >
-                <MessageCircle className="w-8 h-8 text-white" />
-              </motion.div>
+              {/* Welcome UI */}
               <h3 className="text-xl font-bold text-gray-800 mb-2">Welcome to Live Support!</h3>
-              <p className="text-gray-600 text-center leading-relaxed max-w-sm mx-auto">
-                Start a conversation and our support team will assist you with any questions.
-              </p>
             </div>
           )}
 
@@ -253,16 +305,17 @@ const LiveChat = () => {
                   layout
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.05,
-                    layout: { duration: 0.2 }
-                  }}
                   className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                      {isAgent ? (
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden">
+                      {isAgent && (assignedAgent?.photo || message.senderPhoto) ? (
+                        <img
+                          src={message.senderPhoto || assignedAgent?.photo}
+                          alt="Agent"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : isAgent ? (
                         <User className="w-4 h-4 text-white" />
                       ) : (
                         <Bot className="w-4 h-4 text-white" />
@@ -270,17 +323,32 @@ const LiveChat = () => {
                     </div>
                   )}
 
-                  <div className={`max-w-[75%] sm:max-w-[60%] px-4 py-3 rounded-2xl shadow-sm ${
-                    isUser
-                      ? 'bg-blue-500 text-white rounded-br-md'
-                      : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'
-                  }`}>
-                    <p className="text-sm sm:text-base leading-relaxed break-words">
-                      {message.message || message.text}
-                    </p>
-                    <p className={`text-xs mt-2 ${
-                      isUser ? 'text-blue-100' : 'text-gray-500'
+                  <div className={`max-w-[75%] sm:max-w-[60%] px-4 py-3 rounded-2xl shadow-sm ${isUser
+                    ? 'bg-blue-500 text-white rounded-br-md'
+                    : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'
                     }`}>
+
+                    {/* Image Render */}
+                    {message.imageUrl && (
+                      <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
+                        <img
+                          src={message.imageUrl}
+                          alt="Shared attachment"
+                          className="max-w-full h-auto object-cover max-h-64"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+
+                    {/* Text Render */}
+                    {(message.message || message.text) && (
+                      <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                        {message.message || message.text}
+                      </p>
+                    )}
+
+                    <p className={`text-xs mt-2 ${isUser ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
                       {formatTime(message.timestamp)}
                     </p>
                   </div>
@@ -295,28 +363,14 @@ const LiveChat = () => {
             })}
           </AnimatePresence>
 
-          {/* Typing Indicator */}
-          <AnimatePresence>
-            {isTyping && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-end gap-3 justify-start"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Uploading Indicator */}
+          {isUploading && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-end pr-12">
+              <div className="bg-gray-100 px-4 py-2 rounded-2xl rounded-br-sm text-xs text-gray-500 flex items-center gap-2">
+                <Loader className="w-3 h-3 animate-spin" /> Uploading image...
+              </div>
+            </motion.div>
+          )}
 
           <div ref={messagesEndRef} />
         </div>
@@ -324,14 +378,62 @@ const LiveChat = () => {
 
       {/* Sticky Input Bar */}
       <div className="bg-white border-t border-gray-200 px-4 py-3 sticky bottom-0 z-10 shadow-lg">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto relative">
+
+          {/* Emoji Picker Popover */}
+          <AnimatePresence>
+            {showEmojiPicker && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                className="absolute bottom-full left-0 mb-4 z-50 shadow-2xl rounded-xl"
+                ref={emojiPickerRef}
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  width={300}
+                  height={400}
+                  searchDisabled={false}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-end gap-3">
-            <div className="flex-1 bg-gray-50 rounded-3xl border border-gray-200 px-4 py-3 shadow-sm">
+            {/* Action Buttons */}
+            <div className="flex gap-2 mb-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                className="hidden"
+                disabled={chatStatus !== 'connected' || isUploading}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={chatStatus !== 'connected' || isUploading}
+                className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all disabled:opacity-50"
+                title="Upload Image"
+              >
+                <ImageIcon className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className={`p-2 rounded-full transition-all ${showEmojiPicker ? 'text-blue-500 bg-blue-50' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
+                title="Insert Emoji"
+              >
+                <Smile className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 bg-gray-50 rounded-3xl border border-gray-200 px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 transition-all">
               <textarea
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="w-full resize-none outline-none text-gray-800 placeholder-gray-500 bg-transparent max-h-20"
+                placeholder={chatStatus === 'connected' ? "Type a message..." : "Type to start chat..."}
+                className="w-full resize-none outline-none text-gray-800 placeholder-gray-500 bg-transparent max-h-32 min-h-[24px]"
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -345,11 +447,11 @@ const LiveChat = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim()}
+              onClick={(e) => handleSendMessage(e)}
+              disabled={(!newMessage.trim() && !isUploading)}
               className="w-12 h-12 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0"
             >
-              <Send className="w-5 h-5 text-white" />
+              {isUploading ? <Loader className="w-5 h-5 text-white animate-spin" /> : <Send className="w-5 h-5 text-white" />}
             </motion.button>
           </div>
         </div>

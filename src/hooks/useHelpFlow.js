@@ -301,14 +301,13 @@ export const useReceiveHelpFlow = () => {
 
     try {
       const result = await requestPayment(helpId);
-
-      if (result.success) {
-        toast.success('Payment request sent to sender!');
-      }
+      // Success handled by UI component for instant feedback
+      return result;
     } catch (err) {
       console.error('Error requesting payment:', err);
       setError(err.message || 'Failed to request payment. Please try again.');
       toast.error('Failed to request payment. Please try again.');
+      throw err;
     } finally {
       setConfirmingId(null);
     }

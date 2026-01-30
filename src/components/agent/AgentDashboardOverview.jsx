@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FiFileText, FiDollarSign, FiShield, FiUsers, FiClock, 
+import {
+  FiFileText, FiDollarSign, FiShield, FiUsers, FiClock,
   FiTrendingUp, FiAlertTriangle, FiCheckCircle, FiMessageSquare,
-  FiRefreshCw
+  FiRefreshCw, FiArrowRight, FiZap
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { collection, query, where, onSnapshot, orderBy, limit, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { toast } from 'react-hot-toast';
@@ -41,7 +41,7 @@ const AgentDashboardOverview = () => {
       })
     );
 
-    // Assigned Tickets to current agent
+    // Assigned Tickets
     const assignedTicketsQuery = query(
       collection(db, 'supportTickets'),
       where('agentId', '==', currentUser.uid),
@@ -53,7 +53,7 @@ const AgentDashboardOverview = () => {
       })
     );
 
-    // Pending Payment Verifications
+    // Pending Payments
     const pendingPaymentsQuery = query(
       collection(db, 'sendHelp'),
       where('status', '==', 'Pending')
@@ -64,7 +64,7 @@ const AgentDashboardOverview = () => {
       })
     );
 
-    // Agent Escalation Requests
+    // Escalations
     const escalationsQuery = query(
       collection(db, 'agentRequests'),
       where('agentId', '==', currentUser.uid),
@@ -87,14 +87,14 @@ const AgentDashboardOverview = () => {
       })
     );
 
-    // Tickets resolved today by this agent
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Resolved today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
     const resolvedTodayQuery = query(
       collection(db, 'supportTickets'),
       where('agentId', '==', currentUser.uid),
       where('status', '==', 'resolved'),
-      where('updatedAt', '>=', today)
+      where('updatedAt', '>=', startOfDay)
     );
     unsubscribers.push(
       onSnapshot(resolvedTodayQuery, (snapshot) => {
@@ -102,50 +102,21 @@ const AgentDashboardOverview = () => {
       })
     );
 
-    // Recent Activity - Recent tickets and payments
+    // Activity Feed
     const recentTicketsQuery = query(
       collection(db, 'supportTickets'),
       orderBy('createdAt', 'desc'),
       limit(10)
     );
     unsubscribers.push(
-      onSnapshot(recentTicketsQuery, (ticketsSnapshot) => {
-        const tickets = ticketsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'ticket',
-          title: doc.data().subject || 'Support Ticket',
-          status: doc.data().status,
-          timestamp: doc.data().createdAt,
-          priority: doc.data().priority,
-          userId: doc.data().userId
-        }));
-
-        // Get recent payments
-        const recentPaymentsQuery = query(
-          collection(db, 'sendHelp'),
-          orderBy('createdAt', 'desc'),
-          limit(5)
-        );
-        
-        onSnapshot(recentPaymentsQuery, (paymentsSnapshot) => {
-          const payments = paymentsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            type: 'payment',
-            title: `Payment Verification - ₹${doc.data().amount || 0}`,
-            status: doc.data().status,
-            timestamp: doc.data().createdAt,
-            userId: doc.data().senderId
-          }));
-
-          // Combine and sort by timestamp
+      onSnapshot(recentTicketsQuery, (ts) => {
+        const tickets = ts.docs.map(doc => ({ id: doc.id, type: 'ticket', ...doc.data() }));
+        const recentPaymentsQuery = query(collection(db, 'sendHelp'), orderBy('createdAt', 'desc'), limit(5));
+        onSnapshot(recentPaymentsQuery, (ps) => {
+          const payments = ps.docs.map(doc => ({ id: doc.id, type: 'payment', ...doc.data() }));
           const combined = [...tickets, ...payments]
-            .sort((a, b) => {
-              const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
-              const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
-              return bTime - aTime;
-            })
+            .sort((a, b) => (b.createdAt?.toDate ? b.createdAt.toDate() : 0) - (a.createdAt?.toDate ? a.createdAt.toDate() : 0))
             .slice(0, 8);
-
           setRecentActivity(combined);
           setLoading(false);
         });
@@ -153,315 +124,259 @@ const AgentDashboardOverview = () => {
     );
 
     setLastRefresh(new Date());
-
-    return () => {
-      unsubscribers.forEach(unsubscribe => unsubscribe());
-    };
+    return () => unsubscribers.forEach(u => u());
   }, [currentUser?.uid]);
 
-  const refreshData = () => {
+  const refreshAction = () => {
     setLastRefresh(new Date());
-    toast.success('Data refreshed');
-  };
-
-  const getStatusColor = (status, type) => {
-    if (type === 'ticket') {
-      switch (status) {
-        case 'pending': return 'text-orange-600 bg-orange-100';
-        case 'in-progress': return 'text-blue-600 bg-blue-100';
-        case 'resolved': return 'text-green-600 bg-green-100';
-        default: return 'text-gray-600 bg-gray-100';
-      }
-    } else {
-      switch (status) {
-        case 'Pending': return 'text-yellow-600 bg-yellow-100';
-        case 'Confirmed': return 'text-green-600 bg-green-100';
-        case 'Rejected': return 'text-red-600 bg-red-100';
-        default: return 'text-gray-600 bg-gray-100';
-      }
-    }
-  };
-
-  const getActivityIcon = (type, status) => {
-    if (type === 'ticket') {
-      return status === 'resolved' ? FiCheckCircle : FiFileText;
-    }
-    return FiDollarSign;
-  };
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'Unknown';
-    
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return date.toLocaleDateString();
-    } catch (error) {
-      return 'Unknown';
-    }
+    toast.success('System Status Updated');
   };
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="h-16 bg-gray-200 rounded"></div>
-              </div>
-            ))}
-          </div>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="h-10 bg-slate-800/50 rounded-xl w-64"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-800/20 rounded-3xl border border-slate-800 animate-pulse"></div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="h-96 bg-slate-800/20 rounded-3xl border border-slate-800 animate-pulse"></div>
+          <div className="h-96 bg-slate-800/20 rounded-3xl border border-slate-800 animate-pulse"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+    <div className="space-y-10">
+      {/* Dynamic Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agent Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening today.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <FiZap className="w-5 h-5 text-blue-400" />
+            </div>
+            <span className="text-blue-400 text-sm font-bold uppercase tracking-widest">Real-time Operations</span>
+          </div>
+          <h2 className="text-4xl font-black text-white">Console Overview</h2>
         </div>
-        <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-          <span className="text-sm text-gray-500">
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </span>
+
+        <div className="flex items-center gap-4 bg-slate-900/40 p-1.5 pl-4 rounded-2xl border border-slate-800 shadow-inner">
+          <span className="text-slate-500 text-xs font-mono">LATEST UPDATE: {lastRefresh.toLocaleTimeString()}</span>
           <button
-            onClick={refreshData}
-            className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            onClick={refreshAction}
+            className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/20"
           >
-            <FiRefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            <FiRefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
-      
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+
+      {/* Hero Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        <StatCard
+          label="Awaiting Support"
+          value={stats.pendingTickets}
+          icon={FiFileText}
+          color="amber"
+          delay={0.1}
+        />
+        <StatCard
+          label="My Active Tickets"
+          value={stats.assignedTickets}
+          icon={FiZap}
+          color="blue"
+          delay={0.2}
+        />
+        <StatCard
+          label="Pending Payments"
+          value={stats.pendingPayments}
+          icon={FiDollarSign}
+          color="emerald"
+          delay={0.3}
+        />
+        <StatCard
+          label="My Escalations"
+          value={stats.escalations}
+          icon={FiAlertTriangle}
+          color="rose"
+          delay={0.4}
+        />
+        <StatCard
+          label="Active Users"
+          value={stats.activeUsers}
+          icon={FiUsers}
+          color="indigo"
+          delay={0.5}
+        />
+        <StatCard
+          label="Resolved Today"
+          value={stats.resolvedToday}
+          icon={FiCheckCircle}
+          color="emerald"
+          delay={0.6}
+        />
+      </div>
+
+      {/* Content Layers */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        {/* Quick Command Center */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.7 }}
+          className="xl:col-span-5 bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] border border-slate-800/50 p-8 shadow-2xl"
         >
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <FiFileText className="w-6 h-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending Tickets</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingTickets}</p>
-            </div>
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-bold text-white tracking-tight">Active Channels</h3>
+            <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-3 py-1 rounded-full uppercase">Priority Routing</span>
+          </div>
+
+          <div className="space-y-4">
+            <ActionRow
+              to="/agent-dashboard/support-tickets"
+              icon={FiFileText}
+              label="Support Queue"
+              sub={stats.pendingTickets > 0 ? `${stats.pendingTickets} tickets need action` : "Queue is clear"}
+              count={stats.pendingTickets}
+              color="amber"
+            />
+            <ActionRow
+              to="/agent-dashboard/payment-verification"
+              icon={FiDollarSign}
+              label="Ledger Audit"
+              sub="Verify incoming help requests"
+              count={stats.pendingPayments}
+              color="emerald"
+            />
+            <ActionRow
+              to="/agent-dashboard/communication"
+              icon={FiMessageSquare}
+              label="Global Comms"
+              sub="Internal agent chat channels"
+              color="indigo"
+            />
           </div>
         </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+
+        {/* Activity Stream */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8 }}
+          className="xl:col-span-7 bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] border border-slate-800/50 p-8 shadow-2xl"
         >
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FiClock className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">My Assigned</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.assignedTickets}</p>
-            </div>
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-bold text-white tracking-tight">Event Horizon</h3>
+            <FiTrendingUp className="text-slate-500 w-5 h-5" />
           </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <FiDollarSign className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Payment Verifications</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingPayments}</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <FiShield className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">My Escalations</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.escalations}</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <FiUsers className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Users</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeUsers}</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <FiTrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Resolved Today</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.resolvedToday}</p>
-            </div>
+
+          <div className="space-y-4 max-h-[460px] overflow-y-auto pr-4 custom-scrollbar">
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, idx) => (
+                <ActivityItem key={activity.id + idx} activity={activity} />
+              ))
+            ) : (
+              <div className="py-20 text-center">
+                <div className="w-16 h-16 bg-slate-800/40 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-slate-700/50">
+                  <FiClock className="w-6 h-6 text-slate-500" />
+                </div>
+                <p className="text-slate-500 font-medium">Monitoring status: Idle</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
-      
-      {/* Quick Actions and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Quick Actions */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <Link
-              to="/agent-dashboard/support-tickets"
-              className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors group"
-            >
-              <FiFileText className="w-5 h-5 text-blue-600 mr-3" />
-              <div className="flex-1">
-                <span className="text-blue-700 font-medium">View Support Tickets</span>
-                {stats.assignedTickets > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded-full">
-                    {stats.assignedTickets} assigned
-                  </span>
-                )}
-              </div>
-            </Link>
-            
-            <Link
-              to="/agent-dashboard/payment-verification"
-              className="flex items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors group"
-            >
-              <FiDollarSign className="w-5 h-5 text-green-600 mr-3" />
-              <div className="flex-1">
-                <span className="text-green-700 font-medium">Payment Verification</span>
-                {stats.pendingPayments > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-green-200 text-green-800 rounded-full">
-                    {stats.pendingPayments} pending
-                  </span>
-                )}
-              </div>
-            </Link>
-            
-            <Link
-              to="/agent-dashboard/communication"
-              className="flex items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors group"
-            >
-              <FiMessageSquare className="w-5 h-5 text-purple-600 mr-3" />
-              <span className="text-purple-700 font-medium">Open Communication</span>
-            </Link>
-            
-            {stats.escalations > 0 && (
-              <Link
-                to="/agent-dashboard/escalations"
-                className="flex items-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors group"
-              >
-                <FiShield className="w-5 h-5 text-yellow-600 mr-3" />
-                <div className="flex-1">
-                  <span className="text-yellow-700 font-medium">View Escalations</span>
-                  <span className="ml-2 px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded-full">
-                    {stats.escalations} pending
-                  </span>
-                </div>
-              </Link>
-            )}
-          </div>
-        </motion.div>
-        
-        {/* Recent Activity */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.8 }}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {recentActivity.length > 0 ? (
-              recentActivity.map((activity, index) => {
-                const Icon = getActivityIcon(activity.type, activity.status);
-                return (
-                  <div key={`${activity.type}-${activity.id}-${index}`} className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="p-2 bg-white rounded-lg shadow-sm mr-3">
-                      <Icon className="w-4 h-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {activity.title}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(activity.status, activity.type)}`}>
-                          {activity.status}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatTimestamp(activity.timestamp)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
-                <FiClock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No recent activity</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
+    </div>
+  );
+};
+
+/* --- Sub-Components for Cleanliness --- */
+
+const StatCard = ({ label, value, icon: Icon, color, delay }) => {
+  const colors = {
+    blue: 'from-blue-600/20 to-blue-400/5 text-blue-400 border-blue-500/20',
+    amber: 'from-amber-600/20 to-amber-400/5 text-amber-400 border-amber-500/20',
+    emerald: 'from-emerald-600/20 to-emerald-400/5 text-emerald-400 border-emerald-500/20',
+    rose: 'from-rose-600/20 to-rose-400/5 text-rose-400 border-rose-500/20',
+    indigo: 'from-indigo-600/20 to-indigo-400/5 text-indigo-400 border-indigo-500/20',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      whileHover={{ y: -5 }}
+      className={`relative overflow-hidden p-6 rounded-[2rem] border bg-gradient-to-br ${colors[color]} group transition-all duration-300`}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-2.5 rounded-xl bg-current/10 border border-current/20`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      <p className="text-3xl font-black text-white mb-1 tabular-nums">{value}</p>
+      <p className="text-slate-400 text-xs font-bold uppercase tracking-wide">{label}</p>
+    </motion.div>
+  );
+};
+
+const ActionRow = ({ to, icon: Icon, label, sub, count, color }) => {
+  const c = {
+    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  };
+
+  return (
+    <Link to={to} className="group flex items-center p-5 bg-slate-800/30 rounded-3xl border border-slate-700/30 hover:bg-slate-800/60 hover:border-slate-600/50 transition-all">
+      <div className={`p-3 rounded-2xl mr-5 ${c[color]} transition-transform group-hover:scale-110`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <p className="text-white font-bold group-hover:text-blue-400 transition-colors">{label}</p>
+        <p className="text-slate-500 text-xs mt-0.5">{sub}</p>
+      </div>
+      {count > 0 ? (
+        <span className="bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg shadow-blue-600/20">
+          {count}
+        </span>
+      ) : (
+        <FiArrowRight className="text-slate-700 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
+      )}
+    </Link>
+  );
+};
+
+const ActivityItem = ({ activity }) => {
+  const isTicket = activity.type === 'ticket';
+  const timestamp = activity.createdAt?.toDate ? activity.createdAt.toDate() : new Date();
+
+  return (
+    <div className="group flex items-center p-4 rounded-[1.5rem] bg-slate-900/30 hover:bg-slate-800/40 border border-transparent hover:border-slate-700/30 transition-all">
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-4 shrink-0 shadow-lg ${isTicket ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'
+        }`}>
+        {isTicket ? <FiFileText className="w-6 h-6" /> : <FiDollarSign className="w-6 h-6" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-bold text-slate-200 truncate pr-4">
+            {isTicket ? (activity.subject || "Support Request") : `Payment Confirmation: ₹${activity.amount || 0}`}
+          </p>
+          <span className="text-[10px] font-mono text-slate-600 shrink-0 uppercase tracking-tighter">
+            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${activity.status === 'pending' || activity.status === 'Pending' ? 'text-amber-400 bg-amber-400/5 border-amber-400/20' : 'text-emerald-400 bg-emerald-400/5 border-emerald-400/20'
+            }`}>
+            {activity.status}
+          </span>
+          <span className="text-[10px] text-slate-500 font-medium">#{activity.id?.slice(-6).toUpperCase()}</span>
+        </div>
       </div>
     </div>
   );

@@ -63,7 +63,7 @@ import SupportTickets from './pages/agent/SupportTickets';
 import PaymentVerification from './pages/agent/PaymentVerification';
 import Communication from './pages/agent/Communication';
 import Analytics from './pages/agent/Analytics';
-import KnowledgeBase from './pages/agent/KnowledgeBase';
+// KnowledgeBase import removed
 import DebugTools from './pages/agent/DebugTools';
 import AgentChatPage from './pages/agent/AgentChat';
 import EpinChecker from './pages/agent/EpinChecker';
@@ -188,7 +188,8 @@ export const router = createBrowserRouter([
       { path: 'safety-hub', element: <UserTransactionSafetyHub /> },
       { path: 'users', element: <UserManager /> },
       { path: 'epin-requests', element: <EpinRequestManager /> },
-      { path: 'epin-manager',
+      {
+        path: 'epin-manager',
         element: <EPinManagement />
       },
       { path: 'help-manager', element: <HelpManager /> },
@@ -222,7 +223,9 @@ export const router = createBrowserRouter([
       { path: 'payment-verification', element: <PaymentVerification /> },
       { path: 'communication', element: <Communication /> },
       { path: 'analytics', element: <Analytics /> },
-      { path: 'knowledge-base', element: <KnowledgeBase /> },
+      { path: 'analytics', element: <Analytics /> },
+      // Knowledge base removed
+      { path: 'debug-tools', element: <DebugTools /> },
       { path: 'debug-tools', element: <DebugTools /> },
       { path: 'agent-chat', element: <AgentChatPage /> },
       { path: 'epin-checker', element: <EpinChecker /> },

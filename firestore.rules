@@ -7,58 +7,99 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
     function isAdmin() {
       return isAuth()
+        && isEmailVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isAgent() {
       return isAuth()
+        && isEmailVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
     }
 
     /* ================= PUBLIC ================= */
-    match /faqs/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+    match /faqs/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /terms/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /rules/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /settings/{id} { allow read: if true; allow write: if isAdmin(); }
+    
+    // Ensure testimonials are readable (often missed in reverts)
+    match /testimonials/{id} { 
+      allow read, list: if true; 
+      allow create: if isAuth(); 
+      allow update, delete: if isAdmin(); 
     }
 
-    match /terms/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /rules/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /settings/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    /* ================= USERS (FIXED) ================= */
+    /* ================= USERS ================= */
     match /users/{uid} {
-
-      // ✅ SIGNUP (CRITICAL FIX)
       allow create: if isAuth() && request.auth.uid == uid;
-
-      // ✅ READ + LIST (needed after signup)
       allow read, list: if isAuth();
-
-      // ✅ UPDATE
-      allow update: if isAuth()
-        && (request.auth.uid == uid || isAdmin());
-
+      // Added isAgent() to allow Agent Dashboard modifications
+      allow update: if isAuth() && (request.auth.uid == uid || isAdmin() || isAgent());
       allow delete: if false;
+    }
+
+    /* ================= AGENT SPECIFIC ================= */
+    
+    // Agent Chat Requests
+    match /agentChatRequests/{id} {
+      allow read, list: if isAdmin() || isAgent();
+      allow create: if isAuth(); 
+      allow update: if isAdmin() || isAgent();
+    }
+
+    // Agent Requests / Escalations (Restored)
+    match /agentRequests/{id} {
+      allow read, list: if isAdmin() || isAgent() || (isAuth() && resource.data.agentId == request.auth.uid);
+      allow create: if isAuth();
+      allow update: if isAdmin() || isAgent();
+    }
+
+    // Agent Chats (Restored - Critical for Dashboard)
+    match /agentChats/{chatId} {
+        allow read, list, get: if isAdmin() || isAgent() || (isAuth() && resource.data.userId == request.auth.uid);
+        allow create, update: if isAdmin() || isAgent();
+        
+        match /messages/{messageId} {
+            allow read, list: if isAdmin() || isAgent() || (isAuth() && get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId == request.auth.uid);
+            allow create: if isAdmin() || isAgent() || (isAuth() && get(/databases/$(database)/documents/agentChats/$(chatId)).data.userId == request.auth.uid);
+        }
+    }
+
+    // Support Tickets
+    match /supportTickets/{id} {
+      allow read, list: if isAdmin() 
+        || isAgent()
+        || (isAuth() && resource.data.userId == request.auth.uid);
+
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAdmin() 
+        || isAgent()
+        || (isAuth() && resource.data.userId == request.auth.uid);
+
+      match /messages/{messageId} {
+        allow read, list: if isAdmin()
+          || isAgent()
+          || (isAuth() && get(/databases/$(database)/documents/supportTickets/$(id)).data.userId == request.auth.uid);
+        
+        allow create: if isAdmin()
+          || isAgent()
+          || (isAuth() && get(/databases/$(database)/documents/supportTickets/$(id)).data.userId == request.auth.uid);
+      }
     }
 
     /* ================= LEADERBOARD ================= */
     match /leaderboard/{id} {
-      allow read, list: if isAuth();
+      allow read, list: if isAuth() || isAgent();
       allow write: if isAdmin();
     }
 
@@ -67,136 +108,116 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    /* ================= APP CONFIG ================= */
-    match /appSettings/{id} {
-      allow read, list: if isAuth();
-      allow write: if isAdmin();
-    }
-
-    match /appConfig/{id} {
-      allow read, list: if isAuth();
-      allow write: if isAdmin();
-    }
-
-    match /tickerMessages/{id} {
-      allow read, list: if isAuth();
-      allow write: if isAdmin();
-    }
+    /* ================= APP CONFIG / SYSTEM ================= */
+    match /appSettings/{id} { allow read, list: if isAuth(); allow write: if isAdmin(); }
+    match /appConfig/{id} { allow read, list: if isAuth(); allow write: if isAdmin(); }
+    match /tickerMessages/{id} { allow read, list: if isAuth(); allow write: if isAdmin(); }
+    match /systemConfig/{id} { allow read, list: if isAuth(); allow write: if isAdmin(); }
 
     /* ================= NOTIFICATIONS ================= */
     match /notifications/{id} {
+      // Added isAgent() to allow dashboard monitoring
       allow read, list: if isAuth()
-        && resource.data.uid == request.auth.uid;
+        && (resource.data.uid == request.auth.uid || isAdmin() || isAgent()); 
       allow write: if isAdmin();
     }
 
     /* ================= SEND HELP ================= */
     match /sendHelp/{id} {
+      // Added isAgent()
       allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
-            || resource.data.receiverUid == request.auth.uid);
+            || resource.data.receiverUid == request.auth.uid
+            || isAdmin()
+            || isAgent());
       
-      // Allow receiver to update payment request fields
+      // User Logic
       allow update: if isAuth()
         && request.auth.uid == resource.data.receiverUid
         && (request.resource.data.keys().hasOnly(['paymentRequested', 'lastPaymentRequestAt'])
             || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentRequested', 'lastPaymentRequestAt']));
       
-      // Allow sender to reset payment requested flag when payment is done
       allow update: if isAuth()
         && request.auth.uid == resource.data.senderUid
         && request.resource.data.keys().hasOnly(['paymentRequested'])
         && request.resource.data.paymentRequested == false;
       
+      // Agent/Admin Logic (Verification)
+      allow update: if (isAdmin() || isAgent()) 
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'verifiedBy', 'verifiedAt', 'updatedAt']);
+
       allow write: if isAdmin();
     }
 
     /* ================= RECEIVE HELP ================= */
     match /receiveHelp/{id} {
+      // Added isAgent()
       allow read, list: if isAuth()
         && (resource.data.senderUid == request.auth.uid
-            || resource.data.receiverUid == request.auth.uid);
+            || resource.data.receiverUid == request.auth.uid
+            || isAdmin()
+            || isAgent());
       
-      // Allow receiver to update payment request fields
+      // User Logic
       allow update: if isAuth()
         && request.auth.uid == resource.data.receiverUid
         && (request.resource.data.keys().hasOnly(['paymentRequested', 'lastPaymentRequestAt'])
             || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentRequested', 'lastPaymentRequestAt']));
       
-      // Allow sender to reset payment requested flag when payment is done
       allow update: if isAuth()
         && request.auth.uid == resource.data.senderUid
         && request.resource.data.keys().hasOnly(['paymentRequested'])
         && request.resource.data.paymentRequested == false;
+
+      // Agent/Admin Logic (Verification)
+      allow update: if (isAdmin() || isAgent()) 
+         && request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'verifiedBy', 'verifiedAt', 'updatedAt']);
       
       allow write: if isAdmin();
     }
 
-    /* ================= CHAT ================= */
+    /* ================= CHAT (Bot) ================= */
     match /chatbotChats/{uid} {
-      allow read, create, update: if isAuth()
-        && request.auth.uid == uid;
-
+      allow read, create, update: if isAuth() && request.auth.uid == uid;
       match /messages/{msgId} {
-        allow read, create: if isAuth()
-          && request.auth.uid == uid;
+        allow read, create: if isAuth() && request.auth.uid == uid;
       }
     }
 
-    /* ================= CHATS ================= */
+    /* ================= CHATS (P2P + Support) ================= */
     match /chats/{chatId} {
-      // CREATE: Allow if user is in participants array
-      allow create: if isAuth()
-        && request.auth.uid in request.resource.data.participants;
+      allow create: if isAuth() && request.auth.uid in request.resource.data.participants;
       
-      // READ/UPDATE: Allow if user is in participants array
       allow read, get, update: if isAuth()
-        && request.auth.uid in resource.data.participants;
+        && (request.auth.uid in resource.data.participants || isAgent() || isAdmin());
 
-      // Messages subcollection
       match /messages/{messageId} {
-        // READ: Allow if user is in parent chat participants
         allow read, list: if isAuth()
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+          && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAgent() || isAdmin());
         
-        // CREATE: Allow if user is the sender
         allow create: if isAuth()
-          && request.auth.uid == request.resource.data.senderUid;
+          && (request.auth.uid == request.resource.data.senderUid || isAgent() || isAdmin());
         
-        // UPDATE: Allow if user is participant (for status updates)
         allow update: if isAuth()
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+          && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAgent() || isAdmin());
       }
 
-      // Typing subcollection
       match /typing/{userId} {
-        // READ: Allow if user is participant
         allow read: if isAuth()
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        
-        // WRITE: Allow if user is writing their own status
-        allow write: if isAuth()
-          && request.auth.uid == userId;
+          && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAgent() || isAdmin());
+        allow write: if isAuth() && request.auth.uid == userId;
       }
     }
 
     /* ================= E-PIN ================= */
     match /epinRequests/{id} {
-      allow create: if isAuth()
-        && request.resource.data.userId == request.auth.uid;
-
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow read, list: if isAuth()
-        && resource.data.userId == request.auth.uid;
+        && (resource.data.userId == request.auth.uid || isAgent() || isAdmin());
     }
 
     match /epins/{id} {
-      allow read, list: if isAuth();
-      allow write: if isAdmin();
-    }
-
-    /* ================= SYSTEM ================= */
-    match /systemConfig/{id} {
-      allow read, list: if isAuth();
+      allow read, list: if isAuth() || isAgent() || isAdmin(); 
       allow write: if isAdmin();
     }
 

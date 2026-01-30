@@ -53,7 +53,9 @@ function ReceiveHelpRefactored() {
   const [selectedHelpId, setSelectedHelpId] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedCancelHelp, setSelectedCancelHelp] = useState(null);
-  const [requestCooldowns, setRequestCooldowns] = useState({});
+  const [optimisticCooldowns, setOptimisticCooldowns] = useState({});
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [fullscreenImage, setFullscreenImage] = useState(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserHelp, setSelectedUserHelp] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -80,7 +82,7 @@ function ReceiveHelpRefactored() {
 
   const filteredReceiveHelps = useMemo(() => {
     if (!receiveHelps) return [];
-    
+
     return receiveHelps.filter(h => {
       const s = normalizeStatus(h.status);
       switch (statusFilter) {
@@ -122,69 +124,69 @@ function ReceiveHelpRefactored() {
   };
 
   useEffect(() => {
-    if (!user?.uid) return;
-    
-    const loadCooldowns = async () => {
-      try {
-        const cooldownsFromStorage = JSON.parse(localStorage.getItem('paymentRequestCooldowns') || '{}');
-        setRequestCooldowns(cooldownsFromStorage);
-      } catch (error) {
-        console.error('Error loading cooldowns:', error);
+    // Timer for countdown updates
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getCooldownStatus = (help) => {
+    if (!help) return { active: false, remaining: 0 };
+
+    let lastRequestTime = 0;
+
+    // Check optimistic state for instant feedback
+    if (optimisticCooldowns[help.id]) {
+      lastRequestTime = optimisticCooldowns[help.id];
+    } else if (help.lastPaymentRequestAt) {
+      // Handle Firestore Timestamp or Date or millis
+      if (typeof help.lastPaymentRequestAt.toDate === 'function') {
+        lastRequestTime = help.lastPaymentRequestAt.toDate().getTime();
+      } else if (help.lastPaymentRequestAt instanceof Date) {
+        lastRequestTime = help.lastPaymentRequestAt.getTime();
+      } else {
+        lastRequestTime = Number(help.lastPaymentRequestAt) || 0;
       }
+    }
+
+    if (!lastRequestTime) return { active: false, remaining: 0 };
+
+    const COOLDOWN_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+    const elapsed = currentTime - lastRequestTime;
+    const remaining = COOLDOWN_DURATION - elapsed;
+
+    return {
+      active: remaining > 0,
+      remaining: Math.max(0, remaining)
     };
-    
-    loadCooldowns();
-  }, [user?.uid]);
-
-  const isRequestOnCooldown = (helpId) => {
-    const lastRequest = requestCooldowns[helpId];
-    if (!lastRequest) return false;
-    const cooldownMs = 2 * 60 * 60 * 1000;
-    return Date.now() - lastRequest < cooldownMs;
   };
 
-  const getRemainingCooldownTime = (helpId) => {
-    const lastRequest = requestCooldowns[helpId];
-    if (!lastRequest) return 0;
-    const cooldownMs = 2 * 60 * 60 * 1000;
-    const remainingMs = cooldownMs - (Date.now() - lastRequest);
-    return Math.max(0, remainingMs);
-  };
-
-  const formatTime = (milliseconds) => {
+  const formatCountdown = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
+
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
 
   const handleRequestPayment = async (helpId) => {
-    if (isRequestOnCooldown(helpId)) {
-      const remainingMs = getRemainingCooldownTime(helpId);
-      const formattedTime = formatTime(remainingMs);
-      toast.error(`You can request payment once every 2 hours. Remaining: ${formattedTime}`);
-      return;
-    }
+    // 1. Immediate Success Feedback
+    toast.success("Payment request sent successfully.");
 
+    // 2. Immediate Button Disable (Optimistic Update)
+    setOptimisticCooldowns(prev => ({
+      ...prev,
+      [helpId]: Date.now()
+    }));
+
+    // 3. Trigger Backend Action
     try {
       await requestPaymentFromSender(helpId);
-      const newCooldowns = {
-        ...requestCooldowns,
-        [helpId]: Date.now()
-      };
-      setRequestCooldowns(newCooldowns);
-      localStorage.setItem('paymentRequestCooldowns', JSON.stringify(newCooldowns));
-      toast.success('Payment request sent to sender!');
     } catch (err) {
-      toast.error(err?.message || 'Failed to request payment');
+      console.error("Background payment request failed:", err);
     }
   };
 
@@ -218,7 +220,7 @@ function ReceiveHelpRefactored() {
         config = { bg: 'bg-gray-100', text: 'text-gray-800' };
         break;
     }
-    
+
     return (
       <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold ${config.bg} ${config.text}`}>
         {displayText}
@@ -309,7 +311,7 @@ function ReceiveHelpRefactored() {
               <TrendingUp className="w-8 h-8 text-blue-200" />
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -332,17 +334,15 @@ function ReceiveHelpRefactored() {
             {[
               { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700' },
               { value: HELP_STATUS.ASSIGNED, label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
-              { value: HELP_STATUS.PAYMENT_REQUESTED, label: 'Payment Requested', icon: Send, color: 'bg-blue-100 text-blue-700' },
               { value: HELP_STATUS.CONFIRMED, label: 'Confirmed', icon: CheckCircle, color: 'bg-green-100 text-green-700' }
             ].map((filter) => (
               <button
                 key={filter.value}
                 onClick={() => setStatusFilter(filter.value)}
-                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
-                  statusFilter === filter.value
-                    ? `${filter.color} ring-2 ring-offset-2`
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${statusFilter === filter.value
+                  ? `${filter.color} ring-2 ring-offset-2`
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
               >
                 <filter.icon className="inline-block w-4 h-4 mr-2" />
                 {filter.label}
@@ -355,7 +355,7 @@ function ReceiveHelpRefactored() {
         {loading && renderLoadingState()}
         {error && renderErrorState()}
         {!loading && !error && filteredReceiveHelps.length === 0 && renderEmptyState()}
-        
+
         {!loading && !error && filteredReceiveHelps.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
@@ -415,20 +415,55 @@ function ReceiveHelpRefactored() {
                         )}
                         {help.senderWhatsapp && help.senderWhatsapp !== help.senderPhone && (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
-                             <span className="font-medium w-20">WhatsApp:</span>
-                             <span>{help.senderWhatsapp}</span>
+                            <span className="font-medium w-20">WhatsApp:</span>
+                            <span>{help.senderWhatsapp}</span>
                           </div>
                         )}
                         {help.senderEmail && (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
-                             <span className="font-medium w-20">Email:</span>
-                             <span>{help.senderEmail}</span>
+                            <span className="font-medium w-20">Email:</span>
+                            <span>{help.senderEmail}</span>
                           </div>
                         )}
                         {!help.senderPhone && !help.senderWhatsapp && !help.senderEmail && (
-                            <p className="text-sm text-gray-500">Sender contact details not available.</p>
+                          <p className="text-sm text-gray-500">Sender contact details not available.</p>
                         )}
                       </div>
+
+                      {/* Payment Proof Section */}
+                      {(help.paymentDetails?.screenshotUrl || help.utrNumber) && (
+                        <div className="border-t border-gray-200 pt-4 space-y-3">
+                          <h4 className="font-semibold text-gray-700">Payment Proof</h4>
+
+                          {help.utrNumber && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <span className="font-medium w-20">UTR No:</span>
+                              <span className="font-mono bg-gray-100 px-2 py-1 rounded select-all">
+                                {help.utrNumber}
+                              </span>
+                            </div>
+                          )}
+
+                          {help.paymentDetails?.screenshotUrl && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500 mb-1">Passbook/Screenshot:</p>
+                              <div
+                                className="relative group cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-gray-50 w-full h-32"
+                                onClick={() => setFullscreenImage(help.paymentDetails.screenshotUrl)}
+                              >
+                                <img
+                                  src={help.paymentDetails.screenshotUrl}
+                                  alt="Payment Proof"
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                  <Eye className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
 
                       {/* Separator */}
@@ -439,23 +474,77 @@ function ReceiveHelpRefactored() {
                         <Calendar className="w-4 h-4" />
                         <span>
                           {help.createdAt?.toDate?.()?.toLocaleDateString?.() ||
-                           new Date(help.createdAt).toLocaleDateString?.() ||
-                           'Date unavailable'}
+                            new Date(help.createdAt).toLocaleDateString?.() ||
+                            'Date unavailable'}
                         </span>
                       </div>
 
                       {/* Actions */}
                       <div className="space-y-2">
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => handleRequestPayment(help.id)}
-                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 rounded-lg transition-colors"
-                        >
-                          <Send className="inline-block w-4 h-4 mr-2" />
-                          Request Payment
-                        </motion.button>
-                        
+                        {(() => {
+                          // CHECK IF PAYMENT PROOF EXISTS
+                          const hasPaymentProof = help.paymentDetails?.screenshotUrl || help.utrNumber;
+
+                          // If payment proof exists, show "Confirm Payment" button
+                          if (hasPaymentProof) {
+                            const isConfirmed = isConfirmedStatus(help.status);
+
+                            if (isConfirmed) {
+                              return (
+                                <button
+                                  disabled
+                                  className="w-full bg-green-500 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-90"
+                                >
+                                  <CheckCircle className="w-5 h-5" />
+                                  Payment Confirmed
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                  setSelectedHelpId(help.id);
+                                  setShowConfirmModal(true);
+                                }}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/30"
+                              >
+                                <CheckCircle className="w-5 h-5" />
+                                Confirm Payment
+                              </motion.button>
+                            );
+                          }
+
+                          // OTHERWISE SHOW REQUEST PAYMENT / COUNTDOWN
+                          const { active: isCooldown, remaining } = getCooldownStatus(help);
+                          return (
+                            <motion.button
+                              whileHover={!isCooldown ? { scale: 1.02 } : {}}
+                              whileTap={!isCooldown ? { scale: 0.98 } : {}}
+                              onClick={() => !isCooldown && handleRequestPayment(help.id)}
+                              disabled={isCooldown}
+                              className={`w-full font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${isCooldown
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                }`}
+                            >
+                              {isCooldown ? (
+                                <>
+                                  <Clock className="w-4 h-4" />
+                                  Request again in {formatCountdown(remaining)}
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4" />
+                                  Request Payment
+                                </>
+                              )}
+                            </motion.button>
+                          );
+                        })()}
+
                         <button
                           type="button"
                           className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
@@ -524,6 +613,36 @@ function ReceiveHelpRefactored() {
                 </motion.button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen Image Modal */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 cursor-zoom-out"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={fullscreenImage}
+              alt="Payment Proof Fullscreen"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   signOut,
-  signInWithPhoneNumber
+  sendEmailVerification
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
@@ -23,7 +23,6 @@ export const AgentAuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAgent, setIsAgent] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
 
   // Firebase configuration diagnostic
   const checkFirebaseConfig = () => {
@@ -32,13 +31,11 @@ export const AgentAuthProvider = ({ children }) => {
     console.log('- Project ID:', config.projectId);
     console.log('- Auth Domain:', config.authDomain);
     console.log('- API Key exists:', !!config.apiKey);
-    console.log('- Phone Auth Available:', typeof signInWithPhoneNumber === 'function');
 
     return {
       projectId: config.projectId,
       authDomain: config.authDomain,
-      hasApiKey: !!config.apiKey,
-      phoneAuthAvailable: typeof signInWithPhoneNumber === 'function'
+      hasApiKey: !!config.apiKey
     };
   };
 
@@ -62,50 +59,27 @@ export const AgentAuthProvider = ({ children }) => {
     }
   };
 
+  // Send Verification Email
+  const sendVerificationEmail = async (user) => {
+    if (!user) throw new Error('No user provided');
 
-  // Send OTP to phone
-  const sendOTP = async (phoneNumber, recaptchaVerifier) => {
-    // Validate phone number format
-    const phoneRegex = /^\+91[6-9]\d{9}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      throw new Error('Invalid phone number');
+    // Continue URL: Navigate back to agent login after email link click
+    const actionCodeSettings = {
+      url: window.location.origin + '/agent-login',
+      handleCodeInApp: true,
+    };
+
+    try {
+      await sendEmailVerification(user, actionCodeSettings);
+      toast.success('Verification email sent!');
+      return true;
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      if (error.code === 'auth/too-many-requests') {
+        throw new Error('Too many requests. Please wait before asking for another email.');
+      }
+      throw error;
     }
-
-    // Ensure recaptchaVerifier is provided
-    if (!recaptchaVerifier) {
-      throw new Error('reCAPTCHA verifier required');
-    }
-
-    // Send OTP using Firebase v9 syntax
-    const confirmationResult = await signInWithPhoneNumber(
-      auth,
-      phoneNumber,
-      recaptchaVerifier
-    );
-
-    return confirmationResult;
-  };
-
-  // Verify OTP
-  const verifyOTP = async (confirmationResult, otp, tempUser) => {
-    // Verify OTP using Firebase v9 syntax
-    const result = await confirmationResult.confirm(otp);
-
-    // Verify phone number belongs to the same user
-    if (tempUser && result.user.uid !== tempUser.uid) {
-      await signOut(auth);
-      throw new Error('Phone number is associated with a different account');
-    }
-
-    // Check agent role
-    const isAgentUser = await checkAgentRole(result.user);
-    if (!isAgentUser) {
-      await signOut(auth);
-      throw new Error('Access denied. Only agents can access this portal.');
-    }
-
-    setOtpVerified(true);
-    return result.user;
   };
 
   // Logout
@@ -113,7 +87,6 @@ export const AgentAuthProvider = ({ children }) => {
     console.log("🔍 AGENT AUTH: Agent logout called, using AuthContext logout");
     await authLogout(); // Use AuthContext logout
     setIsAgent(false);
-    setOtpVerified(false);
     console.log("🔍 AGENT AUTH: Agent logout completed");
   };
 
@@ -156,10 +129,8 @@ export const AgentAuthProvider = ({ children }) => {
     currentUser,
     isAgent,
     loading,
-    otpVerified,
     loginWithEmail,
-    sendOTP,
-    verifyOTP,
+    sendVerificationEmail,
     logout,
     checkFirebaseConfig
   };

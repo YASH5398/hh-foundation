@@ -1,25 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate, Routes, Route, Outlet } from 'react-router-dom';
+import { useLocation, Link, useNavigate, Outlet } from 'react-router-dom';
 import {
   FiHome, FiFileText, FiDollarSign, FiMessageSquare, FiBarChart2,
-  FiBook, FiTool, FiUsers, FiBell, FiCreditCard, FiShield,
-  FiMenu, FiX, FiSearch, FiUser, FiLogOut, FiSettings,
-  FiChevronDown, FiChevronRight, FiAlertTriangle
+  FiBook, FiTool, FiUsers, FiCreditCard, FiShield,
+  FiMenu, FiLogOut, FiSettings,
+  FiChevronDown, FiSearch, FiBell
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAuth } from '../../context/AgentAuthContext';
 import { useAgentProfile } from '../../hooks/useAgentProfile';
 import { useAgentChatRequests } from '../../hooks/useAgentChatRequests';
-import { toast } from 'react-hot-toast';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
-import AgentProfile from '../../components/agent/AgentProfile';
 import AgentDashboardOverview from '../../components/agent/AgentDashboardOverview';
 import AgentChatRequestPopup from '../../components/agent/AgentChatRequestPopup';
 import { getProfileImageUrl } from '../../utils/profileUtils';
 
 const AgentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [currentChatRequest, setCurrentChatRequest] = useState(null);
   const location = useLocation();
@@ -27,370 +24,269 @@ const AgentDashboard = () => {
   const { currentUser, logout } = useAgentAuth();
   const { profile, loading: profileLoading } = useAgentProfile();
   const { pendingRequests } = useAgentChatRequests(profile?.role === 'agent' || currentUser?.role === 'agent');
-  
-  // Define user for backward compatibility and null safety
-  const user = currentUser || null;
 
-  // Check if we're on the main dashboard route
   const isMainDashboard = location.pathname === '/agent-dashboard' || location.pathname === '/agent-dashboard/';
-
-  // Define closeSidebar function
   const closeSidebar = () => setSidebarOpen(false);
 
-  // Close sidebar on route change (mobile)
+  useEffect(() => { closeSidebar(); }, [location.pathname]);
   useEffect(() => {
-    closeSidebar();
-  }, [location.pathname]);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setProfileDropdownOpen(false);
-    };
+    const handleClickOutside = () => setProfileDropdownOpen(false);
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Show chat request popup when new requests arrive
   useEffect(() => {
     if (pendingRequests.length > 0 && !currentChatRequest) {
-      // Show the first pending request
       setCurrentChatRequest(pendingRequests[0]);
     }
   }, [pendingRequests, currentChatRequest]);
 
-  // Show loading state if profile is still loading
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <div className="relative w-16 h-16 mx-auto">
+            <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-t-blue-500 rounded-full animate-spin"></div>
+          </div>
+          <p className="mt-6 text-slate-400 font-medium tracking-wide">Initializing Terminal...</p>
         </div>
       </div>
     );
   }
 
-  // Navigation items
   const navigationItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: FiHome,
-      path: '/agent-dashboard',
-      badge: null
-    },
-    {
-      id: 'support-tickets',
-      label: 'Support Tickets',
-      icon: FiFileText,
-      path: '/agent-dashboard/support-tickets',
-      badge: null
-    },
-    {
-      id: 'payment-verification',
-      label: 'Payment Verification',
-      icon: FiDollarSign,
-      path: '/agent-dashboard/payment-verification',
-      badge: null
-    },
-    {
-      id: 'communication',
-      label: 'Communication',
-      icon: FiMessageSquare,
-      path: '/agent-dashboard/communication',
-      badge: null
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: FiBarChart2,
-      path: '/agent-dashboard/analytics',
-      badge: null
-    },
-    {
-      id: 'knowledge-base',
-      label: 'Knowledge Base',
-      icon: FiBook,
-      path: '/agent-dashboard/knowledge-base',
-      badge: null
-    },
-    {
-      id: 'debug-tools',
-      label: 'Debug Tools',
-      icon: FiTool,
-      path: '/agent-dashboard/debug-tools',
-      badge: null
-    },
-    {
-      id: 'agent-chat',
-      label: 'Agent Chat',
-      icon: FiMessageSquare,
-      path: '/agent-dashboard/agent-chat',
-      badge: null
-    },
-    {
-      id: 'notifications',
-      label: 'Notifications',
-      icon: FiBell,
-      path: '/agent-dashboard/notifications',
-      badge: null
-    },
-    {
-      id: 'payment-errors',
-      label: 'Payment Errors',
-      icon: FiCreditCard,
-      path: '/agent-dashboard/payment-errors',
-      badge: null
-    },
-    {
-      id: 'user-management',
-      label: 'User Management',
-      icon: FiUsers,
-      path: '/agent-dashboard/user-management',
-      badge: null
-    },
-    {
-      id: 'epin-checker',
-      label: 'EPIN Checker',
-      icon: FiCreditCard,
-      path: '/agent-dashboard/epin-checker',
-      badge: null
-    },
-    {
-      id: 'user-bug-checker',
-      label: 'User Bug Checker',
-      icon: FiShield,
-      path: '/agent-dashboard/user-bug-checker',
-      badge: null
-    },
-    {
-      id: 'suspicious-activity',
-      label: 'Suspicious Activity',
-      icon: FiAlertTriangle,
-      path: '/agent-dashboard/suspicious-activity',
-      badge: null
-    }
+    { id: 'dashboard', label: 'Overview', icon: FiHome, path: '/agent-dashboard' },
+    { id: 'support-tickets', label: 'Support Tickets', icon: FiFileText, path: '/agent-dashboard/support-tickets' },
+    { id: 'payment-verification', label: 'Payments', icon: FiDollarSign, path: '/agent-dashboard/payment-verification' },
+    { id: 'communication', label: 'Inbox', icon: FiMessageSquare, path: '/agent-dashboard/communication' },
+    { id: 'agent-chat', label: 'Live Chat', icon: FiMessageSquare, path: '/agent-dashboard/agent-chat', badge: pendingRequests.length > 0 ? pendingRequests.length : null },
+    { id: 'analytics', label: 'Analytics', icon: FiBarChart2, path: '/agent-dashboard/analytics' },
+    { id: 'user-management', label: 'Users', icon: FiUsers, path: '/agent-dashboard/user-management' },
+    { id: 'epin-checker', label: 'EPIN Tools', icon: FiCreditCard, path: '/agent-dashboard/epin-checker' },
+    // Knowledge base removed
+    { id: 'settings', label: 'Settings', icon: FiSettings, path: '/agent-dashboard/settings' },
   ];
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/agent/login');
+      navigate('/agent-login');
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={closeSidebar}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: sidebarOpen ? 0 : '-100%'
-        }}
-        className="fixed top-0 left-0 z-50 w-64 h-full bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:transform-none lg:translate-x-0 lg:static lg:z-auto"
-      >
-        {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <FiShield className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-gray-900">Agent Panel</span>
+  const SidebarContent = () => (
+    <>
+      <div className="h-20 flex items-center px-8 border-b border-slate-800/50">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <FiShield className="w-6 h-6 text-white" />
           </div>
-          <button
-            onClick={closeSidebar}
-            className="p-2 rounded-md text-gray-400 hover:text-gray-600 lg:hidden"
-          >
-            <FiX className="w-5 h-5" />
-          </button>
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+            Agent OS
+          </span>
         </div>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActivePath(item.path, location.pathname);
+          return (
+            <Link
+              key={item.id}
+              to={item.path}
+              className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 border border-transparent'
                 }`}
-              >
-                <Icon className="w-5 h-5 mr-3" />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+            >
+              <div className="flex items-center">
+                <Icon className={`w-5 h-5 mr-3 transition-transform group-hover:scale-110 ${isActive ? 'text-blue-400' : 'text-slate-500'}`} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+              {item.badge && (
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-200">
+      <div className="p-4 mt-auto">
+        <div className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/30">
           <div className="flex items-center space-x-3">
-            <img
-              src={getProfileImageUrl(profile)}
-              alt={profile?.fullName || 'Agent'}
-              className="w-8 h-8 rounded-full object-cover"
-              onError={(e) => {
-                e.target.src = getProfileImageUrl(null); // Fallback to default
-              }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {profile?.fullName || user?.email || currentUser?.email || 'Agent'}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {profile?.role || 'Agent'}
-              </p>
+            <div className="relative">
+              <img
+                src={getProfileImageUrl(profile)}
+                alt="Agent"
+                className="w-10 h-10 rounded-full border-2 border-slate-700 object-cover"
+              />
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></div>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{profile?.fullName || 'Agent'}</p>
+              <p className="text-xs text-slate-500 truncate">{profile?.role || 'Staff'}</p>
+            </div>
+            <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-400 transition-colors">
+              <FiLogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      </motion.aside>
+      </div>
+    </>
+  );
 
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-            {/* Left side */}
-            <div className="flex items-center space-x-4">
+  return (
+    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-blue-500/30">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+      </div>
+
+      <div className="flex h-screen overflow-hidden relative z-10">
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 lg:hidden"
+              onClick={closeSidebar}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Desktop Sidebar (Fixed) */}
+        <aside className="hidden lg:flex flex-col w-72 bg-slate-900/40 backdrop-blur-xl border-r border-slate-800/50 h-full">
+          <SidebarContent />
+        </aside>
+
+        {/* Mobile Sidebar (Drawer) */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+              className="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-slate-800 flex flex-col lg:hidden"
+            >
+              <SidebarContent />
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        <div className="flex-1 flex flex-col min-w-0 bg-[#020617]/50 relative">
+          <header className="h-20 flex items-center justify-between px-6 lg:px-10 border-b border-slate-800/50 backdrop-blur-md sticky top-0 z-30">
+            <div className="flex items-center lg:hidden">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-600 lg:hidden"
+                className="p-2 -ml-2 text-slate-400 hover:text-white"
               >
-                <FiMenu className="w-5 h-5" />
+                <FiMenu className="w-6 h-6" />
               </button>
-              
-              {/* Search */}
-              <div className="hidden sm:block">
-                <div className="relative">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Right side */}
-            <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-semibold text-white">
+                {navigationItems.find(i => isActivePath(i.path, location.pathname))?.label || 'Dashboard'}
+              </h1>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <div className="relative hidden md:block">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Global Search..."
+                  className="bg-slate-900/50 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/40 transition-all outline-none w-64 placeholder:text-slate-600"
+                />
+              </div>
+
+              <button className="relative p-2.5 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
                 <FiBell className="w-5 h-5" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></span>
               </button>
 
-              {/* Profile Dropdown */}
               <div className="relative">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProfileDropdownOpen(!profileDropdownOpen);
-                  }}
-                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100"
+                  onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen(!profileDropdownOpen); }}
+                  className="flex items-center p-1 px-2 space-x-2 bg-slate-900/50 border border-slate-800 rounded-xl hover:bg-slate-800/40 transition-all"
                 >
-                  <img
-                    src={getProfileImageUrl(profile)}
-                    alt={profile?.fullName || 'Agent'}
-                    className="w-8 h-8 rounded-full object-cover"
-                    onError={(e) => {
-                      e.target.src = getProfileImageUrl(null); // Fallback to default
-                    }}
-                  />
-                  <FiChevronDown className="w-4 h-4 text-gray-400" />
+                  <img src={getProfileImageUrl(profile)} alt="User" className="w-8 h-8 rounded-lg object-cover" />
+                  <FiChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 <AnimatePresence>
                   {profileDropdownOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden py-2 z-50 origin-top-right backdrop-blur-xl"
                     >
-                      <div className="py-1">
-                        <Link
-                          to="/agent-dashboard/profile"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <FiUser className="w-4 h-4 mr-2" />
-                          Profile
-                        </Link>
-                        <Link
-                          to="/agent-dashboard/settings"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <FiSettings className="w-4 h-4 mr-2" />
-                          Settings
-                        </Link>
-                        <hr className="my-1" />
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                        >
-                          <FiLogOut className="w-4 h-4 mr-2" />
-                          Logout
-                        </button>
-                      </div>
+                      <Link to="/agent-dashboard/profile" className="flex items-center px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 transition-colors">
+                        <FiUsers className="w-4 h-4 mr-3 text-blue-400" /> My Profile
+                      </Link>
+                      <Link to="/agent-dashboard/settings" className="flex items-center px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 transition-colors">
+                        <FiSettings className="w-4 h-4 mr-3 text-indigo-400" /> Account Settings
+                      </Link>
+                      <div className="h-px bg-slate-800 my-1 mx-2"></div>
+                      <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                        <FiLogOut className="w-4 h-4 mr-3" /> Log Out
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1">
-          <ErrorBoundary>
-            {isMainDashboard ? (
-              <AgentDashboardOverview />
-            ) : (
-              <Outlet />
-            )}
-          </ErrorBoundary>
-        </main>
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-10">
+            <div className="max-w-7xl mx-auto">
+              <ErrorBoundary>
+                {isMainDashboard ? (
+                  <AgentDashboardOverview />
+                ) : (
+                  <motion.div
+                    key={location.pathname}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
+                    <Outlet />
+                  </motion.div>
+                )}
+              </ErrorBoundary>
+            </div>
+          </main>
+        </div>
       </div>
 
-      {/* Chat Request Popup */}
       <AgentChatRequestPopup
         request={currentChatRequest}
         onClose={() => setCurrentChatRequest(null)}
         currentAgent={currentUser}
       />
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+      `}</style>
     </div>
   );
 };
 
-
+const isActivePath = (itemPath, currentPath) => {
+  if (itemPath === '/agent-dashboard') return currentPath === '/agent-dashboard' || currentPath === '/agent-dashboard/';
+  return currentPath.startsWith(itemPath);
+};
 
 export default AgentDashboard;

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { FiBell, FiCheck, FiTrash2, FiAlertCircle, FiInfo, FiCheckCircle, FiX, FiPlus, FiSend } from 'react-icons/fi';
+import { FiBell, FiCheck, FiTrash2, FiAlertCircle, FiInfo, FiCheckCircle, FiX, FiPlus, FiSend, FiFilter } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '../../utils/formatDate';
 import { bulkMarkNotificationsRead, deleteNotification as deleteNotificationAction, setNotificationRead } from '../../services/notificationActions';
 import { createAdminNotification } from '../../services/adminNotificationActions';
@@ -49,7 +50,7 @@ const Notifications = () => {
   const filteredNotifications = notifications.filter(notification => {
     // First exclude deleted notifications
     if (notification.deleted || notification.isDeleted) return false;
-    
+
     // Then apply the selected filter
     if (filter === 'all') return true;
     if (filter === 'unread') return !notification.read && !notification.isRead;
@@ -121,34 +122,24 @@ const Notifications = () => {
     }
   };
 
-  const getTypeColor = (type) => {
+  const getTypeStyles = (type) => {
     switch (type) {
-      case 'success': return 'bg-green-100 text-green-800 border-green-200';
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'error': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'success': return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', icon: FiCheckCircle };
+      case 'warning': return { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', icon: FiAlertCircle };
+      case 'error': return { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', icon: FiX };
+      default: return { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', icon: FiInfo };
     }
   };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'success': return <FiCheckCircle className="w-4 h-4" />;
-      case 'warning': return <FiAlertCircle className="w-4 h-4" />;
-      case 'error': return <FiX className="w-4 h-4" />;
-      default: return <FiInfo className="w-4 h-4" />;
-    }
-  };
-
 
   const unreadCount = notifications.filter(n => !n.read && !n.isRead && !n.deleted && !n.isDeleted).length;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading notifications...</p>
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FiBell className="w-6 h-6 text-blue-500/50" />
           </div>
         </div>
       </div>
@@ -156,237 +147,274 @@ const Notifications = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
-              <p className="text-gray-600">Manage system notifications and alerts</p>
-            </div>
-            <div className="flex space-x-3">
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FiCheck className="w-4 h-4 mr-2" />
-                  Mark All Read
-                </button>
-              )}
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <FiPlus className="w-4 h-4 mr-2" />
-                Create Notification
-              </button>
-            </div>
-          </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
+      >
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+            <span className="p-2 bg-indigo-600/10 rounded-xl border border-indigo-600/20">
+              <FiBell className="w-5 h-5 text-indigo-400" />
+            </span>
+            System Alerts
+          </h1>
+          <p className="text-slate-400 mt-1 ml-1 text-sm font-medium">Broadcasts and system-wide notifications</p>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Notifications</p>
-                <p className="text-2xl font-bold text-gray-900">{notifications.length}</p>
-              </div>
-              <FiBell className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Unread</p>
-                <p className="text-2xl font-bold text-orange-600">{unreadCount}</p>
-              </div>
-              <FiAlertCircle className="h-8 w-8 text-orange-600" />
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Read</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {notifications.filter(n => (n.read || n.isRead) && !n.deleted && !n.isDeleted).length}
-                </p>
-              </div>
-              <FiCheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="px-4 py-2.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
+            >
+              <FiCheck className="w-4 h-4" />
+              Mark All Read
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-blue-600/20 transition-all active:scale-95 flex items-center gap-2"
+          >
+            <FiPlus className="w-4 h-4" />
+            New Broadcast
+          </button>
         </div>
+      </motion.div>
 
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {[
-                { key: 'all', label: 'All Notifications' },
-                { key: 'unread', label: 'Unread' },
-                { key: 'read', label: 'Read' }
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    filter === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Alerts</h3>
+            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><FiBell className="w-4 h-4" /></div>
           </div>
+          <p className="text-3xl font-black text-white">{notifications.length}</p>
         </div>
-
-        {/* Notifications List */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            {filteredNotifications.length === 0 ? (
-              <div className="text-center py-12">
-                <FiBell className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No notifications found</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {filter === 'all' ? 'No notifications available.' : `No ${filter} notifications found.`}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredNotifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`border rounded-lg p-6 transition-all ${
-                      (notification.read || notification.isRead)
-                        ? 'border-gray-200 bg-gray-50'
-                        : 'border-blue-200 bg-blue-50 shadow-md'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 mr-3">
-                            {notification.title}
-                          </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getTypeColor(notification.type)}`}>
-                            {getTypeIcon(notification.type)}
-                            <span className="ml-1">{notification.type?.toUpperCase()}</span>
-                          </span>
-                          {!notification.read && !notification.isRead && (
-                            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              New
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-700 mb-3">{notification.message}</p>
-                        <div className="flex items-center text-sm text-gray-500 space-x-4">
-                          <span>{formatDate(notification.createdAt)}</span>
-                          <span>Target: {notification.targetAudience}</span>
-                          {notification.createdBy && (
-                            <span>By: {notification.createdBy}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 ml-4">
-                        {!notification.read && !notification.isRead && (
-                          <button
-                            onClick={() => markAsRead(notification.id)}
-                            className="p-2 text-gray-400 hover:text-blue-600 focus:outline-none"
-                            title="Mark as read"
-                          >
-                            <FiCheck className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteNotification(notification.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 focus:outline-none"
-                          title="Delete notification"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Unread</h3>
+            <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400"><FiAlertCircle className="w-4 h-4" /></div>
           </div>
+          <p className="text-3xl font-black text-white">{unreadCount}</p>
+        </div>
+        <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Archived</h3>
+            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400"><FiCheckCircle className="w-4 h-4" /></div>
+          </div>
+          <p className="text-3xl font-black text-white">
+            {notifications.filter(n => (n.read || n.isRead) && !n.deleted && !n.isDeleted).length}
+          </p>
         </div>
       </div>
 
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 pb-4 border-b border-slate-800/50 overflow-x-auto">
+        <FiFilter className="text-slate-500 w-4 h-4 mr-2" />
+        {[
+          { key: 'all', label: 'All Alerts' },
+          { key: 'unread', label: 'Unread Only' },
+          { key: 'read', label: 'Archived' }
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${filter === tab.key
+                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Notifications List */}
+      <div className="space-y-4">
+        <AnimatePresence mode="popLayout">
+          {filteredNotifications.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="py-20 text-center"
+            >
+              <div className="w-20 h-20 bg-slate-900/50 border border-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <FiBell className="w-8 h-8 text-slate-600" />
+              </div>
+              <h3 className="text-slate-300 font-bold">No notifications found</h3>
+              <p className="text-slate-500 text-sm mt-1">System status is quiet.</p>
+            </motion.div>
+          ) : (
+            filteredNotifications.map((notification) => {
+              const styles = getTypeStyles(notification.type);
+              const Icon = styles.icon;
+              const isUnread = !notification.read && !notification.isRead;
+
+              return (
+                <motion.div
+                  key={notification.id}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`group relative overflow-hidden rounded-2xl border transition-all ${isUnread
+                      ? 'bg-slate-800/40 border-slate-700/50 shadow-lg'
+                      : 'bg-slate-900/20 border-slate-800/50 opacity-75 hover:opacity-100'
+                    }`}
+                >
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${isUnread ? 'bg-blue-500' : 'bg-transparent'}`}></div>
+
+                  <div className="p-5 flex gap-5">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${styles.bg} ${styles.text} border ${styles.border}`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 py-1">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className={`text-sm font-bold truncate ${isUnread ? 'text-white' : 'text-slate-400'}`}>
+                              {notification.title}
+                            </h3>
+                            {isUnread && (
+                              <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                                New
+                              </span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${styles.bg} ${styles.text} ${styles.border}`}>
+                              {notification.type || 'INFO'}
+                            </span>
+                          </div>
+                          <p className={`text-sm leading-relaxed ${isUnread ? 'text-slate-300' : 'text-slate-500'}`}>
+                            {notification.message}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                            {formatDate(notification.createdAt)}
+                          </span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {isUnread && (
+                              <button
+                                onClick={() => markAsRead(notification.id)}
+                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-blue-400 rounded-lg transition-colors"
+                                title="Mark as read"
+                              >
+                                <FiCheck className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteNotification(notification.id)}
+                              className="p-2 bg-slate-800 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium mt-3 pt-3 border-t border-slate-800/50">
+                        <span className="uppercase tracking-wider">Target: {notification.targetAudience}</span>
+                        {notification.createdBy && (
+                          <span className="uppercase tracking-wider border-l border-slate-800 pl-4">By: {notification.createdBy}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Create Notification Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Create New Notification
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCreateModal(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FiPlus className="text-blue-500" />
+                  Compose Broadcast
                 </h3>
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="p-2 hover:bg-slate-800 text-slate-500 hover:text-white rounded-xl transition-colors"
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
-              
-              <div className="space-y-4">
+
+              <div className="p-8 space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title *
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Message Title
                   </label>
                   <input
                     type="text"
                     value={newNotification.title}
                     onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter notification title"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
+                    placeholder="Enter short, descriptive title..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Message *
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Message Content
                   </label>
                   <textarea
                     value={newNotification.message}
                     onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter notification message"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium resize-none"
+                    placeholder="Enter detailed notification message..."
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Alert Level
                     </label>
                     <select
                       value={newNotification.type}
                       onChange={(e) => setNewNotification({ ...newNotification, type: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
                     >
-                      <option value="info">Info</option>
-                      <option value="success">Success</option>
-                      <option value="warning">Warning</option>
-                      <option value="error">Error</option>
+                      <option value="info">Info (Blue)</option>
+                      <option value="success">Success (Green)</option>
+                      <option value="warning">Warning (Amber)</option>
+                      <option value="error">Error (Red)</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Audience
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Audience
                     </label>
                     <select
                       value={newNotification.targetAudience}
                       onChange={(e) => setNewNotification({ ...newNotification, targetAudience: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
                     >
                       <option value="all">All Users</option>
                       <option value="agents">Agents Only</option>
@@ -396,25 +424,25 @@ const Notifications = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-6 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold hover:bg-slate-800 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={createNotification}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
                 >
-                  <FiSend className="w-4 h-4 mr-2" />
-                  Create Notification
+                  <FiSend className="w-4 h-4" />
+                  Broadcast Now
                 </button>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };

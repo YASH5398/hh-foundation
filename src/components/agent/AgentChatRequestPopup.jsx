@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, User, X, Check, Clock } from 'lucide-react';
+import { FiMessageCircle, FiUser, FiX, FiCheck, FiClock, FiActivity } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../config/firebase';
-import { doc, updateDoc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, serverTimestamp, collection, addDoc, getDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
@@ -12,58 +12,68 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
 
   const handleAccept = async () => {
     if (!request || !currentAgent) return;
-
     setIsAccepting(true);
     try {
-      // Update the chat request
+      // 1. Fetch Agent Profile Details (for name & photo)
+      let agentName = currentAgent.displayName || currentAgent.email;
+      let agentPhoto = currentAgent.photoURL || null;
+
+      try {
+        const agentDocRef = doc(db, 'users', currentAgent.uid);
+        const agentDocSnap = await getDoc(agentDocRef);
+        if (agentDocSnap.exists()) {
+          const agentData = agentDocSnap.data();
+          // Prefer fullName, then displayName, then name, then email
+          agentName = agentData.fullName || agentData.displayName || agentData.name || agentName;
+          agentPhoto = agentData.photoURL || agentData.profileImage || agentPhoto;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch full agent profile, using auth defaults', err);
+      }
+
+      // 2. Update Request Status
       const requestRef = doc(db, 'agentChatRequests', request.id);
       await updateDoc(requestRef, {
         status: 'accepted',
         assignedAgentId: currentAgent.uid,
-        assignedAgentName: currentAgent.displayName || currentAgent.email,
+        assignedAgentName: agentName,
+        assignedAgentPhoto: agentPhoto, // Store photo for user side
         acceptedAt: serverTimestamp()
       });
 
-      // Create the chat room
+      // 3. Create Chat Room
       const chatRoomRef = doc(db, 'agentChats', request.id);
       await setDoc(chatRoomRef, {
         requestId: request.id,
         userId: request.userId,
         userName: request.userName,
         agentId: currentAgent.uid,
-        agentName: currentAgent.displayName || currentAgent.email,
+        agentName: agentName,
+        agentPhoto: agentPhoto,
         status: 'active',
         createdAt: serverTimestamp(),
         startedAt: serverTimestamp()
       });
 
-      // Add initial agent welcome message
+      // 4. Send Initial Message (Personalized)
       await addDoc(collection(db, 'agentChats', request.id, 'messages'), {
         senderUid: currentAgent.uid,
         senderType: 'agent',
-        senderName: currentAgent.displayName || currentAgent.email,
-        text: `Hi ${request.userName}! I'm ${currentAgent.displayName || currentAgent.email}. How can I help you today?`,
+        senderName: agentName,
+        senderPhoto: agentPhoto,
+        text: `Hi ${request.userName}! I'm ${agentName}. How can I help you today?`,
         timestamp: serverTimestamp()
       });
 
-      toast.success('Chat accepted! Opening chat window...');
+      toast.success('Channel Established');
       onClose();
-
-      // Navigate to agent chat page with the chat ID
       navigate(`/agent-dashboard/agent-chat?chatId=${request.id}`);
-
     } catch (error) {
-      console.error('Error accepting chat request:', error);
-      toast.error('Failed to accept chat request');
+      console.error('Error:', error);
+      toast.error('Sync failed');
     } finally {
       setIsAccepting(false);
     }
-  };
-
-  const handleDecline = () => {
-    // For now, just close the popup
-    // In a real implementation, you might want to mark it as declined
-    onClose();
   };
 
   if (!request) return null;
@@ -74,90 +84,90 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-6"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="bg-slate-900 border border-slate-800/80 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <MessageCircle className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">New Chat Request</h3>
-                  <p className="text-blue-100 text-sm">Live Support Request</p>
-                </div>
-              </div>
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white relative">
+            <div className="absolute top-0 right-0 p-4">
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
               >
-                <X className="w-5 h-5" />
+                <FiX className="w-5 h-5" />
               </button>
             </div>
 
-            {/* User Info */}
-            <div className="bg-white/10 rounded-xl p-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-semibold">{request.userName}</h4>
-                  <p className="text-blue-100 text-sm">New Customer</p>
-                </div>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-xl">
+                <FiMessageCircle className="w-7 h-7" />
               </div>
+              <div>
+                <h3 className="text-xl font-black tracking-tight">Incoming Link</h3>
+                <p className="text-blue-100/60 text-xs font-bold uppercase tracking-widest">Real-time Support</p>
+              </div>
+            </div>
 
-              <div className="bg-white/10 rounded-lg p-3">
-                <p className="text-sm text-blue-100 mb-1">Message:</p>
-                <p className="text-white font-medium">{request.firstMessage}</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <FiUser className="w-4 h-4" />
+                </div>
+                <h4 className="font-bold">{request.userName || 'Anonymous User'}</h4>
+              </div>
+              <div className="bg-slate-950/40 rounded-xl p-4 border border-white/5 shadow-inner">
+                <p className="text-blue-100/60 text-[10px] font-bold uppercase mb-2">Subject</p>
+                <p className="text-white text-sm font-medium leading-relaxed italic">"{request.firstMessage || 'No initial message provided'}"</p>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="p-6 space-y-3">
+          {/* Controls */}
+          <div className="p-8 space-y-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleAccept}
               disabled={isAccepting}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-900/40 transition-all"
             >
               {isAccepting ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Accepting...</span>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Syncing...</span>
                 </>
               ) : (
                 <>
-                  <Check className="w-5 h-5" />
-                  <span>Accept Chat</span>
+                  <FiCheck className="w-5 h-5" />
+                  <span>Accept Channel</span>
                 </>
               )}
             </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleDecline}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-colors"
+            <button
+              onClick={onClose}
+              className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white py-4 px-6 rounded-2xl font-bold text-sm transition-all border border-slate-700/50"
             >
-              <X className="w-5 h-5" />
-              <span>Decline</span>
-            </motion.button>
+              Close Dossier
+            </button>
 
-            <div className="flex items-center justify-center space-x-2 text-gray-500 text-sm">
-              <Clock className="w-4 h-4" />
-              <span>Please respond quickly</span>
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-800/50">
+              <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-tighter">
+                <FiClock className="w-3 h-3 text-amber-500" />
+                Wait Time: <span className="text-amber-500 underline">2.4s</span>
+              </div>
+              <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+              <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-tighter">
+                <FiActivity className="w-3 h-3 text-emerald-500" />
+                Link Quality: <span className="text-emerald-500 underline">Stable</span>
+              </div>
             </div>
           </div>
         </motion.div>
