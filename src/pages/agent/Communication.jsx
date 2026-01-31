@@ -1,423 +1,326 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  FiMessageSquare, FiUsers, FiSearch, FiSend, FiUser, FiClock,
-  FiCheck, FiCheckCircle, FiPhone, FiVideo, FiMoreVertical,
-  FiX, FiPaperclip, FiSmile, FiRefreshCw, FiPlus, FiEdit3, FiMaximize2, FiCpu
-} from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  collection, query, where, onSnapshot, orderBy,
-  doc, updateDoc, addDoc, serverTimestamp, getDoc,
-  limit, startAfter
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FiMessageSquare, FiPlus, FiX, FiSend } from 'react-icons/fi';
 import { useAgentAuth } from '../../context/AgentAuthContext';
+import { useAgentProfile } from '../../hooks/useAgentProfile';
+import {
+  createAgentChat,
+  subscribeToAgentChats,
+  subscribeToChatMessages,
+  sendMessage
+} from '../../services/agentAdminChatService';
 import { toast } from 'react-hot-toast';
-import UserProfileView from '../../components/agent/UserProfileView';
+
+const ISSUE_TYPES = [
+  'Send Help',
+  'Receive Help',
+  'E-PIN',
+  'Account Related',
+  'Leaderboard',
+  'Upcoming Payment',
+  'Other'
+];
 
 const Communication = () => {
   const { currentUser } = useAgentAuth();
-  const user = currentUser || null;
-  const [activeTab, setActiveTab] = useState('support'); // support, agent-chat, templates
-  const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
+  const { profile } = useAgentProfile();
+  const [chats, setChats] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [showUserProfile, setShowUserProfile] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatForm, setNewChatForm] = useState({
+    issueType: '',
+    message: '',
+    context: ''
+  });
+  const [replyText, setReplyText] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const messagesEndRef = useRef(null);
-  const messageInputRef = useRef(null);
-
-  // Fetch support ticket conversations
   useEffect(() => {
-    if (!user?.uid || activeTab !== 'support') return;
+    if (!currentUser) return;
 
-    const conversationsQuery = query(
-      collection(db, 'supportTickets'),
-      where('agentId', '==', user.uid),
-      where('status', 'in', ['open', 'in-progress', 'pending']),
-      orderBy('updatedAt', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
-      const conversationData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        type: 'support',
-        lastMessageAt: doc.data().updatedAt?.toDate?.() || new Date(),
-        participantName: doc.data().userName || 'Unknown User',
-        participantId: doc.data().userId
-      }));
-
-      setConversations(conversationData);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching support conversations:', error);
-      toast.error('Telemetry uplink failure');
-      setLoading(false);
+    const unsubscribe = subscribeToAgentChats(currentUser.uid, (chatsData) => {
+      setChats(chatsData);
     });
 
     return () => unsubscribe();
-  }, [user?.uid, activeTab]);
+  }, [currentUser]);
 
-  // Fetch agent chat conversations
   useEffect(() => {
-    if (!user?.uid || activeTab !== 'agent-chat') return;
+    if (!selectedChat) return;
 
-    const conversationsQuery = query(
-      collection(db, 'agentChats'),
-      where('participants', 'array-contains', user.uid),
-      orderBy('lastMessageAt', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
-      const conversationData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const otherParticipant = data.participants.find(p => p !== user.uid);
-
-        return {
-          id: doc.id,
-          ...data,
-          type: 'agent-chat',
-          lastMessageAt: data.lastMessageAt?.toDate?.() || new Date(),
-          participantName: data.participantNames?.[otherParticipant] || 'Unknown Agent',
-          participantId: otherParticipant
-        };
-      });
-
-      setConversations(conversationData);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching agent conversations:', error);
-      toast.error('Agent mesh sync failed');
-      setLoading(false);
+    const unsubscribe = subscribeToChatMessages(selectedChat.id, (messagesData) => {
+      setMessages(messagesData);
     });
 
     return () => unsubscribe();
-  }, [user?.uid, activeTab]);
+  }, [selectedChat]);
 
-  // Fetch messages for selected conversation
-  useEffect(() => {
-    if (!selectedConversation) return;
-
-    let messagesQuery;
-
-    if (selectedConversation.type === 'support') {
-      messagesQuery = query(
-        collection(db, 'supportTickets', selectedConversation.id, 'messages'),
-        orderBy('createdAt', 'asc'),
-        limit(100)
-      );
-    } else {
-      messagesQuery = query(
-        collection(db, 'agentChats', selectedConversation.id, 'messages'),
-        orderBy('createdAt', 'asc'),
-        limit(100)
-      );
+  const handleCreateChat = async (e) => {
+    e.preventDefault();
+    if (!newChatForm.issueType || !newChatForm.message) {
+      toast.error('Please fill in all required fields');
+      return;
     }
 
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messageData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
-      }));
+    setLoading(true);
+    try {
+      await createAgentChat(
+        {
+          uid: currentUser.uid,
+          userId: profile?.userId || currentUser.email,
+          name: profile?.fullName || currentUser.email
+        },
+        newChatForm.issueType,
+        newChatForm.message,
+        newChatForm.context
+      );
 
-      setMessages(messageData);
-      scrollToBottom();
-    }, (error) => {
-      console.error('Error fetching messages:', error);
-      toast.error('Packet loss in stream');
-    });
-
-    return () => unsubscribe();
-  }, [selectedConversation]);
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+      toast.success('Chat created successfully');
+      setShowNewChatModal(false);
+      setNewChatForm({ issueType: '', message: '', context: '' });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      toast.error('Failed to create chat');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
+  const handleSendReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim() || !selectedChat) return;
 
     try {
-      setSendingMessage(true);
-
-      const messageData = {
-        content: newMessage.trim(),
-        senderId: user.uid,
-        senderName: user.displayName || user.email,
-        senderRole: 'agent',
-        createdAt: serverTimestamp(),
-        read: false
-      };
-
-      let collectionPath;
-      if (selectedConversation.type === 'support') {
-        collectionPath = `supportTickets/${selectedConversation.id}/messages`;
-      } else {
-        collectionPath = `agentChats/${selectedConversation.id}/messages`;
-      }
-
-      await addDoc(collection(db, collectionPath), messageData);
-
-      const conversationPath = selectedConversation.type === 'support'
-        ? `supportTickets/${selectedConversation.id}`
-        : `agentChats/${selectedConversation.id}`;
-
-      await updateDoc(doc(db, conversationPath), {
-        lastMessage: newMessage.trim(),
-        lastMessageAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      setNewMessage('');
-      messageInputRef.current?.focus();
+      await sendMessage(selectedChat.id, 'agent', replyText);
+      setReplyText('');
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Transmission failure');
-    } finally {
-      setSendingMessage(false);
+      toast.error('Failed to send message');
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  const getStatusBadge = (status) => {
+    const styles = {
+      open: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      replied: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      closed: 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    };
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-lg border ${styles[status]}`}>
+        {status.toUpperCase()}
+      </span>
+    );
   };
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
-    const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Active';
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
-    return date.toLocaleDateString();
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleString();
   };
 
-  const filteredConversations = conversations.filter(conv => {
-    if (!searchTerm) return true;
-    return (
-      conv.participantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="space-y-4 text-center">
-        <FiCpu className="w-12 h-12 text-blue-500 animate-spin mx-auto opacity-50" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Opening Comm Channels</p>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] bg-slate-950/20 rounded-[2.5rem] overflow-hidden border border-slate-800 shadow-2xl backdrop-blur-xl">
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className={`w-full lg:w-96 border-r border-slate-800 flex flex-col bg-slate-900/40 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-8 border-b border-slate-800 space-y-6">
-            <h1 className="text-2xl font-black text-white tracking-tight uppercase">Communications</h1>
+    <div className="min-h-screen bg-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Agent to Admin Communication</h1>
+            <p className="text-slate-400 mt-1">Contact admin for support</p>
+          </div>
+          <button
+            onClick={() => setShowNewChatModal(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <FiPlus /> New Chat
+          </button>
+        </div>
 
-            <div className="flex gap-2 p-1.5 bg-slate-950 rounded-2xl border border-slate-800">
-              {[
-                { key: 'support', icon: FiMessageSquare },
-                { key: 'agent-chat', icon: FiUsers },
-                { key: 'templates', icon: FiEdit3 }
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => {
-                    setActiveTab(tab.key);
-                    setSelectedConversation(null);
-                  }}
-                  className={`flex-1 py-2 rounded-xl flex items-center justify-center transition-all ${activeTab === tab.key
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'text-slate-500 hover:text-slate-300'
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-slate-800/50 rounded-xl border border-slate-700/50 p-4">
+            <h2 className="text-lg font-semibold text-white mb-4">Your Chats</h2>
+            <div className="space-y-2">
+              {chats.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-8">No chats yet</p>
+              ) : (
+                chats.map((chat) => (
+                  <motion.div
+                    key={chat.id}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={() => setSelectedChat(chat)}
+                    className={`p-4 rounded-lg cursor-pointer transition-all ${
+                      selectedChat?.id === chat.id
+                        ? 'bg-blue-600/20 border border-blue-500/30'
+                        : 'bg-slate-700/30 hover:bg-slate-700/50 border border-transparent'
                     }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Find frequency..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-mono"
-              />
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-sm font-medium text-white">{chat.issueType}</span>
+                      {getStatusBadge(chat.status)}
+                    </div>
+                    <p className="text-xs text-slate-400">{formatTimestamp(chat.createdAt)}</p>
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <AnimatePresence mode="popLayout">
-              {filteredConversations.map(conv => (
-                <motion.div
-                  layout
-                  key={conv.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  onClick={() => {
-                    setSelectedConversation(conv);
-                    setShowMobileChat(true);
-                  }}
-                  className={`p-6 cursor-pointer border-b border-white/5 transition-all relative group ${selectedConversation?.id === conv.id ? 'bg-blue-600/10 border-l-4 border-l-blue-600' : 'hover:bg-slate-800/20'
-                    }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-sm font-bold text-slate-200 uppercase tracking-tight truncate flex-1 pr-4">{conv.participantName}</h3>
-                    <span className="text-[9px] font-black text-slate-500 font-mono">{formatTimestamp(conv.lastMessageAt)}</span>
-                  </div>
-                  <p className="text-xs text-slate-500 truncate lowercase">{conv.lastMessage || 'Channel established'}</p>
-                  {conv.status && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${conv.status === 'pending' ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                      <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest">{conv.status}</span>
+          <div className="lg:col-span-2 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col h-[600px]">
+            {selectedChat ? (
+              <>
+                <div className="p-4 border-b border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{selectedChat.issueType}</h3>
+                      <p className="text-sm text-slate-400">Chat with Admin</p>
                     </div>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {filteredConversations.length === 0 && (
-              <div className="py-20 text-center opacity-20">
-                <FiMessageSquare className="w-12 h-12 mx-auto mb-4 stroke-[1]" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-white">Silence on bandwidth</p>
+                    {getStatusBadge(selectedChat.status)}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[70%] rounded-lg p-3 ${
+                          msg.sender === 'agent'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold">
+                            {msg.sender === 'agent' ? 'You' : 'Admin'}
+                          </span>
+                          <span className="text-xs opacity-70">{formatTimestamp(msg.createdAt)}</span>
+                        </div>
+                        <p className="text-sm">{msg.text}</p>
+                        {msg.context && (
+                          <p className="text-xs mt-2 opacity-80 border-t border-white/20 pt-2">
+                            Context: {msg.context}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {selectedChat.status !== 'closed' && (
+                  <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700/50">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Type your message..."
+                        className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!replyText.trim()}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <FiSend /> Send
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <FiMessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400">Select a chat to view messages</p>
+                </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Chat Main Area */}
-        <div className={`flex-1 flex flex-col bg-slate-950/40 relative ${!showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
-          {selectedConversation ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-8 border-b border-slate-800 bg-slate-900/20 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => setShowMobileChat(false)} className="lg:hidden text-slate-500"><FiX /></button>
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center">
-                    <FiUser className="text-blue-500 w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">{selectedConversation.participantName}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                      Encrypted Connection
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => { setSelectedUserId(selectedConversation.participantId); setShowUserProfile(true); }} className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-500 hover:text-white transition-all"><FiUser /></button>
-                  <button className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-500 hover:text-white transition-all"><FiMoreVertical /></button>
-                </div>
-              </div>
-
-              {/* Message Stream */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${msg.senderId === user.uid ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[70%] ${msg.senderId === user.uid ? 'flex flex-row-reverse' : 'flex'}`}>
-                      <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center border ${msg.senderId === user.uid ? 'bg-blue-600/20 border-blue-600/30 ml-3' : 'bg-slate-800 border-slate-700 mr-3'
-                        }`}>
-                        <FiUser className={`w-4 h-4 ${msg.senderId === user.uid ? 'text-blue-400' : 'text-slate-400'}`} />
-                      </div>
-                      <div>
-                        <div className={`p-4 rounded-[1.5rem] ${msg.senderId === user.uid
-                            ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-900/20'
-                            : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                          }`}>
-                          <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
-                        </div>
-                        <p className={`text-[8px] font-black uppercase tracking-widest mt-2 font-mono ${msg.senderId === user.uid ? 'text-right text-blue-500' : 'text-slate-600'}`}>
-                          {msg.senderName} • {msg.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {msg.senderId === user.uid && (msg.read ? ' • SYNCED' : ' • SENT')}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Chat Input */}
-              <div className="p-8 bg-slate-900/40 border-t border-slate-800">
-                <div className="relative flex gap-4 bg-slate-950 border border-slate-800 p-2 rounded-2xl shadow-inner group focus-within:border-blue-500/50 transition-all">
-                  <textarea
-                    ref={messageInputRef}
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Broadcast message..."
-                    className="flex-1 bg-transparent border-none outline-none text-white px-4 py-2 text-sm placeholder:text-slate-700 font-medium resize-none"
-                    rows={1}
-                  />
-                  <div className="flex items-center gap-2">
-                    <button className="p-3 text-slate-500 hover:text-white transition-all"><FiPaperclip /></button>
-                    <button
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim() || sendingMessage}
-                      className="bg-blue-600 hover:bg-blue-500 text-white w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-blue-900/40 disabled:opacity-50"
-                    >
-                      {sendingMessage ? <FiRefreshCw className="animate-spin" /> : <FiSend />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-20">
-              <FiMaximize2 className="w-24 h-24 mb-6 stroke-[1]" />
-              <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-white">Select Vector</h2>
-              <p className="text-sm font-bold uppercase tracking-widest mt-2 text-white">Awaiting signal from communications stream</p>
-            </div>
-          )}
-        </div>
       </div>
 
-      {showUserProfile && selectedUserId && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-slate-900 border border-slate-800 rounded-[2.5rem] max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-3xl"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full"
           >
-            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-              <h3 className="text-xl font-black text-white uppercase tracking-widest">User Dossier</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">New Chat with Admin</h3>
               <button
-                onClick={() => { setShowUserProfile(false); setSelectedUserId(null); }}
-                className="w-10 h-10 bg-slate-800 text-slate-400 rounded-xl flex items-center justify-center hover:text-white transition-all"
+                onClick={() => setShowNewChatModal(false)}
+                className="text-slate-400 hover:text-white"
               >
-                <FiX />
+                <FiX className="w-6 h-6" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              <UserProfileView userId={selectedUserId} />
-            </div>
+
+            <form onSubmit={handleCreateChat} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Issue Type *
+                </label>
+                <select
+                  value={newChatForm.issueType}
+                  onChange={(e) => setNewChatForm({ ...newChatForm, issueType: e.target.value })}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select issue type</option>
+                  {ISSUE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Message *
+                </label>
+                <textarea
+                  value={newChatForm.message}
+                  onChange={(e) => setNewChatForm({ ...newChatForm, message: e.target.value })}
+                  placeholder="Describe your issue..."
+                  rows="4"
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Additional Context (Optional)
+                </label>
+                <textarea
+                  value={newChatForm.context}
+                  onChange={(e) => setNewChatForm({ ...newChatForm, context: e.target.value })}
+                  placeholder="Any additional information..."
+                  rows="3"
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNewChatModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  {loading ? 'Creating...' : 'Create Chat'}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

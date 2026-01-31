@@ -60,10 +60,9 @@ import AgentDashboard from './pages/agent/AgentDashboard';
 import AgentProfilePage from './pages/agent/AgentProfile';
 import AgentSettings from './pages/agent/AgentSettings';
 import SupportTickets from './pages/agent/SupportTickets';
-import PaymentVerification from './pages/agent/PaymentVerification';
+import UserSupportTickets from './components/support/UserSupportTickets';
 import Communication from './pages/agent/Communication';
 import Analytics from './pages/agent/Analytics';
-// KnowledgeBase import removed
 import DebugTools from './pages/agent/DebugTools';
 import AgentChatPage from './pages/agent/AgentChat';
 import EpinChecker from './pages/agent/EpinChecker';
@@ -71,8 +70,11 @@ import AgentNotifications from './pages/agent/Notifications';
 import UserBugChecker from './pages/agent/UserBugChecker';
 import PaymentErrors from './pages/agent/PaymentErrors';
 import UserManagement from './pages/agent/UserManagement';
+import UserHelpTracker from './pages/agent/UserHelpTracker';
 import SuspiciousActivityDetection from './components/agent/SuspiciousActivityDetection';
 import AgentProtectedRoute from './components/AgentProtectedRoute';
+import UpcomingPay from './pages/agent/UpcomingPay';
+import SpamMonitor from './pages/agent/SpamMonitor';
 
 // Admin Components
 import UserManager from './admin/UserManager';
@@ -93,6 +95,7 @@ import HiddenHelpRecords from './pages/admin/HiddenHelpRecords';
 import SupportManager from './admin/components/SupportManager';
 import BlockedUsersManager from './admin/components/BlockedUsersManager';
 import AccessDenied from './admin/AccessDenied';
+import AgentChats from './pages/admin/AgentChats';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -166,7 +169,7 @@ export const router = createBrowserRouter([
       {
         path: 'support',
         children: [
-          { path: 'tickets', element: <SupportTickets /> },
+          { path: 'tickets', element: <UserSupportTickets /> },
           { path: 'live-agent', element: <LiveChat /> },
           { path: 'chatbot', element: <ChatbotSupport /> },
         ]
@@ -204,7 +207,8 @@ export const router = createBrowserRouter([
       { path: 'hidden-records', element: <HiddenHelpRecords /> },
       { path: 'support-manager', element: <SupportManager /> },
       { path: 'make-agent', element: <MakeAgent /> },
-      { path: 'blocked-users', element: <BlockedUsersManager /> }
+      { path: 'blocked-users', element: <BlockedUsersManager /> },
+      { path: 'agent-chats', element: <AgentChats /> }
     ],
   },
 
@@ -220,12 +224,8 @@ export const router = createBrowserRouter([
       { path: 'profile', element: <AgentProfilePage /> },
       { path: 'settings', element: <AgentSettings /> },
       { path: 'support-tickets', element: <SupportTickets /> },
-      { path: 'payment-verification', element: <PaymentVerification /> },
       { path: 'communication', element: <Communication /> },
       { path: 'analytics', element: <Analytics /> },
-      { path: 'analytics', element: <Analytics /> },
-      // Knowledge base removed
-      { path: 'debug-tools', element: <DebugTools /> },
       { path: 'debug-tools', element: <DebugTools /> },
       { path: 'agent-chat', element: <AgentChatPage /> },
       { path: 'epin-checker', element: <EpinChecker /> },
@@ -233,6 +233,9 @@ export const router = createBrowserRouter([
       { path: 'user-bug-checker', element: <UserBugChecker /> },
       { path: 'payment-errors', element: <PaymentErrors /> },
       { path: 'user-management', element: <UserManagement /> },
+      { path: 'user-help-tracker', element: <UserHelpTracker /> },
+      { path: 'upcoming-pay', element: <UpcomingPay /> },
+      { path: 'spam-monitor', element: <SpamMonitor /> },
       { path: 'suspicious-activity', element: <SuspiciousActivityDetection /> }
     ]
   },

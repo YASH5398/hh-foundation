@@ -59,11 +59,11 @@ function renderAmountBoxes(amount, users) {
 }
 
 const PaymentJourneyMotion = ({ mode = 'fullscreen', onClose, user }) => {
-  const [currentScene, setCurrentScene] = useState(SCENES.INTRO);
+  const [currentScene, setCurrentScene] = useState(SCENES.CONGRATULATION);
   const [starPayments, setStarPayments] = useState([]);
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const soundPlayedRef = useRef(false); // Track if sound has been played
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const soundPlayedRef = useRef(false);
 
   // Scene transition timing
   useEffect(() => {
@@ -163,17 +163,11 @@ const PaymentJourneyMotion = ({ mode = 'fullscreen', onClose, user }) => {
   const handleClose = () => {
     setShowOverlay(false);
     setIsPlaying(false);
-    setCurrentScene(SCENES.INTRO);
+    setCurrentScene(SCENES.CONGRATULATION);
     setStarPayments([]);
     if (onClose) onClose();
   };
 
-  // Icon mode — removed (fixed positioning not allowed)
-  // PaymentJourneyMotion appears as normal section in dashboard
-
-  // ────────────────────────────────────────────────
-  //  Main overlay content
-  // ────────────────────────────────────────────────
   return (
     <AnimatePresence>
       {showOverlay && (

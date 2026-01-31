@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { MdDashboard, MdPeople, MdLock, MdHelp, MdTrendingUp, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdSupport, MdPersonAdd } from 'react-icons/md';
 import { HiX } from 'react-icons/hi';
+import { FiMessageSquare } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { Bell, Users, Shield } from 'lucide-react';
 
@@ -100,6 +101,7 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     { name: 'User & Transaction Safety Hub', icon: null, route: '/admin/safety-hub', emoji: '🛡️' },
     { name: 'User Manager', icon: MdPeople, route: '/admin/users' },
     { name: 'Make Agent', icon: MdPersonAdd, route: '/admin/make-agent' },
+    { name: 'Agent Chats', icon: FiMessageSquare, route: '/admin/agent-chats' },
     { name: 'E-PIN Manager', icon: MdLock, route: '/admin/epin-manager' },
     { name: 'User E-PIN Request', icon: MdAssignment, route: '/admin/epin-requests' },
     { name: 'Help Manager', icon: MdHelp, route: '/admin/help-manager' },

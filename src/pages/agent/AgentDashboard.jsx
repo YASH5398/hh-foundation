@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate, Outlet } from 'react-router-dom';
 import {
-  FiHome, FiFileText, FiDollarSign, FiMessageSquare, FiBarChart2,
+  FiHome, FiFileText, FiMessageSquare, FiBarChart2,
   FiBook, FiTool, FiUsers, FiCreditCard, FiShield,
   FiMenu, FiLogOut, FiSettings,
-  FiChevronDown, FiSearch, FiBell
+  FiChevronDown, FiSearch, FiBell, FiActivity
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAuth } from '../../context/AgentAuthContext';
@@ -58,13 +58,14 @@ const AgentDashboard = () => {
   const navigationItems = [
     { id: 'dashboard', label: 'Overview', icon: FiHome, path: '/agent-dashboard' },
     { id: 'support-tickets', label: 'Support Tickets', icon: FiFileText, path: '/agent-dashboard/support-tickets' },
-    { id: 'payment-verification', label: 'Payments', icon: FiDollarSign, path: '/agent-dashboard/payment-verification' },
     { id: 'communication', label: 'Inbox', icon: FiMessageSquare, path: '/agent-dashboard/communication' },
     { id: 'agent-chat', label: 'Live Chat', icon: FiMessageSquare, path: '/agent-dashboard/agent-chat', badge: pendingRequests.length > 0 ? pendingRequests.length : null },
+    { id: 'user-help-tracker', label: 'User Help Tracker', icon: FiActivity, path: '/agent-dashboard/user-help-tracker' },
+    { id: 'upcoming-pay', label: 'Upcoming Pay', icon: FiCreditCard, path: '/agent-dashboard/upcoming-pay' },
+    { id: 'spam-monitor', label: 'Spam Monitor', icon: FiShield, path: '/agent-dashboard/spam-monitor' },
     { id: 'analytics', label: 'Analytics', icon: FiBarChart2, path: '/agent-dashboard/analytics' },
     { id: 'user-management', label: 'Users', icon: FiUsers, path: '/agent-dashboard/user-management' },
     { id: 'epin-checker', label: 'EPIN Tools', icon: FiCreditCard, path: '/agent-dashboard/epin-checker' },
-    // Knowledge base removed
     { id: 'settings', label: 'Settings', icon: FiSettings, path: '/agent-dashboard/settings' },
   ];
 

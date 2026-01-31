@@ -56,6 +56,24 @@ service cloud.firestore {
       allow update: if isAdmin() || isAgent();
     }
 
+    // Agent to Admin Chats
+    match /agentAdminChats/{chatId} {
+      allow read, list: if isAdmin() || (isAgent() && resource.data.agentUid == request.auth.uid);
+      allow create: if isAgent();
+      allow update: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read, list: if isAdmin() || (isAgent() && get(/databases/$(database)/documents/agentAdminChats/$(chatId)).data.agentUid == request.auth.uid);
+        allow create: if isAdmin() || (isAgent() && get(/databases/$(database)/documents/agentAdminChats/$(chatId)).data.agentUid == request.auth.uid);
+      }
+    }
+
+    // Spam Logs
+    match /spamLogs/{id} {
+      allow read, list: if isAdmin() || isAgent();
+      allow create: if isAdmin();
+    }
+
     // Agent Requests / Escalations (Restored)
     match /agentRequests/{id} {
       allow read, list: if isAdmin() || isAgent() || (isAuth() && resource.data.agentId == request.auth.uid);

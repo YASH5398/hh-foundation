@@ -52,8 +52,13 @@ const SupportTickets = () => {
         orderBy('createdAt', 'desc')
       );
     } else {
+      // 'all' tab now shows Pending tickets (available to claim) AND My Assigned tickets
+      // Complex OR queries are hard in Firestore, so we'll fetch PENDING tickets for now in 'all' view
+      // effectively making 'all' similar to 'pending' but perhaps with a different sorting or limit.
+      // Alternatively, we can just show global pending stream.
       ticketsQuery = query(
         collection(db, 'supportTickets'),
+        where('status', '==', 'pending'),
         orderBy('createdAt', 'desc'),
         limit(50)
       );
@@ -100,16 +105,45 @@ const SupportTickets = () => {
   }, [selectedTicket?.id]);
 
   const handleAssignToMe = async (ticketId) => {
+    if (!user?.uid) return;
     try {
-      await updateDoc(doc(db, 'supportTickets', ticketId), {
+      // Logic: Atomic update to claim the ticket
+      // Check if already assigned (optional but good for safety)
+      const ticketRef = doc(db, 'supportTickets', ticketId);
+      const ticketSnap = await getDoc(ticketRef);
+
+      if (ticketSnap.exists() && ticketSnap.data().assignedAgent) {
+        toast.error("Ticket already intercepted by another agent.");
+        return;
+      }
+
+      await updateDoc(ticketRef, {
         assignedAgent: user.uid,
         agentName: user.displayName || user.email,
-        status: 'in-progress',
+        status: 'accepted',
+        updatedAt: serverTimestamp(),
+        // Add a specialized field to track when it was claimed
+        claimedAt: serverTimestamp()
+      });
+      toast.success('Ticket accepted');
+      // We automatically select it to open details
+      setSelectedTicket({ ...ticketSnap.data(), id: ticketId, status: 'accepted', assignedAgent: user.uid });
+    } catch (err) {
+      console.error(err);
+      toast.error('Assignment failed');
+    }
+  };
+
+  const handleConfirmAssignment = async (ticketId) => {
+    try {
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        status: 'assigned',
         updatedAt: serverTimestamp()
       });
-      toast.success('Ticket assigned to your station');
+      toast.success('Ticket officially assigned');
     } catch (err) {
-      toast.error('Assignment failed');
+      console.error(err);
+      toast.error('Failed to confirm assignment');
     }
   };
 
@@ -121,7 +155,22 @@ const SupportTickets = () => {
       });
       toast.success(`Ticket marked as ${newStatus}`);
     } catch (err) {
+      console.error(err);
       toast.error('Status update failed');
+    }
+  };
+
+  const handleSolveTicket = async (ticketId) => {
+    try {
+      await updateDoc(doc(db, 'supportTickets', ticketId), {
+        status: 'solved',
+        updatedAt: serverTimestamp(),
+        solvedAt: serverTimestamp()
+      });
+      toast.success('Ticket solved successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to solve ticket');
     }
   };
 
@@ -143,6 +192,24 @@ const SupportTickets = () => {
         updatedAt: serverTimestamp(),
         lastMessage: newMessage
       });
+
+      // Notify the user
+      if (selectedTicket.userId) {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            uid: selectedTicket.userId,
+            type: 'support',
+            title: 'Support Update',
+            message: `Support Agent replied to your ticket #${selectedTicket.id.slice(-6)}: "${newMessage.substring(0, 30)}${newMessage.length > 30 ? '...' : ''}"`,
+            ticketId: selectedTicket.id,
+            createdAt: serverTimestamp(),
+            isRead: false
+          });
+        } catch (noteErr) {
+          console.error("Failed to send notification", noteErr);
+          // Don't block the message flow if notification fails
+        }
+      }
 
       setNewMessage('');
     } catch (err) {
@@ -199,9 +266,12 @@ const SupportTickets = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  onClick={() => setSelectedTicket(ticket)}
-                  className={`p-5 cursor-pointer border-b border-slate-800/50 transition-all relative group ${selectedTicket?.id === ticket.id ? 'bg-blue-600/10 border-l-4 border-l-blue-600' : 'hover:bg-slate-800/30'
-                    }`}
+                  onClick={() => {
+                    if (ticket.assignedAgent === user.uid) {
+                      setSelectedTicket(ticket);
+                    }
+                  }}
+                  className={`p-5 border-b border-slate-800/50 transition-all relative group ${selectedTicket?.id === ticket.id ? 'bg-blue-600/10 border-l-4 border-l-blue-600' : 'hover:bg-slate-800/30'} ${!ticket.assignedAgent ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter font-mono">#{ticket.id.slice(-6)}</span>
@@ -214,12 +284,27 @@ const SupportTickets = () => {
                   </div>
                   <h3 className="text-sm font-bold text-slate-200 truncate pr-4 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{ticket.subject}</h3>
                   <p className="text-xs text-slate-500 mt-1 line-clamp-1">{ticket.lastMessage || ticket.description}</p>
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className={`w-2 h-2 rounded-full ${ticket.status === 'pending' ? 'bg-yellow-500 animate-pulse' :
-                      ticket.status === 'in-progress' ? 'bg-blue-500' :
-                        'bg-slate-600'
-                      }`}></div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">{ticket.status}</span>
+                  <div className="flex items-center gap-3 mt-3 justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${ticket.status === 'pending' ? 'bg-yellow-500 animate-pulse' :
+                        ticket.status === 'in-progress' ? 'bg-blue-500' :
+                          ticket.status === 'solved' ? 'bg-emerald-500' :
+                            'bg-slate-600'
+                        }`}></div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">{ticket.status}</span>
+                    </div>
+
+                    {!ticket.assignedAgent && ticket.status === 'pending' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssignToMe(ticket.id);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors shadow-lg shadow-blue-900/40 z-10"
+                      >
+                        Accept
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -258,12 +343,21 @@ const SupportTickets = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap justify-end">
-                    {selectedTicket.status === 'pending' && (
+                    {selectedTicket.assignedAgent === user.uid && selectedTicket.status === 'accepted' && (
                       <button
-                        onClick={() => handleAssignToMe(selectedTicket.id)}
+                        onClick={() => handleConfirmAssignment(selectedTicket.id)}
                         className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/40"
                       >
-                        Claim
+                        Assign to Me
+                      </button>
+                    )}
+
+                    {selectedTicket.assignedAgent === user.uid && selectedTicket.status !== 'accepted' && selectedTicket.status !== 'solved' && selectedTicket.status !== 'closed' && (
+                      <button
+                        onClick={() => handleSolveTicket(selectedTicket.id)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/40"
+                      >
+                        Solve Ticket
                       </button>
                     )}
                     {selectedTicket.assignedAgent === user.uid && (

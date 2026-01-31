@@ -203,7 +203,7 @@ function TickerSection() {
               setEnabled(true); // Default to enabled on error
               return;
             }
-            
+
             if (documents.length > 0) {
               setEnabled(documents[0].enabled !== false);
             } else {
@@ -321,7 +321,7 @@ const DashboardHome = () => {
       console.log('🧪 Testing Firestore connection for UID:', userId);
       const userRef = doc(db, 'users', userId);
       const docSnap = await getDoc(userRef);
-      
+
       if (docSnap.exists()) {
         const userData = docSnap.data();
         console.log('✅ Firestore test successful:', userData);
@@ -346,7 +346,7 @@ const DashboardHome = () => {
 
   // Fetch user profile from Firestore
   useEffect(() => {
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
 
     const setupListener = async () => {
       // Check authentication before setting up listener
@@ -365,7 +365,7 @@ const DashboardHome = () => {
 
       try {
         console.log('Setting up user profile listener for:', userId);
-        
+
         // Use safe listener from firestoreQueryService
         unsubscribe = firestoreQueryService.setupSafeListener(
           'users',
@@ -585,14 +585,14 @@ const DashboardHome = () => {
     const fetchDirectMembers = async () => {
       try {
         console.log('Fetching direct members for user:', userProfile.uid);
-        
+
         const documents = await firestoreQueryService.safeQuery(
           'users',
           [['sponsorId', '==', userProfile.uid]],
           [],
           null
         );
-        
+
         console.log('Direct members fetched:', documents.length);
         setStats(prev => ({ ...prev, directReferrals: documents.length }));
       } catch (error) {
@@ -604,14 +604,14 @@ const DashboardHome = () => {
     const fetchAvailableEpins = async () => {
       try {
         console.log('Fetching available E-PINs for user:', userProfile.uid);
-        
+
         const documents = await firestoreQueryService.safeQuery(
           'epins',
           [['usedBy', '==', null], ['assignedTo', '==', userProfile.uid]],
           [],
           null
         );
-        
+
         console.log('Available E-PINs fetched:', documents.length);
         setStats(prev => ({ ...prev, availableEpins: documents.length }));
       } catch (error) {
@@ -656,8 +656,8 @@ const DashboardHome = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <ErrorMessage message={error} />
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Reload Page
@@ -721,7 +721,7 @@ const DashboardHome = () => {
             transition={{ duration: 0.6 }}
             className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300"
           >
-                        <ReferralLink userProfile={userProfile} />
+            <ReferralLink userProfile={userProfile} />
 
             {/* Ticker Below */}
             <div className="mt-4 w-full overflow-hidden rounded-xl px-4 py-2 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border border-blue-800 shadow-2xl">
@@ -774,7 +774,7 @@ const DashboardHome = () => {
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 {/* Animated background gradient */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiSend className="w-8 h-8 text-white" />
@@ -799,7 +799,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 via-teal-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiDownload className="w-8 h-8 text-white" />
@@ -824,7 +824,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 via-red-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiDownload className="w-8 h-8 text-white" />
@@ -849,7 +849,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiDollarSign className="w-8 h-8 text-white" />
@@ -877,7 +877,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-green-400/20 via-emerald-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiUsers className="w-8 h-8 text-white" />
@@ -902,7 +902,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 via-yellow-500/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiClock className="w-8 h-8 text-white" />
@@ -927,7 +927,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-rose-400/20 via-pink-500/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiCreditCard className="w-8 h-8 text-white" />
@@ -952,7 +952,7 @@ const DashboardHome = () => {
               >
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-400/20 via-gray-500/20 to-zinc-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                   <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <FiCalendar className="w-8 h-8 text-white" />
@@ -985,9 +985,9 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.7 }}
-            className="w-full px-4 py-12 sm:py-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl"
+            className="w-full px-4 py-12 sm:py-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl relative z-10"
           >
-            <div className="max-w-2xl mx-auto text-center">
+            <div className="max-w-2xl mx-auto text-center relative z-20">
               <motion.h2
                 className="text-3xl sm:text-4xl font-black text-gray-900 mb-4"
                 initial={{ y: 20, opacity: 0 }}
@@ -1007,8 +1007,11 @@ const DashboardHome = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowPaymentJourney(true)}
-                className="px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPaymentJourney(true);
+                }}
+                className="pointer-events-auto px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all relative z-50 cursor-pointer"
               >
                 View Full Journey
               </motion.button>
@@ -1017,9 +1020,9 @@ const DashboardHome = () => {
 
           {/* Payment Journey Motion Overlay */}
           {showPaymentJourney && (
-            <PaymentJourneyMotion 
-              mode="fullscreen" 
-              user={user} 
+            <PaymentJourneyMotion
+              mode="fullscreen"
+              user={user}
               onClose={() => setShowPaymentJourney(false)}
             />
           )}        </div>

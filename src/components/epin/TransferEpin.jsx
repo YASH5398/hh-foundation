@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaArrowLeft, FaExchangeAlt, FaUser, FaCoins, FaQrcode, FaCheck } from 'react-icons/fa';
+import { FaArrowLeft, FaExchangeAlt, FaUser, FaCoins, FaCheck } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,9 +15,6 @@ const TransferEpin = () => {
   const [transferCount, setTransferCount] = useState(1);
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferSuccess, setTransferSuccess] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-
-
 
   const pricePerEpin = 60;
 
@@ -39,7 +36,7 @@ const TransferEpin = () => {
       where('usedBy', '==', null)
     );
 
-    const unsubscribe = onSnapshot(q, 
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
         setAvailableCount(snapshot.size);
         setLoading(false);
@@ -158,7 +155,8 @@ const TransferEpin = () => {
                 value={recipientUserId}
                 onChange={(e) => setRecipientUserId(e.target.value)}
                 placeholder="Enter recipient's user ID"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                // Fixed text color, placeholder, and focus states
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow"
               />
             </div>
 
@@ -173,19 +171,20 @@ const TransferEpin = () => {
                 max={availableCount}
                 value={transferCount}
                 onChange={(e) => setTransferCount(parseInt(e.target.value) || 1)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                // Fixed text color and background for consistency
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow"
               />
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
             <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
               <span>Transfer Amount:</span>
-              <span className="font-semibold">₹{(transferCount * pricePerEpin).toLocaleString()}</span>
+              <span className="font-bold text-gray-900">₹{(transferCount * pricePerEpin).toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center text-sm text-gray-600">
               <span>Available E-PINs:</span>
-              <span className="font-semibold">{availableCount}</span>
+              <span className="font-bold text-gray-900">{availableCount}</span>
             </div>
           </div>
 
@@ -193,17 +192,9 @@ const TransferEpin = () => {
             <button
               onClick={handleTransfer}
               disabled={isTransferring || availableCount === 0 || !recipientUserId.trim()}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-[0.98]"
             >
               {isTransferring ? 'Transferring...' : 'Transfer E-PINs'}
-            </button>
-
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
-            >
-              <FaQrcode />
-              QR Code
             </button>
           </div>
 
@@ -211,7 +202,7 @@ const TransferEpin = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700"
+              className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 font-medium"
             >
               <FaCheck className="text-green-600" />
               Transfer request submitted successfully!
@@ -219,35 +210,13 @@ const TransferEpin = () => {
           )}
         </motion.div>
 
-        {/* QR Code Section */}
-        {showQR && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-white p-6 rounded-xl shadow-md mb-8"
-          >
-            <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">UPI Payment QR Code</h3>
-            <div className="text-center">
-              <img 
-                src="https://freeimage.host/i/KIUDbUv" 
-                alt="UPI QR" 
-                className="w-32 h-32 mx-auto rounded-lg shadow-lg"
-              />
-              <p className="text-sm text-gray-500 mt-4">Scan to make UPI payment</p>
-            </div>
-          </motion.div>
-        )}
-
-
-
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white p-4 rounded-xl shadow-md"
+            className="bg-white p-4 rounded-xl shadow-md border border-gray-100"
           >
             <h4 className="font-semibold text-gray-800 mb-2">E-PIN Value</h4>
             <p className="text-2xl font-bold text-green-600">₹{pricePerEpin}</p>
@@ -258,7 +227,7 @@ const TransferEpin = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white p-4 rounded-xl shadow-md"
+            className="bg-white p-4 rounded-xl shadow-md border border-gray-100"
           >
             <h4 className="font-semibold text-gray-800 mb-2">Total Worth</h4>
             <p className="text-2xl font-bold text-blue-600">
