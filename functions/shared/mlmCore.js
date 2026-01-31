@@ -5,8 +5,8 @@ const LEVEL_CONFIG = {
   Star: {
     totalHelps: 3,
     amount: 300,
-    blockPoints: [], // NO AUTO BLOCK - Star users are never blocked automatically after 3 receives
-    upgradeAmount: 600, // OPTIONAL upgrade payment to Silver
+    blockPoints: [3], // Block after 3 receives (upgrade required)
+    upgradeAmount: 600, // REQUIRED upgrade payment to Silver
     sponsorPayment: null, // No sponsor payment required
     next: "Silver",
     helpLimit: 3
@@ -55,12 +55,9 @@ const isIncomeBlocked = (user) => {
   if (!user || !user.level || !LEVEL_CONFIG[user.level]) {
     return false;
   }
-  
-  // Star users are NEVER blocked automatically after receiving helps
-  if (user.level === 'Star') {
-    return false;
-  }
-  
+
+
+
   const config = LEVEL_CONFIG[user.level];
   const helpReceived = user.helpReceived || 0;
   return config.blockPoints.includes(helpReceived);
@@ -70,12 +67,9 @@ const getCurrentBlockPoint = (user) => {
   if (!user || !user.level || !LEVEL_CONFIG[user.level]) {
     return null;
   }
-  
-  // Star users are never blocked automatically
-  if (user.level === 'Star') {
-    return null;
-  }
-  
+
+
+
   const config = LEVEL_CONFIG[user.level];
   const helpReceived = user.helpReceived || 0;
   return config.blockPoints.find(point => point === helpReceived) || null;
@@ -95,8 +89,10 @@ const getRequiredPaymentForUnblock = (user) => {
 
   for (const blockPoint of config.blockPoints) {
     if (helpReceived === blockPoint) {
-      // Star level has no block points, so this won't execute for Star
-      
+      if (user.level === 'Star' && blockPoint === 3) {
+        return { type: 'upgrade', amount: config.upgradeAmount, required: true };
+      }
+
       if (user.level === 'Silver') {
         if (blockPoint === 4) {
           return { type: 'upgrade', amount: config.upgradeAmount, required: true };

@@ -122,6 +122,12 @@ service cloud.firestore {
     match /appConfig/{id} { allow read, list: if isAuth() || isAdmin(); allow write: if isAdmin(); }
     match /tickerMessages/{id} { allow read, list: if isAuth() || isAdmin(); allow write: if isAdmin(); }
     match /systemConfig/{id} { allow read, list: if isAuth() || isAdmin(); allow write: if isAdmin(); }
+    
+    /* ================= ADMIN INSIGHTS ================= */
+    match /adminInsights/{id} {
+      allow read, list: if isAdmin();
+      allow write: if isAdmin();
+    }
 
     /* ================= NOTIFICATIONS ================= */
     match /notifications/{id} {

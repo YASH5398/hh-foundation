@@ -81,21 +81,21 @@ import UserTransactionSafetyHub from './admin/UserTransactionSafetyHub';
 import MakeAgent from './admin/components/MakeAgent';
 import EPinManagement from './admin/components/epin/EPinManagement';
 import EpinRequestManager from './admin/components/epin/EpinRequestManager';
-import HelpManager from './admin/components/HelpManager';
+
 import SendHelpManager from './admin/components/SendHelpManager';
 import ForceReceiverAssignment from './admin/components/ForceReceiverAssignment';
-import LevelManager from './admin/LevelManager';
+
 import ManageHelpAssignments from './pages/admin/ManageHelpAssignments';
 import AdminInsights from './pages/admin/AdminInsights';
 import Testimonials from './pages/admin/AdminTestimonials';
-import Notifications from './admin/components/Notifications';
-import DocumentManager from './pages/admin/DocumentManager';
+
+
 import HiddenHelpRecords from './pages/admin/HiddenHelpRecords';
-import SupportManager from './admin/components/SupportManager';
+
 import BlockedUsersManager from './admin/components/BlockedUsersManager';
 import AccessDenied from './admin/AccessDenied';
 import AgentChats from './pages/admin/AgentChats';
-import MigrationPage from './admin/components/MigrationPage';
+
 import UnblockUser from './admin/components/UnblockUser';
 
 export const router = createBrowserRouter([
@@ -200,21 +200,21 @@ export const router = createBrowserRouter([
         path: 'epin-manager',
         element: <EPinManagement />
       },
-      { path: 'help-manager', element: <HelpManager /> },
+
       { path: 'sendhelp-manager', element: <SendHelpManager /> },
       { path: 'force-assignment', element: <ForceReceiverAssignment /> },
-      { path: 'level-manager', element: <LevelManager /> },
+
       { path: 'manage-assignments', element: <ManageHelpAssignments /> },
       { path: 'insights', element: <AdminInsights /> },
       { path: 'testimonials', element: <Testimonials /> },
-      { path: 'notifications', element: <Notifications /> },
-      { path: 'documents', element: <DocumentManager /> },
+
+
       { path: 'hidden-records', element: <HiddenHelpRecords /> },
-      { path: 'support-manager', element: <SupportManager /> },
+
       { path: 'make-agent', element: <MakeAgent /> },
       { path: 'blocked-users', element: <BlockedUsersManager /> },
       { path: 'agent-chats', element: <AgentChats /> },
-      { path: 'migration', element: <MigrationPage /> },
+
       { path: 'unblock-user', element: <UnblockUser /> }
     ],
   },

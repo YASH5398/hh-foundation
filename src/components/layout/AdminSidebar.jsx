@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { MdDashboard, MdPeople, MdLock, MdLockOpen, MdHelp, MdTrendingUp, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdSupport, MdPersonAdd } from 'react-icons/md';
+import { MdDashboard, MdPeople, MdLock, MdLockOpen, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdPersonAdd } from 'react-icons/md';
 import { HiX } from 'react-icons/hi';
 import { FiMessageSquare } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, Users, Shield } from 'lucide-react';
+import { Users, Shield } from 'lucide-react';
 
 // Add custom CSS for animations
 const customStyles = `
@@ -104,21 +104,21 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     { name: 'Agent Chats', icon: FiMessageSquare, route: '/admin/agent-chats' },
     { name: 'E-PIN Manager', icon: MdLock, route: '/admin/epin-manager' },
     { name: 'User E-PIN Request', icon: MdAssignment, route: '/admin/epin-requests' },
-    { name: 'Help Manager', icon: MdHelp, route: '/admin/help-manager' },
+
     { name: 'Send Help Manager', icon: MdCreditCard, route: '/admin/sendhelp-manager' },
-    { name: 'Support Manager', icon: MdSupport, route: '/admin/support-manager' },
+
     { name: 'Force Receiver Assignment', icon: MdAssignment, route: '/admin/force-assignment' },
-    { name: 'Level Manager', icon: MdTrendingUp, route: '/admin/level-manager' },
+
     { name: 'Manage Help Assignments', icon: Users, route: '/admin/manage-assignments' },
     ...(isAdmin ? [
       { name: 'Admin Insights', icon: null, route: '/admin/insights', emoji: '📊' },
       { name: 'Testimonials', icon: null, route: '/admin/testimonials', emoji: '🎬' },
     ] : []),
-    { name: 'Notifications', icon: Bell, route: '/admin/notifications' },
-    { name: 'Document Manager', icon: null, route: '/admin/documents', emoji: '📄' },
+
+
     { name: 'Blocked Users', icon: Shield, route: '/admin/blocked-users' },
     { name: 'Unblock User', icon: MdLockOpen, route: '/admin/unblock-user' },
-    { name: 'System Migration', icon: null, route: '/admin/migration', emoji: '⚙️' },
+
   ];
 
   return (

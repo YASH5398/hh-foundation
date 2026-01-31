@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, where, getDocs, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import Notifications from './components/Notifications';
+
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { SiPhonepe } from 'react-icons/si';
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
   const [screenshot, setScreenshot] = useState(null);
   const [loadingPayment, setLoadingPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+
   // Ticker management state
   const [tickerMessage, setTickerMessage] = useState('');
   const [currentTickerMessage, setCurrentTickerMessage] = useState('');
@@ -54,7 +54,7 @@ const AdminDashboard = () => {
       try {
         const tickerRef = doc(db, 'appConfig', 'ticker');
         const tickerDoc = await getDoc(tickerRef);
-        
+
         if (tickerDoc.exists()) {
           const data = tickerDoc.data();
           setCurrentTickerMessage(data.message || '');
@@ -88,7 +88,7 @@ const AdminDashboard = () => {
         updatedAt: serverTimestamp(),
         updatedBy: user?.uid || 'admin'
       });
-      
+
       setCurrentTickerMessage(tickerMessage.trim());
       toast.success('Ticker message updated successfully!');
     } catch (error) {

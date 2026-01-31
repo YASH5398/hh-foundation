@@ -42,35 +42,47 @@ const BlockedUsersManager = () => {
   const [unblockReason, setUnblockReason] = useState('');
   const [unblocking, setUnblocking] = useState(false);
   const [filter, setFilter] = useState('all'); // all, system_blocked, manual_blocked
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Listen to blocked users
   useEffect(() => {
-    const usersQuery = query(
-      collection(db, 'users'),
-      where('isBlocked', '==', true),
-      orderBy('blockedAt', 'desc')
-    );
+    try {
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('isBlocked', '==', true),
+        orderBy('blockedAt', 'desc')
+      );
 
-    const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
-      const users = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setBlockedUsers(users);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error listening to blocked users:', error);
-      setLoading(false);
-    });
+      const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+        const users = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setBlockedUsers(users || []);
+        setLoading(false);
+      }, (error) => {
+        console.error('Error listening to blocked users:', error);
+        setBlockedUsers([]); // Fallback to empty array on error
+        setLoading(false);
+        toast.error('Failed to load blocked users. Check permissions.');
+      });
 
-    return unsubscribeUsers;
+      return unsubscribeUsers;
+    } catch (err) {
+      console.error('Critical error in BlockedUsersManager:', err);
+      setBlockedUsers([]);
+      setLoading(false);
+    }
   }, []);
 
   // Listen to support tickets
   useEffect(() => {
     const unsubscribeTickets = listenToAllSupportTickets((tickets) => {
-      setSupportTickets(tickets.filter(ticket =>
-        ticket.category === 'block_resolution' || ticket.reason.includes('blocked')
+      setSupportTickets((tickets || []).filter(ticket =>
+        ticket && (
+          ticket.category === 'block_resolution' ||
+          String(ticket.reason || "").toLowerCase().includes('blocked')
+        )
       ));
     });
 
@@ -116,7 +128,21 @@ const BlockedUsersManager = () => {
     return supportTickets.filter(ticket => ticket.userUid === userId);
   };
 
-  const filteredUsers = blockedUsers.filter(user => {
+  const safeUsers = Array.isArray(blockedUsers) ? blockedUsers : [];
+  const q = (searchTerm || "").toLowerCase();
+
+  const filteredUsers = safeUsers.filter(user => {
+    if (!user) return false;
+
+    // 1. Search filter
+    const name = String(user.fullName || user.displayName || "").toLowerCase();
+    const email = String(user.email || "").toLowerCase();
+    const id = String(user.userId || "").toLowerCase();
+
+    const matchesSearch = name.includes(q) || email.includes(q) || id.includes(q);
+    if (!matchesSearch) return false;
+
+    // 2. Category filter
     if (filter === 'all') return true;
     if (filter === 'system_blocked') return user.blockedBySystem === true;
     if (filter === 'manual_blocked') return !user.blockedBySystem;
@@ -156,39 +182,50 @@ const BlockedUsersManager = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === 'all'
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'all'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              All ({blockedUsers.length})
-            </button>
-            <button
-              onClick={() => setFilter('system_blocked')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === 'system_blocked'
+                  }`}
+              >
+                All ({blockedUsers.length})
+              </button>
+              <button
+                onClick={() => setFilter('system_blocked')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'system_blocked'
                   ? 'bg-red-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              System Blocked ({blockedUsers.filter(u => u.blockedBySystem).length})
-            </button>
-            <button
-              onClick={() => setFilter('manual_blocked')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === 'manual_blocked'
+                  }`}
+              >
+                System
+              </button>
+              <button
+                onClick={() => setFilter('manual_blocked')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'manual_blocked'
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Manual Blocked ({blockedUsers.filter(u => !u.blockedBySystem).length})
-            </button>
+                  }`}
+              >
+                Manual
+              </button>
+            </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full md:w-64"
+            />
           </div>
         </div>
       </div>
@@ -356,11 +393,10 @@ const BlockedUsersManager = () => {
                         <div key={ticket.id} className="bg-gray-50 rounded-lg p-3">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-gray-900">{ticket.reason}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
                               ticket.status === 'resolved' ? 'bg-green-100 text-green-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
+                                'bg-blue-100 text-blue-800'
+                              }`}>
                               {ticket.status}
                             </span>
                           </div>

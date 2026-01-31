@@ -1064,6 +1064,18 @@ exports.receiverResolvePayment = httpsOnCall(async (request) => {
       tx.update(receiveRef, patch);
 
       await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid: r.receiverUid });
+
+      // OPTIMIZATION: Activate sender if this is their first confirmed help
+      const senderRef = db.collection('users').doc(s.senderUid);
+      const senderSnap = await tx.get(senderRef);
+      if (senderSnap.exists && senderSnap.data().isActivated !== true) {
+        tx.update(senderRef, {
+          isActivated: true,
+          activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          level: 'Star', // Ensure level is set
+          levelStatus: 'active'
+        });
+      }
     }
 
     if (action === 'dispute') {
@@ -1186,6 +1198,18 @@ exports.adminForceConfirm = httpsOnCall(async (request) => {
     tx.update(receiveRef, patch);
 
     await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid: r.receiverUid });
+
+    // OPTIMIZATION: Activate sender if this is their first confirmed help (Admin Force)
+    const senderRef = db.collection('users').doc(s.senderUid);
+    const senderSnap = await tx.get(senderRef);
+    if (senderSnap.exists && senderSnap.data().isActivated !== true) {
+      tx.update(senderRef, {
+        isActivated: true,
+        activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        level: 'Star',
+        levelStatus: 'active'
+      });
+    }
   });
 
   await writeAdminActionLog({ actionType: 'force_confirm', helpId, performedBy, reason });
@@ -1609,6 +1633,11 @@ exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}
   if (!userId) return null;
 
   try {
+    // Check for level upgrade
+    if (after.paymentType === 'upgrade' && after.targetLevel) {
+      await upgradeUserLevel(userId, after.targetLevel);
+    }
+
     await internalResumeBlockedReceives(userId);
   } catch (e) {
     console.error('[onLevelPaymentConfirmedV2] Error:', e);
