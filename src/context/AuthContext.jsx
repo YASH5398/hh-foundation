@@ -20,7 +20,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(undefined);
-  const [loading, setLoading] = useState(true);
+  const [initialAuthLoading, setInitialAuthLoading] = useState(true); // Only for first auth check
   const [profileLoading, setProfileLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       if (authUser) {
         // User logged in
         setUser(authUser);
-        // Do NOT set loading=false here, wait for profile fetch
+        setInitialAuthLoading(false); // Auth check complete
       } else {
         // User logged out
         setUser(null);
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
         setBlockReason(null);
         setBlockedAt(null);
         setReceiveEligibility(null);
-        setLoading(false); // Can stop loading if logged out
+        setInitialAuthLoading(false); // Auth check complete
       }
     });
 
@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const profile = await getUserProfile(user.uid);
+        console.log("🔍 AUTH CONTEXT: Profile fetched successfully:", profile?.role);
         setUserProfile(profile || null); // null if doc missing
 
         // Fetch eligibility/block status
@@ -107,7 +108,6 @@ export const AuthProvider = ({ children }) => {
         setUserProfile(undefined); // undefined means "error/unknown" not "missing"
       } finally {
         setProfileLoading(false);
-        setLoading(false); // Global loading done
       }
     };
 
@@ -169,7 +169,8 @@ export const AuthProvider = ({ children }) => {
     user,
     setUser, // expose minimal setter if needed by edge cases
     userProfile,
-    loading: loading || profileLoading, // Combined loading state
+    loading: initialAuthLoading, // Only initial load, NOT profile loading
+    profileLoading, // Expose separately for components that need it
     authLoading,
     isAdmin,
     isBlocked,
@@ -183,8 +184,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
-  // NOTE: render only children when not loading to prevent protected routes from redirecting early
 };

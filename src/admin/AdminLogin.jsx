@@ -1,23 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const AdminLogin = () => {
-  const navigate = useNavigate();
-  const { login, isAdmin, loading: authLoading, user } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
-
-  // Navigate admin users to dashboard
-  useEffect(() => {
-    if (user && isAdmin && !loading && !authLoading) {
-      console.log('🔍 ADMIN LOGIN: User is admin, redirecting to dashboard');
-      navigate('/admin/dashboard', { replace: true });
-    }
-  }, [user, isAdmin, loading, authLoading, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,13 +16,12 @@ const AdminLogin = () => {
       toast.error('Please enter both email and password');
       return;
     }
-    setLoading(true);
+    setIsLoggingIn(true);
     try {
       const result = await login(email, password);
       if (result.success) {
         toast.success('Login successful! Verifying admin status...');
-        // Don't navigate here - let the useEffect above handle navigation
-        // based on isAdmin from the auth context profile fetch
+        // AdminPublicRoute will handle redirect to /admin/dashboard
       } else {
         setErrorDetails('Admin login failed');
         toast.error('Login failed');
@@ -41,7 +30,7 @@ const AdminLogin = () => {
       setErrorDetails('Login failed: ' + (error.message || 'Unknown error'));
       toast.error('Login failed: ' + (error.message || 'Unknown error'));
     } finally {
-      setLoading(false);
+      setIsLoggingIn(false);
     }
   };
 
@@ -51,7 +40,7 @@ const AdminLogin = () => {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Admin Login
         </h2>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -98,10 +87,10 @@ const AdminLogin = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isLoggingIn}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Sign in as Admin'}
+              {isLoggingIn ? 'Logging in...' : 'Sign in as Admin'}
             </button>
           </div>
 

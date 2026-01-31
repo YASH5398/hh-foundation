@@ -7,6 +7,7 @@ import { doc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, s
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 import EmojiPicker from 'emoji-picker-react';
+import { createAgentNotification, AGENT_NOTIF_TYPES, AGENT_NOTIF_PRIORITIES } from '../services/agentNotificationService';
 
 const LiveChat = () => {
   const { user } = useAuth();
@@ -25,9 +26,11 @@ const LiveChat = () => {
   const [assignedAgent, setAssignedAgent] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [messageTimestamps, setMessageTimestamps] = useState([]);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const lastSpamNotifTime = useRef(0);
   const emojiPickerRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -151,6 +154,30 @@ const LiveChat = () => {
     if (!imageUrl) setNewMessage(''); // Only clear text input if it was a text message
     setShowEmojiPicker(false);
 
+    // Spam Detection: Check if more than 5 messages in 10 seconds
+    const now = Date.now();
+    const newTimestamps = [...messageTimestamps, now].filter(t => now - t < 10000);
+    setMessageTimestamps(newTimestamps);
+
+    if (newTimestamps.length > 5) {
+      const timeSinceLastNotif = now - lastSpamNotifTime.current;
+
+      if (timeSinceLastNotif > 30000) {
+        await createAgentNotification({
+          type: AGENT_NOTIF_TYPES.SPAM,
+          title: 'Spam Detected',
+          message: `User ${user.displayName || user.email} is sending messages rapidly. Potential bot or spammer.`,
+          userId: user.uid,
+          userName: user.displayName || user.email,
+          priority: AGENT_NOTIF_PRIORITIES.HIGH
+        });
+        lastSpamNotifTime.current = now;
+      }
+
+      toast.error('Messaging too fast. Please slow down.');
+      return;
+    }
+
     // Initial Chat Request Logic (Only supports text for now to keep simple)
     if (chatStatus === 'waiting' && !chatRequestId) {
       if (imageUrl) {
@@ -186,6 +213,16 @@ const LiveChat = () => {
       const docRef = await addDoc(collection(db, 'agentChatRequests'), chatRequestData);
       setChatRequestId(docRef.id);
       setChatStatus('connecting');
+
+      // Trigger Agent Notification
+      await createAgentNotification({
+        type: AGENT_NOTIF_TYPES.CHAT_REQUEST,
+        title: 'New Chat Request',
+        message: `User ${user.displayName || user.email} is waiting for support: "${firstMessage.substring(0, 50)}${firstMessage.length > 50 ? '...' : ''}"`,
+        userId: user.uid,
+        userName: user.displayName || user.email,
+        priority: AGENT_NOTIF_PRIORITIES.MEDIUM
+      });
 
       const userMessage = {
         id: Date.now(),

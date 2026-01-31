@@ -6,6 +6,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './admin/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './admin/ProtectedRoute';
+import AdminPublicRoute from './admin/AdminPublicRoute';
 import PublicRoute from './components/auth/PublicRoute';
 import AgentLayout from './components/layout/AgentLayout';
 
@@ -125,7 +126,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin/login',
-    element: <AdminLogin />,
+    element: (
+      <AdminPublicRoute>
+        <AdminLogin />
+      </AdminPublicRoute>
+    ),
   },
 
   // User details route (after signup)

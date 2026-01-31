@@ -19,6 +19,7 @@ import {
   arrayUnion
 } from '../config/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { createAgentNotification, AGENT_NOTIF_TYPES, AGENT_NOTIF_PRIORITIES } from './agentNotificationService';
 
 /**
  * Create a new support ticket
@@ -57,6 +58,16 @@ export async function createSupportTicket(user, ticketData) {
 
     // Create ticket document
     await setDoc(doc(db, 'supportTickets', ticketId), ticketDoc);
+
+    // Trigger Agent Notification
+    await createAgentNotification({
+      type: AGENT_NOTIF_TYPES.TICKET,
+      title: 'New Support Ticket',
+      message: `User ${ticketDoc.userName} raised a ticket: ${ticketDoc.reason}`,
+      userId: user.uid,
+      userName: ticketDoc.userName,
+      priority: ticketDoc.priority === 'high' ? AGENT_NOTIF_PRIORITIES.HIGH : AGENT_NOTIF_PRIORITIES.MEDIUM
+    });
 
     return {
       success: true,
@@ -182,7 +193,7 @@ export async function getSupportTicket(ticketId) {
 export function listenToUserSupportTickets(userUid, callback) {
   if (!userUid) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const ticketsQuery = query(

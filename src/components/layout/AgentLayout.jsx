@@ -11,6 +11,7 @@ import { useAgentChatRequests } from '../../hooks/useAgentChatRequests';
 import AgentSidebar from './AgentSidebar';
 import { getProfileImageUrl } from '../../utils/profileUtils';
 import ErrorBoundary from '../common/ErrorBoundary';
+import AgentNotificationBell from './AgentNotificationBell';
 
 const AgentLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -145,10 +146,7 @@ const AgentLayout = () => {
                                 />
                             </div>
 
-                            <button className="relative p-2.5 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
-                                <FiBell className="w-5 h-5" />
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></span>
-                            </button>
+                            <AgentNotificationBell />
 
                             <div className="relative">
                                 <button

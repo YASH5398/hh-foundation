@@ -2,11 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../../context/NotificationContext';
 import {
-  FiBell, FiX, FiTrash2, FiClock, FiUser, FiInbox,
-  FiCheck, FiAlertTriangle, FiDollarSign, FiTrendingUp,
-  FiUsers, FiStar, FiShield, FiMessageSquare, FiFilter, FiTool
+  FiBell, FiX, FiTrash2, FiCheckCircle,
+  FiAlertTriangle, FiDollarSign,
+  FiShield, FiInfo, FiCheck
 } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
+
+// Utility for conditional classes
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const NotificationDropdown = () => {
   const {
@@ -15,14 +18,15 @@ const NotificationDropdown = () => {
     loading,
     isDropdownOpen,
     markAsRead,
+    markAllAsRead,
     deleteNotification,
     toggleDropdown,
     closeDropdown
   } = useNotifications();
 
   const dropdownRef = useRef(null);
-  const [filter, setFilter] = useState('all'); // all, unread, payment, system, admin
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -31,522 +35,262 @@ const NotificationDropdown = () => {
         closeDropdown();
       }
     };
-
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDropdownOpen, closeDropdown]);
 
-  const getNotificationIcon = (type, title = '', category = '') => {
-    // Enhanced icon selection based on type, title, and category
-    if (title.includes('Payment') || title.includes('₹') || category === 'payment') {
-      return <FiDollarSign className="w-4 h-4 text-green-500" />;
+  // Helper: Get Icon & Colors
+  const getIconData = (type, title = '', category = '') => {
+    const titleLower = title.toLowerCase();
+
+    if (titleLower.includes('payment') || titleLower.includes('₹') || category === 'payment') {
+      return { icon: FiDollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' };
     }
-    if (title.includes('Level') || title.includes('Upgrade') || category === 'upgrade') {
-      return <FiTrendingUp className="w-4 h-4 text-purple-500" />;
+    if (titleLower.includes('warning') || titleLower.includes('alert') || category === 'warning') {
+      return { icon: FiAlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' };
     }
-    if (title.includes('Referral') || title.includes('Join') || category === 'referral') {
-      return <FiUsers className="w-4 h-4 text-blue-500" />;
+    if (titleLower.includes('security') || titleLower.includes('blocked')) {
+      return { icon: FiShield, color: 'text-rose-600', bg: 'bg-rose-50' };
     }
-    if (title.includes('Help') || title.includes('Assignment') || category === 'help') {
-      return <FiCheck className="w-4 h-4 text-emerald-500" />;
+    if (titleLower.includes('success') || titleLower.includes('completed')) {
+      return { icon: FiCheckCircle, color: 'text-blue-600', bg: 'bg-blue-50' };
     }
-    if (title.includes('E-PIN') || title.includes('Testimonial') || category === 'epin') {
-      return <FiStar className="w-4 h-4 text-yellow-500" />;
-    }
-    if (title.includes('Support') || title.includes('Ticket') || category === 'support') {
-      return <FiMessageSquare className="w-4 h-4 text-orange-500" />;
-    }
-    if (title.includes('Blocked') || title.includes('Security') || category === 'security') {
-      return <FiShield className="w-4 h-4 text-red-500" />;
-    }
-    if (title.includes('Alert') || title.includes('Warning') || category === 'warning') {
-      return <FiAlertTriangle className="w-4 h-4 text-yellow-500" />;
+    if (type === 'system') {
+      return { icon: FiInfo, color: 'text-indigo-600', bg: 'bg-indigo-50' };
     }
 
-    switch (type) {
-      case 'admin':
-        return <FiUser className="w-4 h-4 text-blue-500" />;
-      case 'system':
-        return <FiTool className="w-4 h-4 text-indigo-500" />;
-      case 'activity':
-        return <FiTrendingUp className="w-4 h-4 text-emerald-500" />;
-      default:
-        return <FiBell className="w-4 h-4 text-gray-500" />;
-    }
+    return { icon: FiBell, color: 'text-slate-600', bg: 'bg-slate-100' };
   };
 
-  const getNotificationStyling = (type, title, isRead, priority = 'medium') => {
-    // Priority-based styling
-    const priorityStyles = {
-      high: {
-        border: 'border-l-4 border-l-red-500',
-        shadow: 'shadow-red-100',
-        glow: 'hover:shadow-red-200'
-      },
-      medium: {
-        border: 'border-l-4 border-l-blue-500',
-        shadow: 'shadow-blue-100',
-        glow: 'hover:shadow-blue-200'
-      },
-      low: {
-        border: '',
-        shadow: 'shadow-gray-100',
-        glow: 'hover:shadow-gray-200'
-      }
-    };
-
-    const priorityStyle = priorityStyles[priority] || priorityStyles.medium;
-
-    if (isRead) {
-      return {
-        bg: 'bg-gray-50/80',
-        border: 'border-gray-200/60',
-        shadow: priorityStyle.shadow,
-        glow: priorityStyle.glow,
-        opacity: 'opacity-75'
-      };
-    }
-
-    // Category-based styling
-    if (title.includes('Payment') || title.includes('₹')) {
-      return {
-        bg: 'bg-gradient-to-r from-green-50 to-emerald-50',
-        border: 'border-green-200',
-        shadow: 'shadow-green-100',
-        glow: 'hover:shadow-green-200'
-      };
-    }
-    if (title.includes('Level') || title.includes('Upgrade')) {
-      return {
-        bg: 'bg-gradient-to-r from-purple-50 to-violet-50',
-        border: 'border-purple-200',
-        shadow: 'shadow-purple-100',
-        glow: 'hover:shadow-purple-200'
-      };
-    }
-    if (title.includes('Referral') || title.includes('Join')) {
-      return {
-        bg: 'bg-gradient-to-r from-blue-50 to-cyan-50',
-        border: 'border-blue-200',
-        shadow: 'shadow-blue-100',
-        glow: 'hover:shadow-blue-200'
-      };
-    }
-    if (title.includes('E-PIN') || title.includes('Testimonial')) {
-      return {
-        bg: 'bg-gradient-to-r from-yellow-50 to-amber-50',
-        border: 'border-yellow-200',
-        shadow: 'shadow-yellow-100',
-        glow: 'hover:shadow-yellow-200'
-      };
-    }
-    if (title.includes('Alert') || title.includes('Warning')) {
-      return {
-        bg: 'bg-gradient-to-r from-red-50 to-pink-50',
-        border: 'border-red-200',
-        shadow: 'shadow-red-100',
-        glow: 'hover:shadow-red-200'
-      };
-    }
-
-    // Type-based fallback
-    switch (type) {
-      case 'admin':
-        return {
-          bg: 'bg-gradient-to-r from-blue-50 to-indigo-50',
-          border: 'border-blue-200',
-          shadow: 'shadow-blue-100',
-          glow: 'hover:shadow-blue-200'
-        };
-      case 'system':
-        return {
-          bg: 'bg-gradient-to-r from-indigo-50 to-purple-50',
-          border: 'border-indigo-200',
-          shadow: 'shadow-indigo-100',
-          glow: 'hover:shadow-indigo-200'
-        };
-      case 'activity':
-        return {
-          bg: 'bg-gradient-to-r from-emerald-50 to-teal-50',
-          border: 'border-emerald-200',
-          shadow: 'shadow-emerald-100',
-          glow: 'hover:shadow-emerald-200'
-        };
-      default:
-        return {
-          bg: 'bg-white',
-          border: 'border-gray-200',
-          shadow: 'shadow-gray-100',
-          glow: 'hover:shadow-gray-200'
-        };
-    }
-  };
-
-  const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
-      await markAsRead(notification.id);
-    }
-  };
-
-  const handleDeleteNotification = async (e, notificationId) => {
-    e.stopPropagation();
-    await deleteNotification(notificationId);
-  };
-
-  // Filter notifications based on current filter
+  // Filter Logic
   const getFilteredNotifications = () => {
     let filtered = notifications;
-
-    // Apply type filter
     if (filter === 'payment') {
-      filtered = filtered.filter(n => n.title?.includes('Payment') || n.title?.includes('₹') || n.category === 'payment');
-    } else if (filter === 'admin') {
-      filtered = filtered.filter(n => n.type === 'admin');
+      filtered = filtered.filter(n => n.title?.toLowerCase().includes('payment') || n.category === 'payment');
+    } else if (filter === 'unread') {
+      filtered = filtered.filter(n => !n.isRead);
     }
-    // 'all' filter shows all notifications (no filtering needed)
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(n =>
-        n.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        n.message?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
     return filtered;
   };
 
   const filteredNotifications = getFilteredNotifications();
 
-
-
   return (
-    <div className="relative">
-      {/* Bell Icon Button */}
+    <div className="relative font-sans">
+      {/* --- Trigger Button --- */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={toggleDropdown}
-        className="relative p-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+        className={cn(
+          "relative p-2.5 rounded-xl transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-100",
+          isDropdownOpen
+            ? "bg-blue-50 text-blue-600"
+            : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+        )}
       >
         <FiBell className="w-6 h-6" />
         {unreadCount > 0 && (
-          <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium"
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </motion.span>
+          <span className="absolute top-2 right-2.5 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border-2 border-white"></span>
+          </span>
         )}
       </motion.button>
 
-      {/* Dropdown */}
+      {/* --- Dropdown Panel --- */}
       <AnimatePresence>
         {isDropdownOpen && (
           <>
-            {/* Mobile Backdrop */}
+            {/* Mobile Backdrop - blocks interaction with rest of page */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 z-[9998] md:hidden"
+              className="fixed inset-0 z-[90] bg-slate-900/30 backdrop-blur-[2px] md:bg-transparent md:backdrop-blur-none"
               onClick={closeDropdown}
             />
 
-            {/* Notification Panel */}
             <motion.div
-        ref={dropdownRef}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 30,
-          duration: 0.4
-        }}
-        className="
-fixed
-inset-0
-z-[9999]
-p-4
-top-[10vh]
+              ref={dropdownRef}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={cn(
+                // Mobile: Fixed position centered on screen
+                "fixed top-20 left-4 right-4 z-[100]",
+                // Desktop: Absolute position relative to parent
+                "md:absolute md:top-full md:right-0 md:left-auto md:w-[400px] md:mt-3"
+              )}
+            >
+              <div className="bg-white rounded-3xl shadow-2xl ring-1 ring-slate-900/5 overflow-hidden border border-slate-100 max-h-[80vh] flex flex-col">
 
-sm:absolute
-sm:inset-auto
-sm:top-full
-sm:right-0
-sm:left-auto
-sm:translate-x-0
-sm:flex-none
-sm:items-start
-sm:justify-start
-sm:w-96
-sm:p-0
-"
-      >
-        {/* Enhanced Glassmorphism Container */}
-        <div className="bg-white/98 backdrop-blur-2xl border border-white/40 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-black/5 w-[90vw] max-w-[340px] max-h-[80vh] md:max-h-none md:w-auto md:max-w-none">
-          {/* Enhanced Header with Search */}
-          <div className="px-6 py-5 border-b border-gray-200/60 bg-gradient-to-r from-blue-50/60 via-white to-purple-50/60">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <FiBell className="w-5 h-5 text-gray-700" />
-                  {unreadCount > 0 && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
-                    />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Notifications</h3>
-                  <p className="text-xs text-gray-500">
-                    {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <button
-                  onClick={closeDropdown}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
-                >
-                  <FiX className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-            </div>
+                {/* Header */}
+                <div className="px-5 pt-5 pb-3 bg-white/50 backdrop-blur-xl z-10 flex-shrink-0">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-800 tracking-tight">Notifications</h2>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        You have <span className="text-blue-600 font-bold">{unreadCount}</span> unread messages
+                      </p>
+                    </div>
 
-            {/* Search and Filter Bar */}
-            <div className="space-y-3">
-              {/* Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search notifications..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white/70 border border-gray-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all duration-200"
-                />
-                <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              </div>
-
-              {/* Filter Tabs */}
-              <div className="flex space-x-1 p-1 bg-gray-100/60 rounded-xl">
-                {[
-                  { key: 'all', label: 'All', count: notifications.length },
-                  { key: 'payment', label: '💰 Payments', count: notifications.filter(n => n.title?.includes('Payment') || n.title?.includes('₹') || n.category === 'payment').length },
-                  { key: 'admin', label: '👤 Admin', count: notifications.filter(n => n.type === 'admin').length }
-                ].map(({ key, label, count }) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilter(key)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
-                      filter === key
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
-                    }`}
-                  >
-                    {label} {count > 0 && `(${count})`}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Notifications List */}
-          <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent hover:scrollbar-thumb-gray-400/60">
-            {loading ? (
-              <div className="p-8 text-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
-                />
-                <p className="text-gray-500 text-sm">Loading notifications...</p>
-              </div>
-            ) : filteredNotifications.length === 0 ? (
-              <div className="p-8 text-center">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                >
-                  <FiInbox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h4 className="text-gray-500 font-medium mb-1">
-                    {searchTerm ? 'No matching notifications' : 'All caught up!'}
-                  </h4>
-                  <p className="text-xs text-gray-400">
-                    {searchTerm ? 'Try adjusting your search or filters' : 'No new notifications'}
-                  </p>
-                </motion.div>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100/60">
-                <AnimatePresence>
-                  {filteredNotifications.slice(0, 15).map((notification, index) => {
-                    const styling = getNotificationStyling(
-                      notification.type,
-                      notification.title,
-                      notification.isRead,
-                      notification.priority || 'medium'
-                    );
-
-                    return (
-                      <motion.div
-                        key={notification.id}
-                        layout
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                        transition={{
-                          delay: index * 0.03,
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 30
-                        }}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`
-                          p-4 cursor-pointer transition-all duration-300 relative group
-                          ${styling.bg} ${styling.border} ${styling.shadow} ${styling.opacity}
-                          hover:${styling.glow} hover:shadow-lg
-                          border-r-0 border-l-0 border-t-0 border-b-1
-                        `}
+                    <div className="flex gap-1">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                          title="Mark all as read"
+                        >
+                          <FiCheck className="w-5 h-5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={closeDropdown}
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
                       >
-                        <div className="flex items-start space-x-4">
-                          {/* Enhanced Notification Icon */}
-                          <div className="flex-shrink-0 mt-1">
-                            <div className={`
-                              p-2 rounded-xl transition-all duration-200
-                              ${notification.isRead ? 'bg-gray-100' : 'bg-white shadow-sm'}
-                            `}>
-                              {getNotificationIcon(notification.type, notification.title, notification.category)}
-                            </div>
-                          </div>
+                        <FiX className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 pr-3">
-                                <h4 className={`
-                                  text-sm font-semibold leading-tight mb-1 line-clamp-2
-                                  ${notification.isRead ? 'text-gray-700' : 'text-gray-900'}
-                                `}>
-                                  {notification.title}
-                                </h4>
-                                <p className={`
-                                  text-sm leading-relaxed line-clamp-2 mb-3
-                                  ${notification.isRead ? 'text-gray-500' : 'text-gray-600'}
-                                `}>
-                                  {notification.message}
-                                </p>
+                  {/* Segmented Tabs */}
+                  <div className="p-1 bg-slate-100 rounded-xl flex gap-1 relative z-0">
+                    {['all', 'unread', 'payment'].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => { setFilter(tab); setActiveTab(tab); }}
+                        className={cn(
+                          "flex-1 relative py-2 text-xs font-semibold capitalize rounded-lg transition-all duration-200 z-10 outline-none",
+                          activeTab === tab ? "text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-600"
+                        )}
+                      >
+                        {activeTab === tab && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute inset-0 bg-white rounded-lg"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                          />
+                        )}
+                        <span className="relative z-10">{tab}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                                {/* Enhanced Metadata */}
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3 text-xs text-gray-400">
-                                    <div className="flex items-center space-x-1">
-                                      <FiClock className="w-3 h-3" />
-                                      <span>
-                                        {notification.timestamp ?
-                                          formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true }) :
-                                          'Just now'
-                                        }
-                                      </span>
-                                    </div>
-                                    {notification.category && (
-                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">
-                                        {notification.category}
-                                      </span>
-                                    )}
+                {/* List Container - Scrollable area */}
+                <div className="overflow-y-auto overflow-x-hidden scroll-smooth custom-scrollbar bg-slate-50/50 flex-1 min-h-[100px]">
+                  {loading ? (
+                    <div className="py-20 flex flex-col items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4" />
+                      <span className="text-xs font-medium text-slate-400">Loading updates...</span>
+                    </div>
+                  ) : filteredNotifications.length === 0 ? (
+                    <div className="py-20 px-6 text-center">
+                      <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FiBell className="w-6 h-6 text-slate-300" />
+                      </div>
+                      <h3 className="text-slate-800 font-semibold mb-1">All caught up!</h3>
+                      <p className="text-slate-500 text-xs leading-relaxed max-w-[200px] mx-auto">
+                        No new notifications. We'll notify you when something important happens.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      <AnimatePresence initial={false}>
+                        {filteredNotifications.slice(0, 20).map((notification) => {
+                          const { icon: Icon, color, bg } = getIconData(notification.type, notification.title, notification.category);
+
+                          return (
+                            <motion.div
+                              key={notification.id}
+                              layout
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                              transition={{ duration: 0.3 }}
+                              onClick={() => !notification.isRead && markAsRead(notification.id)}
+                              className={cn(
+                                "group relative px-5 py-4 cursor-pointer transition-all duration-200 active:bg-slate-50",
+                                !notification.isRead ? "bg-white" : "bg-slate-50/30 hover:bg-white"
+                              )}
+                            >
+                              {/* Unread Indicator Line */}
+                              {!notification.isRead && (
+                                <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r-full" />
+                              )}
+
+                              <div className="flex gap-3.5">
+                                {/* Icon */}
+                                <div className={cn("flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", bg, color)}>
+                                  <Icon className="w-4.5 h-4.5" />
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 min-w-0 space-y-0.5">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className={cn(
+                                      "text-sm leading-snug truncate pr-6",
+                                      !notification.isRead ? "font-bold text-slate-800" : "font-medium text-slate-600"
+                                    )}>
+                                      {notification.title}
+                                    </p>
+                                    <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap flex-shrink-0">
+                                      {notification.timestamp ? formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true }) : 'Now'}
+                                    </span>
                                   </div>
 
-                                  {/* Priority Indicator */}
-                                  {notification.priority === 'high' && !notification.isRead && (
-                                    <motion.div
-                                      animate={{ scale: [1, 1.2, 1] }}
-                                      transition={{ duration: 2, repeat: Infinity }}
-                                      className="w-2 h-2 bg-red-500 rounded-full"
-                                    />
-                                  )}
+                                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                                    {notification.message}
+                                  </p>
                                 </div>
                               </div>
 
-                              {/* Enhanced Delete Button */}
-                              <motion.button
-                                whileHover={{ scale: 1.1, rotate: 90 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => handleDeleteNotification(e, notification.id)}
-                                className="
-                                  opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50
-                                  rounded-xl transition-all duration-200 text-red-400 hover:text-red-600
-                                "
-                              >
-                                <FiTrash2 className="w-4 h-4" />
-                              </motion.button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Enhanced Unread Indicator */}
-                        {!notification.isRead && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute left-4 top-6 w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-sm"
-                          />
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
-
-          {/* Enhanced Footer */}
-          {filteredNotifications.length > 0 && (
-            <div className="px-6 py-4 bg-gradient-to-r from-gray-50/60 to-blue-50/60 border-t border-gray-200/60">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-gray-500">
-                  Showing {filteredNotifications.length} of {notifications.length} notifications
-                </div>
-                <div className="flex space-x-2">
-                  {unreadCount > 0 && (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={async () => {
-                        // Mark all as read functionality would go here
-                        // This would need to be added to the NotificationContext
-                      }}
-                      className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors duration-200"
-                    >
-                      Mark all read
-                    </motion.button>
+                              {/* Delete Action - Always visible on mobile tap, hover on desktop */}
+                              <div className="absolute right-2 top-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                                  className="p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
+                                >
+                                  <FiTrash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </div>
                   )}
-                  <button
-                    onClick={closeDropdown}
-                    className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200"
-                  >
-                    Close
+                </div>
+
+                {/* Footer */}
+                <div className="bg-slate-50 border-t border-slate-100 p-2 text-center flex-shrink-0">
+                  <button className="text-[11px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wide py-2 w-full">
+                    View All Activity
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-          </motion.div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
 
+      {/* Removed 'jsx' attribute to fix React warning.
+         Standard CSS style tag works fine in React.
+      */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+        }
+      `}</style>
     </div>
   );
 };

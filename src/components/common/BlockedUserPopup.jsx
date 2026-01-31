@@ -11,6 +11,7 @@ import {
     onSnapshot, serverTimestamp, setDoc, getDoc
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { createAgentNotification, AGENT_NOTIF_TYPES, AGENT_NOTIF_PRIORITIES } from '../../services/agentNotificationService';
 
 // --- Sub-component: AI Chatbot (Embedded) ---
 const IntegratedChatbot = ({ onClose }) => {
@@ -176,6 +177,17 @@ const IntegratedTicketForm = ({ onClose }) => {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
+
+            // Trigger Agent Notification
+            await createAgentNotification({
+                type: AGENT_NOTIF_TYPES.TICKET,
+                title: 'High Priority Ticket (Blocked User)',
+                message: `Blocked user ${currentUser.displayName || currentUser.email} raised a ticket: ${subject}`,
+                userId: currentUser.uid,
+                userName: currentUser.displayName || currentUser.email,
+                priority: AGENT_NOTIF_PRIORITIES.HIGH
+            });
+
             toast.success("Ticket raised successfully! Our team will review it.");
             onClose();
         } catch (error) {

@@ -13,10 +13,11 @@ export async function setNotificationRead(notificationId, isRead = true) {
   return { success: !!res.data?.ok };
 }
 
-export async function bulkMarkNotificationsRead(notificationIds) {
+export async function bulkMarkNotificationsRead(notificationIds, collectionName = 'notifications') {
+  if (!Array.isArray(notificationIds) || notificationIds.length === 0) return { success: true, updated: 0 };
   await requireFreshIdToken();
   if (!auth.currentUser?.uid) throw new Error('Auth not ready');
-  const res = await callBulkMarkNotificationsRead({ notificationIds });
+  const res = await callBulkMarkNotificationsRead({ notificationIds, collectionName });
   return { success: !!res.data?.ok, updated: res.data?.updated || 0 };
 }
 

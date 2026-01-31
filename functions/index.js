@@ -42,10 +42,10 @@ const {
 } = require('./shared/mlmCore');
 
 // Import shared eligibility utilities
-const { 
-  isReceiverEligibleStrict, 
+const {
+  isReceiverEligibleStrict,
   getReceiverIneligibilityReason,
-  normalizeLevel 
+  normalizeLevel
 } = require('./shared/sharedEligibilityUtils');
 
 // ============================
@@ -202,13 +202,13 @@ exports.getReceiveEligibility = httpsOnCall(async (request) => {
   const userData = userSnap.data();
   const eligible = isReceiverEligibleStrict(userData);
   const reasonCode = eligible ? null : getReceiverIneligibilityReason(userData);
-  
+
   // Simplified block type mapping - REMOVED conflicting flags
   const blockType = !eligible ? (
     reasonCode === 'receiving_held' ? 'isReceivingHeld' :
-    reasonCode === 'blocked' ? 'isBlocked' :
-    reasonCode === 'on_hold' ? 'isOnHold' :
-    null
+      reasonCode === 'blocked' ? 'isBlocked' :
+        reasonCode === 'on_hold' ? 'isOnHold' :
+          null
   ) : null;
 
   return {
@@ -387,12 +387,12 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
           .where('isBlocked', '==', false)
           .where('isReceivingHeld', '==', false)
           .where('helpVisibility', '!=', false); // Allow null/undefined but block explicit false
-        
+
         // Add level matching for main query only
         if (isMainQuery) {
           query = query.where('level', '==', senderLevel);
         }
-        
+
         return query.limit(500);
       };
 
@@ -403,7 +403,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         collection: 'users',
         filters: {
           isActivated: '== true',
-          isBlocked: '== false', 
+          isBlocked: '== false',
           isReceivingHeld: '== false',
           helpVisibility: '!= false',
           level: `== ${senderLevel}`
@@ -418,7 +418,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         safeThrowInternal(e, { step: 'tx.get.receiverQuery', errorMsg: e?.message });
       }
 
-      console.log('[startHelpAssignment] receiver.query.result', { 
+      console.log('[startHelpAssignment] receiver.query.result', {
         usersFetched: receiverSnap.size,
         isEmpty: receiverSnap.empty
       });
@@ -453,7 +453,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         });
 
       const afterNormalization = receiversToCheck.length;
-      console.log('[startHelpAssignment] receiver.filtering', { 
+      console.log('[startHelpAssignment] receiver.filtering', {
         afterQuery: receiverSnap.size,
         afterEligibilityCheck: afterNormalization,
         senderExcluded: receiverSnap.docs.some(d => d.id === senderUid) ? true : false
@@ -463,15 +463,15 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       let chosenReceiver = null;
       let chosenReceiverUid = null;
       let fallbackUsed = false;
-      
+
       // Pick first receiver if any
       if (receiversToCheck.length > 0) {
         const chosen = receiversToCheck[0];
         chosenReceiverRef = chosen.ref;
         chosenReceiver = chosen.data;
         chosenReceiverUid = chosen.id;
-        
-        console.log('[startHelpAssignment] receiver.selected', { 
+
+        console.log('[startHelpAssignment] receiver.selected', {
           selectedUid: chosen.id,
           userId: chosen.data?.userId || null,
           referralCount: chosen._normalized.referralCount,
@@ -538,9 +538,9 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
           afterFiltering: afterNormalization,
           fallbackUsed: fallbackUsed
         });
-        
-        return { 
-          success: false, 
+
+        return {
+          success: false,
           reason: 'NO_ELIGIBLE_RECEIVER'
         };
       }
@@ -557,8 +557,8 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       }
 
       const freshReceiver = freshReceiverSnap.data();
-      if (normalizeBoolean(freshReceiver?.isBlocked) === true || 
-          normalizeBoolean(freshReceiver?.isReceivingHeld) === true) {
+      if (normalizeBoolean(freshReceiver?.isBlocked) === true ||
+        normalizeBoolean(freshReceiver?.isReceivingHeld) === true) {
         throw new HttpsError('failed-precondition', 'Receiver became ineligible during assignment');
       }
 
@@ -784,7 +784,7 @@ exports.requestPayment = httpsOnCall(async (request) => {
         actionLink: '/send-help'
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return {
     success: true,
@@ -883,23 +883,48 @@ exports.setNotificationRead = httpsOnCall(async (request) => {
 exports.bulkMarkNotificationsRead = httpsOnCall(async (request) => {
   assertAuth(request);
   const uid = request.auth.uid;
-  const isAdmin = request.auth.token?.role === 'admin';
-  const { notificationIds } = request.data || {};
-  if (!Array.isArray(notificationIds) || notificationIds.length === 0) return { ok: true, updated: 0 };
+  const { notificationIds, collectionName = 'notifications' } = request.data || {};
 
-  const unique = Array.from(new Set(notificationIds)).slice(0, 200);
-  await db.runTransaction(async (tx) => {
-    for (const id of unique) {
-      const ref = db.collection('notifications').doc(id);
-      const snap = await tx.get(ref);
-      if (!snap.exists) continue;
-      const n = snap.data();
+  if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+    return { ok: true, updated: 0 };
+  }
+
+  // Security Check for Agents
+  const userDoc = await db.collection('users').doc(uid).get();
+  const userData = userDoc.data() || {};
+  const isAgent = userData.role === 'agent';
+  const isAdmin = userData.role === 'admin';
+
+  if (collectionName === 'agentNotifications' && !isAgent && !isAdmin) {
+    throw new HttpsError('permission-denied', 'Only agents can mark agent notifications as read');
+  }
+
+  const batch = db.batch();
+  const unique = Array.from(new Set(notificationIds)).slice(0, 500); // Batch limit is 500
+  let updatedCount = 0;
+
+  for (const id of unique) {
+    const ref = db.collection(collectionName).doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) continue;
+
+    const n = snap.data();
+    // For regular notifications, check ownership
+    if (collectionName === 'notifications') {
       if (n.userId !== uid && !isAdmin) continue;
-      tx.update(ref, { isRead: true, read: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
-  });
+    // For agentNotifications, we already checked role above
 
-  return { ok: true, updated: unique.length };
+    batch.update(ref, {
+      isRead: true,
+      read: true,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    updatedCount++;
+  }
+
+  await batch.commit();
+  return { ok: true, updated: updatedCount };
 });
 
 exports.deleteUserNotification = httpsOnCall(async (request) => {
@@ -999,7 +1024,7 @@ exports.submitPayment = httpsOnCall(async (request) => {
         actionLink: '/receive-help'
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return {
     success: true,
@@ -1085,7 +1110,7 @@ exports.receiverResolvePayment = httpsOnCall(async (request) => {
         });
       }
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return {
     success: true,
@@ -1188,7 +1213,7 @@ exports.adminForceConfirm = httpsOnCall(async (request) => {
         actionLink: '/receive-help'
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return {
     success: true,
@@ -1441,7 +1466,7 @@ const internalResumeBlockedReceives = async (targetUid) => {
     const userRef = db.collection('users').doc(targetUid);
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists) return;
-    
+
     // UNIFIED FLAG RESET - only reset the two main flags
     tx.update(userRef, {
       isReceivingHeld: false,
@@ -1510,7 +1535,7 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
       if (isIncomeBlocked(userWithNewCount)) {
         receiverUpdate.isReceivingHeld = true;
         receiverUpdate.isOnHold = true;
-        
+
         // REMOVED: upgradeRequired and sponsorPaymentPending flags
         // These are handled by external payment systems, not help eligibility
       }
@@ -1594,66 +1619,66 @@ exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}
 
 // Cloud Function: E-PIN request status notifications
 exports.onEpinRequestUpdateV2 = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
-    const requestId = context.params.requestId;
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    
-    // Check if status changed
-    if (beforeData.status !== afterData.status) {
-      try {
-        const { requestedBy, status, quantityRequested, totalEpins } = afterData;
-        
-        if (!requestedBy) {
-          console.log('No requestedBy UID found for E-PIN request notification');
-          return null;
-        }
-        
-        let title, message, actionLink;
-        
-        switch (status) {
-          case 'approved':
-            title = '✅ E-PIN Request Approved!';
-            message = `Your request for ${quantityRequested} E-PINs has been approved. You will receive ${totalEpins} E-PINs total.`;
-            actionLink = '/dashboard/epins/history';
-            break;
-          case 'rejected':
-            title = '❌ E-PIN Request Rejected';
-            message = `Your request for ${quantityRequested} E-PINs has been rejected. Please contact support for more information.`;
-            actionLink = '/dashboard/support';
-            break;
-          case 'cancelled':
-            title = '🚫 E-PIN Request Cancelled';
-            message = `Your request for ${quantityRequested} E-PINs has been cancelled.`;
-            actionLink = '/dashboard/epins/request';
-            break;
-          default:
-            return null; // Don't send notification for other status changes
-        }
-        
-        const epinNotification = createActivityNotificationData({
-          title,
-          message,
-          uid: requestedBy,
-          userId: requestedBy,
-          priority: 'high',
-          actionLink,
-          category: 'epin',
-          relatedAction: `epin_${status}`,
-          senderName: 'E-PIN System'
-        });
-        
-        await createNotification(requestedBy, epinNotification);
-        await sendPushNotification(requestedBy, epinNotification);
-        
-        console.log(`E-PIN ${status} notification sent for request: ${requestId}`);
-        
-      } catch (error) {
-        console.error('Error in onEpinRequestUpdate notification:', error);
-      }
-    }
+  const requestId = context.params.requestId;
+  const beforeData = change.before.data();
+  const afterData = change.after.data();
 
-    return null;
-  });
+  // Check if status changed
+  if (beforeData.status !== afterData.status) {
+    try {
+      const { requestedBy, status, quantityRequested, totalEpins } = afterData;
+
+      if (!requestedBy) {
+        console.log('No requestedBy UID found for E-PIN request notification');
+        return null;
+      }
+
+      let title, message, actionLink;
+
+      switch (status) {
+        case 'approved':
+          title = '✅ E-PIN Request Approved!';
+          message = `Your request for ${quantityRequested} E-PINs has been approved. You will receive ${totalEpins} E-PINs total.`;
+          actionLink = '/dashboard/epins/history';
+          break;
+        case 'rejected':
+          title = '❌ E-PIN Request Rejected';
+          message = `Your request for ${quantityRequested} E-PINs has been rejected. Please contact support for more information.`;
+          actionLink = '/dashboard/support';
+          break;
+        case 'cancelled':
+          title = '🚫 E-PIN Request Cancelled';
+          message = `Your request for ${quantityRequested} E-PINs has been cancelled.`;
+          actionLink = '/dashboard/epins/request';
+          break;
+        default:
+          return null; // Don't send notification for other status changes
+      }
+
+      const epinNotification = createActivityNotificationData({
+        title,
+        message,
+        uid: requestedBy,
+        userId: requestedBy,
+        priority: 'high',
+        actionLink,
+        category: 'epin',
+        relatedAction: `epin_${status}`,
+        senderName: 'E-PIN System'
+      });
+
+      await createNotification(requestedBy, epinNotification);
+      await sendPushNotification(requestedBy, epinNotification);
+
+      console.log(`E-PIN ${status} notification sent for request: ${requestId}`);
+
+    } catch (error) {
+      console.error('Error in onEpinRequestUpdate notification:', error);
+    }
+  }
+
+  return null;
+});
 
 // ============================================================================
 // TEMPORARY DEBUG FUNCTION - Send Help Eligibility Verification
@@ -1842,8 +1867,8 @@ exports.validateEpin = httpsOnRequest(async (req, res) => {
       }
 
       const epinDoc = snapshot.docs[0];
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         epinId: epinDoc.id,
         message: 'E-PIN validated successfully'
       });
@@ -1900,8 +1925,8 @@ exports.checkEpinHttp = httpsOnRequest(async (req, res) => {
       }
 
       const epinDoc = snapshot.docs[0];
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         epinId: epinDoc.id,
         message: 'E-PIN validated successfully'
       });

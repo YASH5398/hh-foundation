@@ -1,0 +1,21 @@
+// Firestore Security Rules for Agent Notifications
+// Add these to your firestore.rules file
+
+/*
+match /agentNotifications/{notifId} {
+  // Only authenticated agents/admins can read notifications
+  allow read: if request.auth != null && 
+               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent' || 
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+  
+  // Only the system or authenticated users can create notifications
+  allow create: if request.auth != null;
+  
+  // Only agents can update (mark as read)
+  allow update: if request.auth != null && 
+                 (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent' || 
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+  
+  allow delete: if false; // System should handle cleanup or keep audit logs
+}
+*/
