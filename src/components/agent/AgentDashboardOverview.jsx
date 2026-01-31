@@ -244,9 +244,9 @@ const AgentDashboardOverview = () => {
               color="amber"
             />
             <ActionRow
-              to="/agent-dashboard/payment-verification"
+              to="/agent-dashboard/payment-errors"
               icon={FiDollarSign}
-              label="Ledger Audit"
+              label="Payment Errors"
               sub="Verify incoming help requests"
               count={stats.pendingPayments}
               color="emerald"

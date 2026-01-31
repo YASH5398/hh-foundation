@@ -10,8 +10,9 @@ import PaymentModal from './PaymentModal';
 import PaymentDoneConfirmation from './PaymentDoneConfirmation';
 import PaymentProofForm from './PaymentProofForm';
 import SendHelpFlowContainer from './SendHelpFlow/SendHelpFlowContainer';
-import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof } from '../../services/helpService';
+import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof, markHelpAsExpired } from '../../services/helpService';
 import { HELP_STATUS, normalizeStatus } from '../../config/helpStatus';
+import CountdownTimer from '../common/CountdownTimer';
 import { waitForAuthReady } from '../../services/authReady';
 import { uploadImageResumable } from '../../services/storageUpload';
 import { auth } from '../../config/firebase';
@@ -22,21 +23,21 @@ const UI_STATES = {
   // Loading states
   INITIALIZING: 'initializing',
   WAITING_FOR_RECEIVER: 'waiting_for_receiver',
-  
+
   // Active help states
   RECEIVER_ASSIGNED: 'receiver_assigned',
-  
+
   // New 4-step full-page flow
   SEND_HELP_FLOW: 'send_help_flow',
-  
+
   // Payment flow states (legacy modals)
   PAYMENT_METHODS_MODAL: 'payment_methods_modal',
   PAYMENT_DONE_CONFIRMATION: 'payment_done_confirmation',
   PAYMENT_PROOF_FORM: 'payment_proof_form',
-  
+
   PAYMENT_SUBMITTED: 'payment_submitted',
   COMPLETED: 'completed',
-  
+
   // Error states
   NO_RECEIVER_AVAILABLE: 'no_receiver_available',
   ERROR: 'error'
@@ -48,17 +49,17 @@ const getUIState = (helpStatus, hasReceiver, isLoading, hasError, errorType, noR
   if (noReceiverAvailable || errorType === 'NO_ELIGIBLE_RECEIVER') {
     return UI_STATES.NO_RECEIVER_AVAILABLE;
   }
-  
+
   // Error states (ONLY for real errors)
   if (hasError && errorType !== 'NO_ELIGIBLE_RECEIVER') {
     return UI_STATES.ERROR;
   }
-  
+
   // Loading states
   if (isLoading) {
     return hasReceiver ? UI_STATES.WAITING_FOR_RECEIVER : UI_STATES.INITIALIZING;
   }
-  
+
   // Help status based states
   if (helpStatus) {
     const status = normalizeStatus(helpStatus);
@@ -75,7 +76,7 @@ const getUIState = (helpStatus, hasReceiver, isLoading, hasError, errorType, noR
         return UI_STATES.RECEIVER_ASSIGNED;
     }
   }
-  
+
   // Default state
   return hasReceiver ? UI_STATES.RECEIVER_ASSIGNED : UI_STATES.WAITING_FOR_RECEIVER;
 };
@@ -196,11 +197,10 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
       whileTap={{ scale: isRetrying ? 1 : 0.98 }}
       onClick={onRetry}
       disabled={isRetrying}
-      className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-        isRetrying
+      className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying
           ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
           : 'bg-red-600 hover:bg-red-700 text-white'
-      }`}
+        }`}
     >
       {isRetrying ? (
         <>
@@ -257,6 +257,23 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         </motion.div>
       )}
 
+      {/* 24-Hour Countdown Timer */}
+      {helpData?.createdAt && (
+        <div className="mb-6">
+          <CountdownTimer
+            targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
+            onExpire={() => {
+              if (helpStatus !== HELP_STATUS.CONFIRMED) {
+                markHelpAsExpired(transactionId, helpData.senderUid, helpData.receiverUid)
+                  .then(() => toast.error('Time expired! Your ID has been temporarily blocked.'))
+                  .catch(err => console.error('Expiry error:', err));
+              }
+            }}
+            label="Payment Deadline"
+          />
+        </div>
+      )}
+
       {/* Receiver Info */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -308,11 +325,10 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onPaymentClick}
-            className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-              isPaymentRequested 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' 
+            className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${isPaymentRequested
+                ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse'
                 : 'bg-slate-900 hover:bg-slate-800 text-white'
-            }`}
+              }`}
           >
             <FiCreditCard className="w-4 h-4" />
             {isPaymentRequested ? 'Complete Payment Now' : 'Pay Now'}
@@ -386,9 +402,9 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
         {helpData.paymentDetails.screenshotUrl && (
           <div>
             <p className="text-xs uppercase font-semibold text-slate-600 tracking-wide mb-2">Screenshot</p>
-            <img 
-              src={helpData.paymentDetails.screenshotUrl} 
-              alt="Payment proof" 
+            <img
+              src={helpData.paymentDetails.screenshotUrl}
+              alt="Payment proof"
               className="w-full h-32 object-cover rounded-lg border border-slate-200"
             />
           </div>
@@ -548,7 +564,7 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) => (
 // Main SendHelpRefactored Component
 const SendHelpRefactored = () => {
   const { user: currentUser, loading: authLoading } = useAuth();
-  
+
   // State management
   const [uiState, setUIState] = useState(UI_STATES.INITIALIZING);
   const [receiver, setReceiver] = useState(null);
@@ -561,15 +577,15 @@ const SendHelpRefactored = () => {
   const [showChat, setShowChat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentRequestHelp, setPaymentRequestHelp] = useState(null);
-  
+
   // Payment flow states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentConfirmation, setShowPaymentConfirmation] = useState(false);
   const [showPaymentProofForm, setShowPaymentProofForm] = useState(false);
-  
+
   // 4-step flow state
   const [showSendHelpFlow, setShowSendHelpFlow] = useState(false);
-  
+
   // Refs
   const initStartedRef = useRef(false);
   const unsubHelpRef = useRef(null);
@@ -585,12 +601,12 @@ const SendHelpRefactored = () => {
     if (unsubHelpRef.current) {
       try {
         unsubHelpRef.current();
-      } catch (_) {}
+      } catch (_) { }
     }
-    
+
     const unsub = listenToHelpStatus(helpId, (docData) => {
       if (!docData) return;
-      
+
       console.log('🔥 SendHelp listener received data:', {
         helpId,
         status: docData.status,
@@ -598,7 +614,7 @@ const SendHelpRefactored = () => {
         lastPaymentRequestAt: docData.lastPaymentRequestAt,
         fullData: docData
       });
-      
+
       setHelpData(docData);
       setHelpStatus(docData.status);
       setTransactionId(helpId);
@@ -609,30 +625,30 @@ const SendHelpRefactored = () => {
         phone: docData.receiverPhone,
         profileImage: docData.receiverProfileImage
       });
-      
+
       // Show payment request popup if paymentRequested is true
       if (docData.paymentRequested === true) {
         console.log('🚨 Payment requested! Setting paymentRequestHelp...');
         console.log('🔍 Help data for popup:', docData);
         setPaymentRequestHelp(docData);
-        
+
         // Play notification sound will be handled by useEffect
       } else if (docData.paymentRequested === false) {
         console.log('🔄 Payment request cleared, clearing paymentRequestHelp...');
         setPaymentRequestHelp(null);
       }
-      
+
       // Update UI state based on new status
       updateUIState(docData.status, true, false, false, null, false);
     });
-    
+
     unsubHelpRef.current = unsub;
   };
 
   // Initialize help assignment
   const initialize = async () => {
     if (initStartedRef.current || !auth.currentUser) return;
-    
+
     initStartedRef.current = true;
     setUIState(UI_STATES.INITIALIZING);
     setError(null);
@@ -648,19 +664,19 @@ const SendHelpRefactored = () => {
 
       // Create new help assignment
       setUIState(UI_STATES.WAITING_FOR_RECEIVER);
-      
+
       const res = await createSendHelpAssignment({ uid: auth.currentUser.uid });
       attachHelpListener(res.helpId);
-      
+
     } catch (err) {
       console.error('Error in initialize:', err);
-      
+
       // Check if this is a business case (no receivers available)
-      if (err?.isBusinessCase === true || 
-          err?.isNoReceiver === true ||
-          err?.code === 'functions/failed-precondition' || 
-          err?.message?.includes('NO_ELIGIBLE_RECEIVER') ||
-          err?.message?.includes('No eligible receivers available')) {
+      if (err?.isBusinessCase === true ||
+        err?.isNoReceiver === true ||
+        err?.code === 'functions/failed-precondition' ||
+        err?.message?.includes('NO_ELIGIBLE_RECEIVER') ||
+        err?.message?.includes('No eligible receivers available')) {
         // This is a valid business case, not an error
         setError(null);
         setErrorType('NO_ELIGIBLE_RECEIVER');
@@ -682,7 +698,7 @@ const SendHelpRefactored = () => {
     setError(null);
     setErrorType(null);
     initStartedRef.current = false;
-    
+
     try {
       await initialize();
     } finally {
@@ -755,7 +771,7 @@ const SendHelpRefactored = () => {
       setShowPaymentProofForm(false);
       setPaymentRequestHelp(null); // Clear payment request popup
       toast.success('Payment proof submitted successfully!');
-      
+
     } catch (error) {
       console.error('Error submitting payment proof:', error);
       toast.error(`Failed to submit payment: ${error.message}`);
@@ -804,7 +820,7 @@ const SendHelpRefactored = () => {
       if (unsubHelpRef.current) {
         try {
           unsubHelpRef.current();
-        } catch (_) {}
+        } catch (_) { }
       }
     };
   }, []);
@@ -841,19 +857,19 @@ const SendHelpRefactored = () => {
     switch (uiState) {
       case UI_STATES.INITIALIZING:
         return <InitializingState />;
-        
+
       case UI_STATES.WAITING_FOR_RECEIVER:
         return <WaitingForReceiverState />;
-        
+
       case UI_STATES.NO_RECEIVER_AVAILABLE:
         return <NoReceiverAvailableState />;
-        
+
       case UI_STATES.ERROR:
         return <ErrorState error={error} onRetry={handleRetry} isRetrying={isRetrying} />;
-      
+
       case UI_STATES.SEND_HELP_FLOW:
         return null; // Flow is rendered separately above
-        
+
       case UI_STATES.RECEIVER_ASSIGNED:
         return (
           <ReceiverAssignedState
@@ -866,7 +882,7 @@ const SendHelpRefactored = () => {
             transactionId={transactionId}
           />
         );
-        
+
       case UI_STATES.PAYMENT_SUBMITTED:
         return (
           <PaymentSubmittedState
@@ -877,7 +893,7 @@ const SendHelpRefactored = () => {
             transactionId={transactionId}
           />
         );
-        
+
       case UI_STATES.COMPLETED:
         return (
           <CompletedState
@@ -894,7 +910,7 @@ const SendHelpRefactored = () => {
             }}
           />
         );
-        
+
       default:
         return <InitializingState />;
     }
@@ -975,7 +991,7 @@ const SendHelpRefactored = () => {
 // Payment Request Popup Component
 const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => {
   console.log('🎭 PaymentRequestPopup render:', { isOpen, receiver: receiver?.name, helpData });
-  
+
   if (!isOpen) return null;
 
   return (
@@ -1001,7 +1017,7 @@ const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => 
 
           {/* Title */}
           <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">Payment Requested</h2>
-          
+
           {/* Message */}
           <p className="text-gray-600 mb-6 text-center">
             Receiver is requesting payment. Please complete the payment.

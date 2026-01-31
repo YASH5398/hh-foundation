@@ -16,16 +16,15 @@ const AgentLogin = () => {
   const [verifying, setVerifying] = useState(false);
   const [tempUser, setTempUser] = useState(null);
 
-  const { loginWithEmail, sendVerificationEmail, currentUser, loading: authLoading } = useAgentAuth();
+  const { loginWithEmail, sendVerificationEmail, currentUser, isAgent, loading: authLoading } = useAgentAuth();
   const navigate = useNavigate();
 
   // Redirect if already fully authenticated
-  // Dependency strictly on currentUser's existence and verification status
   useEffect(() => {
-    if (!authLoading && currentUser && currentUser.emailVerified) {
+    if (!authLoading && currentUser && currentUser.emailVerified && isAgent) {
       navigate('/agent-dashboard', { replace: true });
     }
-  }, [currentUser?.uid, currentUser?.emailVerified, authLoading]);
+  }, [currentUser?.uid, currentUser?.emailVerified, isAgent, authLoading, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

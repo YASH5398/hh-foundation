@@ -19,7 +19,7 @@ export const useAgentAuth = () => {
 };
 
 export const AgentAuthProvider = ({ children }) => {
-  const { user, logout: authLogout } = useAuth();
+  const { user, isAdmin: globalIsAdmin, logout: authLogout } = useAuth();
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAgent, setIsAgent] = useState(false);
@@ -90,44 +90,44 @@ export const AgentAuthProvider = ({ children }) => {
     console.log("🔍 AGENT AUTH: Agent logout completed");
   };
 
-  // Sync with AuthContext user state
+  // Sync with AuthContext and verify agent role
   useEffect(() => {
-    console.log("🔍 AGENT AUTH: User changed -", {
-      user: !!user,
-      uid: user?.uid,
-      currentUser: !!currentUser
-    });
-    setCurrentUser(user);
-    setLoading(false);
-  }, [user]);
+    let isMounted = true;
 
-  // Check agent role after user is available
-  useEffect(() => {
-    if (!currentUser) {
-      console.log("🔍 AGENT AUTH: No currentUser, setting isAgent to false");
-      setIsAgent(false);
-      return;
-    }
+    const syncAndVerify = async () => {
+      // 1. If no root user, cleanup and stop loading
+      if (!user) {
+        if (isMounted) {
+          setCurrentUser(null);
+          setIsAgent(false);
+          setLoading(false);
+        }
+        return;
+      }
 
-    console.log("🔍 AGENT AUTH: Checking agent role for user:", currentUser.uid);
-
-    const checkAndSetAgent = async () => {
+      // 2. We have a user, perform agent verify before stopping loading
       try {
-        const isAgentUser = await checkAgentRole(currentUser);
-        console.log("🔍 AGENT AUTH: Agent check result:", isAgentUser);
-        setIsAgent(isAgentUser);
+        const isAgentUser = await checkAgentRole(user);
+        if (isMounted) {
+          setIsAgent(isAgentUser);
+          setCurrentUser(user);
+        }
       } catch (error) {
-        console.error('🔍 AGENT AUTH: Error checking agent role:', error);
-        setIsAgent(false);
+        console.error('🔍 AGENT AUTH: Error verifying agent role:', error);
+        if (isMounted) setIsAgent(false);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
-    checkAndSetAgent();
-  }, [currentUser]);
+    syncAndVerify();
+    return () => { isMounted = false; };
+  }, [user]);
 
   const value = {
     currentUser,
     isAgent,
+    isAdmin: globalIsAdmin,
     loading,
     loginWithEmail,
     sendVerificationEmail,

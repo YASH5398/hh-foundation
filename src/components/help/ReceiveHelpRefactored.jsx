@@ -30,6 +30,7 @@ import defaultImage from '../../assets/default-avatar.png';
 import { getProfileImageUrl } from '../../utils/profileUtils';
 import { useReceiveHelpFlow } from '../../hooks/useHelpFlow';
 import { useAuth } from '../../context/AuthContext';
+import CountdownTimer from '../common/CountdownTimer';
 import { HELP_STATUS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
 import { useCountdown } from '../../hooks/useCountdown';
 import { isIncomeBlocked, getRequiredPaymentForUnblock } from '../../shared/mlmCore';
@@ -478,6 +479,16 @@ function ReceiveHelpRefactored() {
                             'Date unavailable'}
                         </span>
                       </div>
+
+                      {/* 24-Hour Countdown Timer */}
+                      {(normalizeStatus(help.status) !== HELP_STATUS.CONFIRMED && normalizeStatus(help.status) !== HELP_STATUS.FORCE_CONFIRMED && help.createdAt) && (
+                        <div className="mt-2 text-left">
+                          <CountdownTimer
+                            targetDate={new Date((help.createdAt?.toDate?.() || new Date(help.createdAt)).getTime() + 24 * 60 * 60 * 1000)}
+                            label="Sender Deadline"
+                          />
+                        </div>
+                      )}
 
                       {/* Actions */}
                       <div className="space-y-2">

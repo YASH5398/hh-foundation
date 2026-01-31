@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { MdDashboard, MdPeople, MdLock, MdHelp, MdTrendingUp, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdSupport, MdPersonAdd } from 'react-icons/md';
+import { MdDashboard, MdPeople, MdLock, MdLockOpen, MdHelp, MdTrendingUp, MdGroup, MdLogout, MdAssignment, MdCreditCard, MdSupport, MdPersonAdd } from 'react-icons/md';
 import { HiX } from 'react-icons/hi';
 import { FiMessageSquare } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
@@ -36,7 +36,7 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
   const { logout, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
-  
+
   console.log('AdminSidebar - isAdmin:', isAdmin, 'loading:', loading);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
       </div>
     );
   }
-  
+
   // If not admin, show access denied message instead of returning null
   if (!isAdmin) {
     return (
@@ -77,7 +77,7 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
         <div className="text-center p-6">
           <p className="text-lg font-bold mb-3">Access Denied</p>
           <p className="text-sm opacity-90 mb-4">Admin privileges required</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/login')}
             className="px-6 py-3 bg-white/20 rounded-xl hover:bg-white/30 hover:scale-105 transition-all duration-300 text-sm font-semibold border border-white/20"
           >
@@ -117,6 +117,8 @@ const AdminSidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     { name: 'Notifications', icon: Bell, route: '/admin/notifications' },
     { name: 'Document Manager', icon: null, route: '/admin/documents', emoji: '📄' },
     { name: 'Blocked Users', icon: Shield, route: '/admin/blocked-users' },
+    { name: 'Unblock User', icon: MdLockOpen, route: '/admin/unblock-user' },
+    { name: 'System Migration', icon: null, route: '/admin/migration', emoji: '⚙️' },
   ];
 
   return (

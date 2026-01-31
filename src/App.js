@@ -7,6 +7,7 @@ import AdminLayout from './admin/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './admin/ProtectedRoute';
 import PublicRoute from './components/auth/PublicRoute';
+import AgentLayout from './components/layout/AgentLayout';
 
 // Pages & Components
 import Login from './components/auth/Login';
@@ -93,6 +94,8 @@ import SupportManager from './admin/components/SupportManager';
 import BlockedUsersManager from './admin/components/BlockedUsersManager';
 import AccessDenied from './admin/AccessDenied';
 import AgentChats from './pages/admin/AgentChats';
+import MigrationPage from './admin/components/MigrationPage';
+import UnblockUser from './admin/components/UnblockUser';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -205,7 +208,9 @@ export const router = createBrowserRouter([
       { path: 'support-manager', element: <SupportManager /> },
       { path: 'make-agent', element: <MakeAgent /> },
       { path: 'blocked-users', element: <BlockedUsersManager /> },
-      { path: 'agent-chats', element: <AgentChats /> }
+      { path: 'agent-chats', element: <AgentChats /> },
+      { path: 'migration', element: <MigrationPage /> },
+      { path: 'unblock-user', element: <UnblockUser /> }
     ],
   },
 
@@ -214,10 +219,11 @@ export const router = createBrowserRouter([
     path: '/agent-dashboard',
     element: (
       <AgentProtectedRoute>
-        <AgentDashboard />
+        <AgentLayout />
       </AgentProtectedRoute>
     ),
     children: [
+      { index: true, element: <AgentDashboard /> },
       { path: 'profile', element: <AgentProfilePage /> },
       { path: 'settings', element: <AgentSettings /> },
       { path: 'support-tickets', element: <SupportTickets /> },
@@ -233,7 +239,8 @@ export const router = createBrowserRouter([
       { path: 'user-help-tracker', element: <UserHelpTracker /> },
       { path: 'upcoming-pay', element: <UpcomingPay /> },
       { path: 'spam-monitor', element: <SpamMonitor /> },
-      { path: 'level-leakage', element: <LevelLeakageDetector /> }
+      { path: 'level-leakage', element: <LevelLeakageDetector /> },
+      { path: 'unblock-user', element: <UnblockUser /> }
     ]
   },
 

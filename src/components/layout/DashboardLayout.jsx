@@ -23,7 +23,7 @@ const DashboardLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const navigate = useNavigate();
-  const { user, logout, testLogout } = useAuth();
+  const { user, userProfile, isBlocked, blockReason, logout, testLogout } = useAuth();
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -157,15 +157,13 @@ const DashboardLayout = () => {
 
       {/* Main Content */}
       <main
-        className={`transition-all duration-300 ease-in-out pt-16 min-h-screen ${
-          !isMobile && isSidebarOpen ? 'ml-64 w-[calc(100vw-16rem)]' : 'ml-0 w-full'
-        }`}
+        className={`transition-all duration-300 ease-in-out pt-16 min-h-screen ${!isMobile && isSidebarOpen ? 'ml-64 w-[calc(100vw-16rem)]' : 'ml-0 w-full'
+          }`}
       >
         <div className="w-full h-full">
           <Outlet />
         </div>
       </main>
-
     </div>
   );
 };

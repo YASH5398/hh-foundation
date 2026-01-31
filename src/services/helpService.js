@@ -87,7 +87,7 @@ export async function getReceiveEligibility() {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const getReceiveEligibility = httpsCallable(functions, "getReceiveEligibility");
     const res = await getReceiveEligibility({});
@@ -161,10 +161,10 @@ export async function checkSenderEligibility(currentUser) {
 export async function checkReceiverEligibility(userData) {
   try {
     await waitForAuthReady();
-    
+
     // Use the shared eligibility function
     const { eligible, reason } = checkReceiveHelpEligibility(userData);
-    
+
     if (!eligible) {
       return { eligible: false, reason };
     }
@@ -257,25 +257,25 @@ export async function createSendHelpAssignment(senderUser) {
       senderUid: senderUser.uid,
       hasAuth: !!auth.currentUser
     });
-    
+
     console.log('[startHelpAssignment] request', {
       senderUid: senderUser.uid,
       senderId,
       idempotencyKey
     });
-    
+
     // Required logging before callable function call
     console.log("Calling startHelpAssignment as callable with uid:", auth.currentUser.uid);
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const startHelpAssignment = httpsCallable(functions, "startHelpAssignment");
     const res = await startHelpAssignment({ senderUid: senderUser.uid, senderId, idempotencyKey });
-    
+
     return { success: true, helpId: res.data.data.helpId, alreadyExists: res.data.data.alreadyExists };
   } catch (error) {
     // Handle specific "no eligible receiver" case - this is a BUSINESS CASE, not an error
-    if (error?.code === 'functions/failed-precondition' && 
-        (error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
+    if (error?.code === 'functions/failed-precondition' &&
+      (error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
       const err = new Error('No eligible receivers available right now.');
       err.code = error.code;
       err.isNoReceiver = true;
@@ -288,7 +288,7 @@ export async function createSendHelpAssignment(senderUser) {
       error?.code === 'functions/failed-precondition' ||
       error?.message?.includes('No eligible receivers') ||
       error?.message?.includes('no eligible receivers');
-    
+
     if (isNoReceiver) {
       const err = new Error('No eligible receivers available right now.');
       err.code = error.code;
@@ -310,7 +310,7 @@ export async function createSendHelpAssignment(senderUser) {
     err.details = error?.details;
     err.isNoReceiver = false;
     err.isBusinessCase = false;
-    
+
     console.error('createSendHelpAssignment failed:', {
       code: err.code,
       message: err.message,
@@ -334,7 +334,7 @@ export async function requestPayment(helpId) {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const requestPayment = httpsCallable(functions, "requestPayment");
     const res = await requestPayment({ helpId });
@@ -358,7 +358,7 @@ export async function submitPaymentProof(helpId, paymentData) {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const submitPayment = httpsCallable(functions, "submitPayment");
     const res = await submitPayment({
@@ -391,7 +391,7 @@ export async function confirmPaymentReceived(helpId) {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const receiverResolvePayment = httpsCallable(functions, "receiverResolvePayment");
     const res = await receiverResolvePayment({ helpId, action: 'confirm' });
@@ -408,7 +408,7 @@ export async function disputePayment(helpId, disputeReason) {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const receiverResolvePayment = httpsCallable(functions, "receiverResolvePayment");
     const res = await receiverResolvePayment({
@@ -472,7 +472,7 @@ export async function getUserHelpStatus(userUid) {
  * Real-time listener with proper cleanup
  */
 export function listenToHelpStatus(helpId, callback) {
-  if (!helpId) return () => {};
+  if (!helpId) return () => { };
 
   const helpRef = doc(db, 'sendHelp', helpId);
 
@@ -501,7 +501,7 @@ export function listenToHelpStatus(helpId, callback) {
 export function listenToReceiveHelps(userUid, callback) {
   if (!userUid) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const receiveHelpQuery = query(
@@ -642,7 +642,7 @@ export async function cancelHelp(helpId, reason = 'Cancelled by user') {
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const cancelHelp = httpsCallable(functions, "cancelHelp");
     const res = await cancelHelp({ helpId, reason });
@@ -659,12 +659,59 @@ export async function rejectPayment(helpId, rejectReason = 'Payment proof reject
     if (!auth.currentUser) {
       throw new Error("User not authenticated");
     }
-    
+
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const receiverResolvePayment = httpsCallable(functions, "receiverResolvePayment");
     const res = await receiverResolvePayment({ helpId, action: 'dispute', disputeReason: rejectReason });
     return { success: !!res.data.data?.ok };
   } catch (error) {
+    throw new Error(mapFirebaseError(error));
+  }
+}
+
+/**
+ * Handle help document expiry (24-hour timeout)
+ * Marks help as TIMEOUT and blocks the sender
+ */
+export async function markHelpAsExpired(helpId, senderUid, receiverUid) {
+  try {
+    if (!helpId || !senderUid) throw new Error("Missing required parameters");
+
+    await runTransaction(db, async (transaction) => {
+      const helpRef = doc(db, 'sendHelp', helpId);
+      const userRef = doc(db, 'users', senderUid);
+
+      const helpDoc = await transaction.get(helpRef);
+      if (!helpDoc.exists()) throw new Error("Help document not found");
+
+      const helpData = helpDoc.data();
+
+      // ONLY expire if not already confirmed or paid
+      if (helpData.status === HELP_STATUS.CONFIRMED || helpData.status === HELP_STATUS.TIMEOUT) {
+        return;
+      }
+
+      // 1. Update help status to TIMEOUT
+      transaction.update(helpRef, {
+        status: HELP_STATUS.TIMEOUT,
+        expiredAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // 2. Block the sender
+      transaction.update(userRef, {
+        isBlocked: true,
+        blockReason: 'send_help_timeout',
+        blockedHelpRef: helpId,
+        blockedAt: serverTimestamp()
+      });
+
+      console.log(`✅ Help ${helpId} marked as EXPIRED. User ${senderUid} BLOCKED.`);
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in markHelpAsExpired:', error);
     throw new Error(mapFirebaseError(error));
   }
 }
