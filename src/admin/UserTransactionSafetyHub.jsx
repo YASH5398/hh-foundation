@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  MdDashboard, 
-  MdPeople, 
-  MdError, 
-  MdBuild, 
-  MdAnalytics, 
+import {
+  MdDashboard,
+  MdPeople,
+  MdError,
+  MdBuild,
+  MdAnalytics,
   MdHistory,
   MdRefresh,
   MdSearch,
@@ -33,10 +33,10 @@ import {
   MdTrendingUp,
   MdArrowBack
 } from 'react-icons/md';
-import { 
-  FiUsers, 
-  FiAlertTriangle, 
-  FiCheckCircle, 
+import {
+  FiUsers,
+  FiAlertTriangle,
+  FiCheckCircle,
   FiClock,
   FiTrendingUp,
   FiActivity,
@@ -53,20 +53,20 @@ import toast from 'react-hot-toast';
 
 const UserTransactionSafetyHub = () => {
   const navigate = useNavigate();
-  
+
   // State Management
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // User Management
   const [showUserIdModal, setShowUserIdModal] = useState(true);
   const [inputUserId, setInputUserId] = useState('');
   const [targetUserId, setTargetUserId] = useState('');
   const [targetUserData, setTargetUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
-  
+
   // Dashboard Data
   const [dashboardStats, setDashboardStats] = useState({
     activeUsers: 0,
@@ -74,35 +74,35 @@ const UserTransactionSafetyHub = () => {
     failedPayments: 0,
     successRate: 0
   });
-  
+
   // Monitoring Data
   const [pendingHelps, setPendingHelps] = useState([]);
   const [failedPayments, setFailedPayments] = useState([]);
   const [errorLogs, setErrorLogs] = useState([]);
   const [auditHistory, setAuditHistory] = useState([]);
-  
+
   // Modal States
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Testing States
   const [selectedUserId, setSelectedUserId] = useState('');
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [testResults, setTestResults] = useState([]);
-  
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  
+
   // User Timeline
   const [showUserTimeline, setShowUserTimeline] = useState(false);
   const [userTimeline, setUserTimeline] = useState([]);
-  
+
   // Edit Profile
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({});
-  
+
   // Sample data for demonstration
   const [users] = useState([
     { id: 'user1', name: 'John Doe', level: 1, isBlocked: false },
@@ -115,7 +115,7 @@ const UserTransactionSafetyHub = () => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -135,7 +135,7 @@ const UserTransactionSafetyHub = () => {
         const userDoc = await getDoc(doc(db, 'users', targetUserId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          
+
           // Fetch user's send/receive help data
           const sendHelpQuery = query(
             collection(db, 'sendHelp'),
@@ -145,15 +145,15 @@ const UserTransactionSafetyHub = () => {
             collection(db, 'receiveHelp'),
             where('userId', '==', targetUserId)
           );
-          
+
           const [sendHelpSnapshot, receiveHelpSnapshot] = await Promise.all([
             getDocs(sendHelpQuery),
             getDocs(receiveHelpQuery)
           ]);
-          
+
           const sendHelps = sendHelpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           const receiveHelps = receiveHelpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          
+
           setTargetUserData({
             profile: userData,
             sendHelps,
@@ -171,22 +171,22 @@ const UserTransactionSafetyHub = () => {
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const sendHelpSnapshot = await getDocs(collection(db, 'sendHelp'));
         const receiveHelpSnapshot = await getDocs(collection(db, 'receiveHelp'));
-        
+
         const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const sendHelps = sendHelpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const receiveHelps = receiveHelpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+
         const pendingHelps = [...sendHelps, ...receiveHelps].filter(h => h.status === 'pending');
         const failedPayments = [...sendHelps, ...receiveHelps].filter(h => h.status === 'failed');
         const completedHelps = [...sendHelps, ...receiveHelps].filter(h => h.status === 'completed');
-        
+
         setDashboardStats({
           activeUsers: users.filter(u => !u.isBlocked).length,
           pendingHelps: pendingHelps.length,
           failedPayments: failedPayments.length,
           successRate: Math.round((completedHelps.length / (completedHelps.length + failedPayments.length)) * 100) || 0
         });
-        
+
         setPendingHelps(pendingHelps);
         setFailedPayments(failedPayments);
       }
@@ -202,7 +202,7 @@ const UserTransactionSafetyHub = () => {
   const handleUserIdSubmit = async (e) => {
     e.preventDefault();
     if (!inputUserId.trim()) return;
-    
+
     setUserDataLoading(true);
     try {
       // Query users collection by userId field instead of document ID
@@ -211,7 +211,7 @@ const UserTransactionSafetyHub = () => {
         where('userId', '==', inputUserId.trim())
       );
       const querySnapshot = await getDocs(usersQuery);
-      
+
       if (!querySnapshot.empty) {
         // Get the first matching user document
         const userDoc = querySnapshot.docs[0];
@@ -240,7 +240,7 @@ const UserTransactionSafetyHub = () => {
   // Search User for Testing
   const searchUser = async () => {
     if (!selectedUserId.trim()) return;
-    
+
     setUserSearchLoading(true);
     try {
       const userDoc = await getDoc(doc(db, 'users', selectedUserId.trim()));
@@ -277,10 +277,10 @@ const UserTransactionSafetyHub = () => {
           where('status', '==', 'pending'),
           where('receiverId', '==', null)
         );
-        
+
         const snapshot = await getDocs(pendingQuery);
         const batch = writeBatch(db);
-        
+
         for (const docRef of snapshot.docs) {
           const data = docRef.data();
           // Find available receiver logic here
@@ -289,7 +289,7 @@ const UserTransactionSafetyHub = () => {
             where('level', '==', data.level),
             where('isActivated', '==', true)
           );
-          
+
           const receiversSnapshot = await getDocs(availableReceiversQuery);
           if (!receiversSnapshot.empty) {
             const receiver = receiversSnapshot.docs[0];
@@ -299,7 +299,7 @@ const UserTransactionSafetyHub = () => {
             });
           }
         }
-        
+
         await batch.commit();
         toast.success('Missing receivers reassigned successfully');
         await logAuditAction('Auto-Repair', 'Reassigned missing receivers');
@@ -311,7 +311,7 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     autoFillMissingData: async () => {
       setLoading(true);
       try {
@@ -326,7 +326,7 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     retryFailedPayments: async () => {
       setLoading(true);
       try {
@@ -341,7 +341,7 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     bulkUnlockUsers: async () => {
       setLoading(true);
       try {
@@ -349,10 +349,10 @@ const UserTransactionSafetyHub = () => {
           collection(db, 'users'),
           where('isBlocked', '==', true)
         );
-        
+
         const snapshot = await getDocs(blockedUsersQuery);
         const batch = writeBatch(db);
-        
+
         snapshot.docs.forEach(doc => {
           batch.update(doc.ref, {
             isBlocked: false,
@@ -360,7 +360,7 @@ const UserTransactionSafetyHub = () => {
             blockedReason: null
           });
         });
-        
+
         await batch.commit();
         toast.success('Users unlocked successfully');
         await logAuditAction('Auto-Repair', 'Bulk unlocked users');
@@ -390,7 +390,7 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     refreshAllStatuses: async () => {
       setLoading(true);
       try {
@@ -405,12 +405,12 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     emergencyReset: async () => {
       if (!window.confirm('Are you sure you want to perform an emergency reset? This action cannot be undone.')) {
         return;
       }
-      
+
       setLoading(true);
       try {
         // Implementation for emergency reset
@@ -424,7 +424,7 @@ const UserTransactionSafetyHub = () => {
         setLoading(false);
       }
     },
-    
+
     updateAllLevels: async () => {
       setLoading(true);
       try {
@@ -444,7 +444,7 @@ const UserTransactionSafetyHub = () => {
   // Testing Functions
   const simulateSendHelpFlow = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const sendHelpData = {
         userId: selectedUser.id,
@@ -467,7 +467,7 @@ const UserTransactionSafetyHub = () => {
         message: `Created send help for ${selectedUser.fullName} (₹${sendHelpData.amount})`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error simulating send help:', error);
@@ -479,10 +479,10 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const simulateReceiveHelpFlow = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const receiveHelpData = {
         userId: selectedUser.id,
@@ -505,7 +505,7 @@ const UserTransactionSafetyHub = () => {
         message: `Created receive help for ${selectedUser.fullName} (₹${receiveHelpData.amount})`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error simulating receive help:', error);
@@ -517,10 +517,10 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const simulateFailedTransaction = async () => {
     if (!selectedUser) return;
-    
+
     try {
       // Find a pending help for this user
       const sendHelpQuery = query(
@@ -529,9 +529,9 @@ const UserTransactionSafetyHub = () => {
         where('status', '==', 'pending'),
         limit(1)
       );
-      
+
       const sendHelpSnapshot = await getDocs(sendHelpQuery);
-      
+
       if (!sendHelpSnapshot.empty) {
         const helpDoc = sendHelpSnapshot.docs[0];
         await updateDoc(helpDoc.ref, {
@@ -539,7 +539,7 @@ const UserTransactionSafetyHub = () => {
           failureReason: 'Simulated failure by admin',
           failedAt: new Date()
         });
-        
+
         setTestResults(prev => [...prev, {
           type: 'Failed Transaction Simulation',
           status: 'success',
@@ -554,7 +554,7 @@ const UserTransactionSafetyHub = () => {
           timestamp: new Date()
         }]);
       }
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error simulating failed transaction:', error);
@@ -566,14 +566,14 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const testDelayedPayment = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 2); // 2 days ago
-      
+
       const sendHelpData = {
         userId: selectedUser.id,
         amount: selectedUser.level * 1000,
@@ -595,7 +595,7 @@ const UserTransactionSafetyHub = () => {
         message: `Created delayed payment scenario for ${selectedUser.fullName}`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error testing delayed payment:', error);
@@ -607,10 +607,10 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const testBlockedUserScenario = async () => {
     if (!selectedUser) return;
-    
+
     try {
       await updateDoc(doc(db, 'users', selectedUser.id), {
         isBlocked: true,
@@ -618,7 +618,7 @@ const UserTransactionSafetyHub = () => {
         blockedAt: new Date(),
         blockedBy: 'admin_test'
       });
-      
+
       setSelectedUser(prev => ({ ...prev, isBlocked: true }));
       setTestResults(prev => [...prev, {
         type: 'Blocked User Test',
@@ -626,7 +626,7 @@ const UserTransactionSafetyHub = () => {
         message: `Temporarily blocked ${selectedUser.fullName}`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error testing blocked user:', error);
@@ -638,14 +638,14 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   // User Management Utilities
   const resetUserQueues = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const batch = writeBatch(db);
-      
+
       // Delete all pending sendHelp docs
       const sendHelpQuery = query(
         collection(db, 'sendHelp'),
@@ -656,7 +656,7 @@ const UserTransactionSafetyHub = () => {
       sendHelpSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
-      
+
       // Delete all pending receiveHelp docs
       const receiveHelpQuery = query(
         collection(db, 'receiveHelp'),
@@ -667,16 +667,16 @@ const UserTransactionSafetyHub = () => {
       receiveHelpSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
-      
+
       await batch.commit();
-      
+
       setTestResults(prev => [...prev, {
         type: 'Queue Reset',
         status: 'success',
         message: `Reset all queues for ${selectedUser.fullName}`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error resetting queues:', error);
@@ -688,10 +688,10 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const suspendUser = async () => {
     if (!selectedUser) return;
-    
+
     try {
       await updateDoc(doc(db, 'users', selectedUser.id), {
         isBlocked: !selectedUser.isBlocked,
@@ -699,7 +699,7 @@ const UserTransactionSafetyHub = () => {
         blockedBy: selectedUser.isBlocked ? null : 'admin',
         blockedReason: selectedUser.isBlocked ? null : 'Suspended by admin'
       });
-      
+
       setSelectedUser(prev => ({ ...prev, isBlocked: !prev.isBlocked }));
       setTestResults(prev => [...prev, {
         type: 'User Suspension',
@@ -707,7 +707,7 @@ const UserTransactionSafetyHub = () => {
         message: `${selectedUser.isBlocked ? 'Unsuspended' : 'Suspended'} ${selectedUser.fullName}`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error suspending user:', error);
@@ -719,13 +719,13 @@ const UserTransactionSafetyHub = () => {
       }]);
     }
   };
-  
+
   const viewUserTimeline = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const timeline = [];
-      
+
       // Fetch sendHelp history
       const sendHelpQuery = query(
         collection(db, 'sendHelp'),
@@ -745,7 +745,7 @@ const UserTransactionSafetyHub = () => {
           receiverId: data.receiverId
         });
       });
-      
+
       // Fetch receiveHelp history
       const receiveHelpQuery = query(
         collection(db, 'receiveHelp'),
@@ -765,10 +765,10 @@ const UserTransactionSafetyHub = () => {
           senderId: data.senderId
         });
       });
-      
+
       // Sort by date
       timeline.sort((a, b) => b.createdAt - a.createdAt);
-      
+
       setUserTimeline(timeline);
       setShowUserTimeline(true);
     } catch (error) {
@@ -776,10 +776,10 @@ const UserTransactionSafetyHub = () => {
       alert('Failed to fetch user timeline');
     }
   };
-  
+
   const updateUserProfile = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const updateData = {
         fullName: editProfileData.fullName,
@@ -793,19 +793,19 @@ const UserTransactionSafetyHub = () => {
         updatedAt: new Date(),
         updatedBy: 'admin'
       };
-      
+
       await updateDoc(doc(db, 'users', selectedUser.id), updateData);
-      
+
       setSelectedUser(prev => ({ ...prev, ...updateData }));
       setShowEditProfile(false);
-      
+
       setTestResults(prev => [...prev, {
         type: 'Profile Update',
         status: 'success',
         message: `Updated profile for ${editProfileData.fullName}`,
         timestamp: new Date()
       }]);
-      
+
       fetchDashboardData();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -902,12 +902,12 @@ const UserTransactionSafetyHub = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-2 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-slate-900 p-2 sm:p-4 lg:p-6">
       {/* Back Button */}
       <div className="mb-4">
         <button
           onClick={() => navigate('/admin')}
-          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 border border-slate-700 transition-colors shadow-sm"
         >
           <MdArrowBack className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="text-sm sm:text-base font-medium">Back to Admin</span>
@@ -920,61 +920,55 @@ const UserTransactionSafetyHub = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`bg-white rounded-xl shadow-2xl w-full ${
-                isMobile ? 'max-w-sm p-4' : 'max-w-lg p-6'
-              }`}
+              className={`bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full ${isMobile ? 'max-w-sm p-4' : 'max-w-lg p-6'
+                }`}
             >
               {/* Close Button */}
               <div className="flex justify-end mb-4">
                 <button
                   onClick={() => navigate('/admin')}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
                   aria-label="Close and return to dashboard"
                 >
                   <MdClose className="w-5 h-5" />
                 </button>
               </div>
-              
+
               <div className="text-center mb-6">
-                <FiShield className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-                <h2 className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-xl'
-                }`}>User Safety Hub</h2>
-                <p className={`text-gray-600 mt-2 ${
-                  isMobile ? 'text-sm' : 'text-base'
-                }`}>Enter a User ID to view their safety data</p>
+                <FiShield className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                <h2 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'
+                  }`}>User Safety Hub</h2>
+                <p className={`text-slate-400 mt-2 ${isMobile ? 'text-sm' : 'text-base'
+                  }`}>Enter a User ID to view their safety data</p>
               </div>
-              
+
               <form onSubmit={handleUserIdSubmit} className="space-y-4">
                 <div>
-                  <label className={`block font-medium text-gray-700 mb-2 ${
-                    isMobile ? 'text-sm' : 'text-base'
-                  }`}>User ID</label>
+                  <label className={`block font-medium text-slate-300 mb-2 ${isMobile ? 'text-sm' : 'text-base'
+                    }`}>User ID</label>
                   <input
                     type="text"
                     value={inputUserId}
                     onChange={(e) => setInputUserId(e.target.value)}
                     placeholder="Enter User ID (e.g., user123)"
-                    className={`w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                      isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'
-                    }`}
+                    className={`w-full bg-slate-900 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-slate-500 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'
+                      }`}
                     required
                     disabled={userDataLoading}
                   />
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={userDataLoading || !inputUserId.trim()}
-                  className={`w-full bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 ${
-                    isMobile ? 'py-2 text-sm' : 'py-3 text-base'
-                  }`}
+                  className={`w-full bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 ${isMobile ? 'py-2 text-sm' : 'py-3 text-base'
+                    }`}
                 >
                   {userDataLoading ? (
                     <>
@@ -998,66 +992,58 @@ const UserTransactionSafetyHub = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className={`font-bold text-gray-900 flex items-center gap-3 ${
-              isMobile ? 'text-xl' : 'text-2xl sm:text-3xl'
-            }`}>
-              <FiShield className="text-blue-600 flex-shrink-0" />
+            <h1 className={`font-bold text-white flex items-center gap-3 ${isMobile ? 'text-xl' : 'text-2xl sm:text-3xl'
+              }`}>
+              <FiShield className="text-blue-500 flex-shrink-0" />
               <span className="truncate">User & Transaction Safety Hub</span>
             </h1>
-            <p className={`text-gray-600 mt-1 ${
-              isMobile ? 'text-sm' : 'text-base'
-            }`}>Monitor, manage, and maintain platform safety</p>
+            <p className={`text-slate-400 mt-1 ${isMobile ? 'text-sm' : 'text-base'
+              }`}>Monitor, manage, and maintain platform safety</p>
             {targetUserData && (
-              <div className={`mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200 ${
-                isMobile ? 'text-sm' : 'text-base'
-              }`}>
-                <p className="text-blue-800 font-medium">
+              <div className={`mt-2 p-3 bg-blue-900/30 rounded-lg border border-blue-500/30 ${isMobile ? 'text-sm' : 'text-base'
+                }`}>
+                <p className="text-blue-300 font-medium">
                   Viewing: {targetUserData.profile.fullName || targetUserId}
                 </p>
-                <p className="text-blue-600 text-sm">
+                <p className="text-blue-400 text-sm">
                   ID: {targetUserId} | Level: {targetUserData.profile.level || 'N/A'}
                 </p>
               </div>
             )}
           </div>
-          
+
           {/* Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {targetUserData && (
               <button
                 onClick={switchUser}
-                className={`flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors ${
-                  isMobile ? 'text-sm' : 'text-base'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors ${isMobile ? 'text-sm' : 'text-base'
+                  }`}
               >
                 <MdPeople className="w-4 h-4" />
                 <span className="hidden sm:inline">Switch User</span>
                 <span className="sm:hidden">Switch</span>
               </button>
             )}
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className={`font-medium text-gray-700 ${
-                  isMobile ? 'text-sm' : 'text-base'
-                }`}>Test Mode</span>
+                <span className={`font-medium text-slate-300 ${isMobile ? 'text-sm' : 'text-base'
+                  }`}>Test Mode</span>
                 <button
                   onClick={() => setIsTestMode(!isTestMode)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isTestMode ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isTestMode ? 'bg-blue-600' : 'bg-slate-600'
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isTestMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isTestMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
               {isTestMode && (
-                <span className={`px-3 py-1 bg-yellow-100 text-yellow-800 font-medium rounded-full ${
-                  isMobile ? 'text-xs' : 'text-sm'
-                }`}>
+                <span className={`px-3 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 font-medium rounded-full ${isMobile ? 'text-xs' : 'text-sm'
+                  }`}>
                   TEST MODE
                 </span>
               )}
@@ -1076,25 +1062,20 @@ const UserTransactionSafetyHub = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`bg-white rounded-xl shadow-md border border-gray-100 transition-all duration-200 hover:shadow-lg ${
-                isMobile ? 'p-4' : 'p-6'
-              }`}
+              className={`bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/50 transition-all duration-200 hover:bg-slate-800/70 hover:shadow-xl ${isMobile ? 'p-4' : 'p-6'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className={`font-medium text-gray-600 truncate ${
-                    isMobile ? 'text-sm' : 'text-base'
-                  }`}>{card.title}</p>
-                  <p className={`font-bold ${card.textColor} mt-1 ${
-                    isMobile ? 'text-xl' : 'text-2xl'
-                  }`}>{card.value}</p>
+                  <p className={`font-medium text-slate-400 truncate ${isMobile ? 'text-sm' : 'text-base'
+                    }`}>{card.title}</p>
+                  <p className={`font-bold ${card.textColor.replace('text-blue-600', 'text-blue-400').replace('text-green-600', 'text-green-400').replace('text-red-600', 'text-red-400').replace('text-yellow-600', 'text-yellow-400')} mt-1 ${isMobile ? 'text-xl' : 'text-2xl'
+                    }`}>{card.value}</p>
                 </div>
-                <div className={`rounded-lg bg-gradient-to-r ${card.color} ${
-                  isMobile ? 'p-2' : 'p-3'
-                }`}>
-                  <Icon className={`text-white ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                <div className={`rounded-lg bg-gradient-to-r ${card.color} ${isMobile ? 'p-2' : 'p-3'
+                  }`}>
+                  <Icon className={`text-white ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                 </div>
               </div>
             </motion.div>
@@ -1103,7 +1084,7 @@ const UserTransactionSafetyHub = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white rounded-xl shadow-lg mb-4 sm:mb-6 overflow-hidden">
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl shadow-lg mb-4 sm:mb-6 overflow-hidden">
         <div className="flex overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -1111,11 +1092,10 @@ const UserTransactionSafetyHub = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors touch-manipulation ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                }`}
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors touch-manipulation ${activeTab === tab.id
+                  ? 'bg-blue-600/20 text-blue-400 border-b-2 border-blue-500'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
               >
                 <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -1134,119 +1114,119 @@ const UserTransactionSafetyHub = () => {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
-          className="bg-white rounded-xl shadow-lg p-4 sm:p-6"
+          className="bg-slate-800 border border-slate-700 rounded-xl shadow-lg p-4 sm:p-6"
         >
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-white">
                 {targetUserData ? 'User Profile & Safety Data' : 'System Overview'}
               </h2>
-              
+
               {/* User Profile Details */}
               {targetUserData && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FiUsers className="w-5 h-5 text-blue-600" />
+                <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-blue-500/20 shadow-lg">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <FiUsers className="w-5 h-5 text-blue-400" />
                     User Details
                   </h3>
-                  
+
                   {/* Mobile-friendly user details grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Full Name</p>
+                      <p className="text-sm font-semibold text-white mt-1">
                         {targetUserData.profile.fullName || 'N/A'}
                       </p>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1 break-all">
+
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Email</p>
+                      <p className="text-sm font-semibold text-white mt-1 break-all">
                         {targetUserData.profile.email || 'N/A'}
                       </p>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Phone</p>
+                      <p className="text-sm font-semibold text-white mt-1">
                         {targetUserData.profile.phoneNumber || 'N/A'}
                       </p>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">WhatsApp</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">WhatsApp</p>
+                      <p className="text-sm font-semibold text-white mt-1">
                         {targetUserData.profile.whatsapp || 'N/A'}
                       </p>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sponsor ID</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Sponsor ID</p>
+                      <p className="text-sm font-semibold text-white mt-1">
                         {targetUserData.profile.sponsorId || 'N/A'}
                       </p>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-3 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Level</p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+
+                    <div className="bg-slate-900/50 rounded-lg p-3 shadow-sm border border-slate-700">
+                      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Level</p>
+                      <p className="text-sm font-semibold text-white mt-1">
                         {targetUserData.profile.level || 'N/A'}
                       </p>
                     </div>
                   </div>
-                  
+
                   {/* Payment Method Details */}
                   {targetUserData.profile.paymentMethod && (
                     <div className="mt-6">
-                      <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <FiTarget className="w-4 h-4 text-green-600" />
+                      <h4 className="text-md font-semibold text-white mb-3 flex items-center gap-2">
+                        <FiTarget className="w-4 h-4 text-green-400" />
                         Payment Details
                       </h4>
-                      
+
                       <div className="overflow-x-auto">
-                        <div className="bg-white rounded-lg p-4 shadow-sm min-w-full">
+                        <div className="bg-slate-900/50 rounded-lg p-4 shadow-sm border border-slate-700 min-w-full">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Payment Method</p>
-                              <p className="text-sm font-semibold text-gray-900 mt-1">
+                              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Method</p>
+                              <p className="text-sm font-semibold text-white mt-1">
                                 {targetUserData.profile.paymentMethod?.type || targetUserData.profile.paymentMethod?.method || 'N/A'}
                               </p>
                             </div>
-                            
+
                             <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">UPI ID</p>
-                              <p className="text-sm font-semibold text-gray-900 mt-1 break-all">
+                              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">UPI ID</p>
+                              <p className="text-sm font-semibold text-white mt-1 break-all">
                                 {targetUserData.profile.paymentMethod?.upiId || targetUserData.profile.upiId || 'N/A'}
                               </p>
                             </div>
-                            
+
                             {targetUserData.profile.paymentMethod?.bank && (
                               <>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bank Account</p>
-                                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Bank Account</p>
+                                  <p className="text-sm font-semibold text-white mt-1">
                                     {targetUserData.profile.paymentMethod.bank.accountNumber || 'N/A'}
                                   </p>
                                 </div>
-                                
+
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bank Name</p>
-                                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Bank Name</p>
+                                  <p className="text-sm font-semibold text-white mt-1">
                                     {targetUserData.profile.paymentMethod.bank.bankName || 'N/A'}
                                   </p>
                                 </div>
-                                
+
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">IFSC Code</p>
-                                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">IFSC Code</p>
+                                  <p className="text-sm font-semibold text-white mt-1">
                                     {targetUserData.profile.paymentMethod.bank.ifscCode || 'N/A'}
                                   </p>
                                 </div>
-                                
+
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Holder</p>
-                                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Account Holder</p>
+                                  <p className="text-sm font-semibold text-white mt-1">
                                     {targetUserData.profile.paymentMethod.bank.accountHolder || 'N/A'}
                                   </p>
                                 </div>
@@ -1259,20 +1239,20 @@ const UserTransactionSafetyHub = () => {
                   )}
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
+                  <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
                   <div className="space-y-3">
                     {auditHistory.slice(0, 5).map((log, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                        <FiActivity className="w-4 h-4 text-blue-600" />
+                      <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg selection:bg-slate-600">
+                        <FiActivity className="w-4 h-4 text-blue-400" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{log.action}</p>
-                          <p className="text-xs text-gray-600">{log.description}</p>
+                          <p className="text-sm font-medium text-white">{log.action}</p>
+                          <p className="text-xs text-slate-400">{log.description}</p>
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           {log.timestamp?.toDate?.()?.toLocaleTimeString() || 'Just now'}
                         </span>
                       </div>
@@ -1281,26 +1261,26 @@ const UserTransactionSafetyHub = () => {
                 </div>
 
                 {/* System Health */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
+                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
+                  <h3 className="text-lg font-semibold text-white mb-4">System Health</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Database Connection</span>
-                      <span className="flex items-center gap-1 text-green-600">
+                      <span className="text-sm text-slate-400">Database Connection</span>
+                      <span className="flex items-center gap-1 text-green-400">
                         <FiCheckCircle className="w-4 h-4" />
                         Online
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Payment Gateway</span>
-                      <span className="flex items-center gap-1 text-green-600">
+                      <span className="text-sm text-slate-400">Payment Gateway</span>
+                      <span className="flex items-center gap-1 text-green-400">
                         <FiCheckCircle className="w-4 h-4" />
                         Active
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Error Rate</span>
-                      <span className="text-sm text-gray-900">{errorLogs.length < 10 ? 'Low' : 'High'}</span>
+                      <span className="text-sm text-slate-400">Error Rate</span>
+                      <span className="text-sm text-white">{errorLogs.length < 10 ? 'Low' : 'High'}</span>
                     </div>
                   </div>
                 </div>
@@ -1312,10 +1292,10 @@ const UserTransactionSafetyHub = () => {
           {activeTab === 'monitoring' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h2 className="text-xl font-bold text-gray-900">Real-time Monitoring</h2>
+                <h2 className="text-xl font-bold text-white">Real-time Monitoring</h2>
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
                 >
                   <MdRefresh className="w-4 h-4" />
                   Refresh
@@ -1324,30 +1304,23 @@ const UserTransactionSafetyHub = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Pending Helps */}
-                <div className={`bg-yellow-50 rounded-xl shadow-md border border-yellow-200 ${
-                  isMobile ? 'p-4' : 'p-6'
-                }`}>
-                  <h3 className={`font-semibold text-yellow-800 mb-4 ${
-                    isMobile ? 'text-base' : 'text-lg'
-                  }`}>Pending Helps ({pendingHelps.length})</h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className={`bg-yellow-900/10 rounded-xl shadow-lg border border-yellow-500/20 ${isMobile ? 'p-4' : 'p-6'
+                  }`}>
+                  <h3 className={`font-semibold text-yellow-500 mb-4 ${isMobile ? 'text-base' : 'text-lg'
+                    }`}>Pending Helps ({pendingHelps.length})</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     {pendingHelps.slice(0, 10).map((help, index) => (
-                      <div key={index} className={`flex items-center justify-between bg-white rounded-lg border border-yellow-100 ${
-                        isMobile ? 'p-2' : 'p-3'
-                      }`}>
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-gray-900 ${
-                            isMobile ? 'text-sm' : 'text-base'
-                          }`}>₹{help.amount}</p>
-                          <p className={`text-gray-600 ${
-                            isMobile ? 'text-xs' : 'text-sm'
-                          }`}>Level {help.level}</p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full font-medium ${
-                          help.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                        } ${
-                          isMobile ? 'text-xs' : 'text-sm'
+                      <div key={index} className={`flex items-center justify-between bg-slate-800/50 rounded-lg border border-yellow-500/10 ${isMobile ? 'p-2' : 'p-3'
                         }`}>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium text-white ${isMobile ? 'text-sm' : 'text-base'
+                            }`}>₹{help.amount}</p>
+                          <p className={`text-slate-400 ${isMobile ? 'text-xs' : 'text-sm'
+                            }`}>Level {help.level}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full font-medium ${help.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          } ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>
                           {help.status}
                         </span>
                       </div>
@@ -1356,30 +1329,24 @@ const UserTransactionSafetyHub = () => {
                 </div>
 
                 {/* Failed Payments */}
-                <div className={`bg-red-50 rounded-xl shadow-md border border-red-200 ${
-                  isMobile ? 'p-4' : 'p-6'
-                }`}>
-                  <h3 className={`font-semibold text-red-800 mb-4 ${
-                    isMobile ? 'text-base' : 'text-lg'
-                  }`}>Failed Payments ({failedPayments.length})</h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className={`bg-red-900/10 rounded-xl shadow-lg border border-red-500/20 ${isMobile ? 'p-4' : 'p-6'
+                  }`}>
+                  <h3 className={`font-semibold text-red-500 mb-4 ${isMobile ? 'text-base' : 'text-lg'
+                    }`}>Failed Payments ({failedPayments.length})</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     {failedPayments.slice(0, 10).map((payment, index) => (
-                      <div key={index} className={`flex items-center justify-between bg-white rounded-lg border border-red-100 ${
-                        isMobile ? 'p-2' : 'p-3'
-                      }`}>
+                      <div key={index} className={`flex items-center justify-between bg-slate-800/50 rounded-lg border border-red-500/10 ${isMobile ? 'p-2' : 'p-3'
+                        }`}>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-gray-900 ${
-                            isMobile ? 'text-sm' : 'text-base'
-                          }`}>₹{payment.amount}</p>
-                          <p className={`text-gray-600 ${
-                            isMobile ? 'text-xs' : 'text-sm'
-                          }`}>Retries: {payment.retryCount || 0}</p>
+                          <p className={`font-medium text-white ${isMobile ? 'text-sm' : 'text-base'
+                            }`}>₹{payment.amount}</p>
+                          <p className={`text-slate-400 ${isMobile ? 'text-xs' : 'text-sm'
+                            }`}>Retries: {payment.retryCount || 0}</p>
                         </div>
                         <button
                           onClick={() => autoRepairFunctions.retryFailedPayments()}
-                          className={`bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors ${
-                            isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
-                          }`}
+                          className={`bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 ${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+                            }`}
                         >
                           Retry
                         </button>
@@ -1394,86 +1361,70 @@ const UserTransactionSafetyHub = () => {
           {/* Auto-Repair Tab */}
           {activeTab === 'auto-repair' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Auto-Repair Tools</h2>
-              
+              <h2 className="text-xl font-bold text-white">Auto-Repair Tools</h2>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={autoRepairFunctions.reassignMissingReceivers}
                   disabled={loading}
-                  className={`flex items-center bg-blue-50 hover:bg-blue-100 rounded-xl shadow-md border border-blue-200 transition-all duration-200 disabled:opacity-50 ${
-                    isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                  }`}
+                  className={`flex items-center bg-blue-900/20 hover:bg-blue-900/30 rounded-xl shadow-lg border border-blue-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
                 >
-                  <MdAutorenew className={`text-blue-600 ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                  <MdAutorenew className={`text-blue-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                   <div className="text-left flex-1">
-                    <p className={`font-medium text-blue-900 ${
-                      isMobile ? 'text-sm' : 'text-base'
-                    }`}>Reassign Missing Receivers</p>
-                    <p className={`text-blue-700 ${
-                      isMobile ? 'text-xs' : 'text-sm'
-                    }`}>Auto-fill missing receiver data</p>
+                    <p className={`font-medium text-blue-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Reassign Missing Receivers</p>
+                    <p className={`text-blue-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Auto-fill missing receiver data</p>
                   </div>
                 </button>
 
                 <button
                   onClick={autoRepairFunctions.autoFillMissingData}
                   disabled={loading}
-                  className={`flex items-center bg-green-50 hover:bg-green-100 rounded-xl shadow-md border border-green-200 transition-all duration-200 disabled:opacity-50 ${
-                    isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                  }`}
+                  className={`flex items-center bg-green-900/20 hover:bg-green-900/30 rounded-xl shadow-lg border border-green-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
                 >
-                  <MdSync className={`text-green-600 ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                  <MdSync className={`text-green-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                   <div className="text-left flex-1">
-                    <p className={`font-medium text-green-900 ${
-                      isMobile ? 'text-sm' : 'text-base'
-                    }`}>Auto-fill Missing Data</p>
-                    <p className={`text-green-700 ${
-                      isMobile ? 'text-xs' : 'text-sm'
-                    }`}>Pull missing info from users collection</p>
+                    <p className={`font-medium text-green-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Auto-fill Missing Data</p>
+                    <p className={`text-green-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Pull missing info from users collection</p>
                   </div>
                 </button>
 
                 <button
                   onClick={autoRepairFunctions.retryFailedPayments}
                   disabled={loading}
-                  className={`flex items-center bg-yellow-50 hover:bg-yellow-100 rounded-xl shadow-md border border-yellow-200 transition-all duration-200 disabled:opacity-50 ${
-                    isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                  }`}
+                  className={`flex items-center bg-yellow-900/20 hover:bg-yellow-900/30 rounded-xl shadow-lg border border-yellow-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
                 >
-                  <MdRefresh className={`text-yellow-600 ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                  <MdRefresh className={`text-yellow-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                   <div className="text-left flex-1">
-                    <p className={`font-medium text-yellow-900 ${
-                      isMobile ? 'text-sm' : 'text-base'
-                    }`}>Retry Failed Payments</p>
-                    <p className={`text-yellow-700 ${
-                      isMobile ? 'text-xs' : 'text-sm'
-                    }`}>Trigger backend payment confirmation logic</p>
+                    <p className={`font-medium text-yellow-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Retry Failed Payments</p>
+                    <p className={`text-yellow-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Trigger backend payment confirmation logic</p>
                   </div>
                 </button>
 
                 <button
                   onClick={autoRepairFunctions.bulkUnlockUsers}
                   disabled={loading}
-                  className={`flex items-center bg-purple-50 hover:bg-purple-100 rounded-xl shadow-md border border-purple-200 transition-all duration-200 disabled:opacity-50 ${
-                    isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                  }`}
+                  className={`flex items-center bg-purple-900/20 hover:bg-purple-900/30 rounded-xl shadow-lg border border-purple-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
                 >
-                  <MdLockOpen className={`text-purple-600 ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                  <MdLockOpen className={`text-purple-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                   <div className="text-left flex-1">
-                    <p className={`font-medium text-purple-900 ${
-                      isMobile ? 'text-sm' : 'text-base'
-                    }`}>Bulk Unlock Users</p>
-                    <p className={`text-purple-700 ${
-                      isMobile ? 'text-xs' : 'text-sm'
-                    }`}>Batch unlock users who were blocked</p>
+                    <p className={`font-medium text-purple-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Bulk Unlock Users</p>
+                    <p className={`text-purple-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Batch unlock users who were blocked</p>
                   </div>
                 </button>
               </div>
@@ -1483,621 +1434,547 @@ const UserTransactionSafetyHub = () => {
           {/* Manual Repair Tab */}
           {activeTab === 'manual-repair' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Manual Repair Tools</h2>
-              
+              <h2 className="text-xl font-bold text-white">Manual Repair Tools</h2>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={() => openEditModal(null, 'editUser')}
-                  className={`flex items-center bg-blue-50 hover:bg-blue-100 rounded-xl shadow-md border border-blue-200 transition-all duration-200 ${
-                    isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                  }`}
+                  className={`flex items-center bg-blue-900/20 hover:bg-blue-900/30 rounded-xl shadow-lg border border-blue-500/30 transition-all duration-200 group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
                 >
-                  <MdEdit className={`text-blue-600 ${
-                    isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                  }`} />
+                  <MdEdit className={`text-blue-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
                   <div className="text-left flex-1">
-                     <p className={`font-medium text-blue-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Edit User Profile</p>
-                     <p className={`text-blue-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Manually edit user information</p>
-                   </div>
-                 </button>
+                    <p className={`font-medium text-blue-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Edit User Profile</p>
+                    <p className={`text-blue-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Manually edit user information</p>
+                  </div>
+                </button>
 
-                 <button
-                   onClick={() => openEditModal(null, 'resetQueue')}
-                   className={`flex items-center bg-orange-50 hover:bg-orange-100 rounded-xl shadow-md border border-orange-200 transition-all duration-200 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdRestore className={`text-orange-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-orange-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Reset User Queue</p>
-                     <p className={`text-orange-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Clear pending transactions</p>
-                   </div>
-                 </button>
+                <button
+                  onClick={() => openEditModal(null, 'resetQueue')}
+                  className={`flex items-center bg-orange-900/20 hover:bg-orange-900/30 rounded-xl shadow-lg border border-orange-500/30 transition-all duration-200 group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdRestore className={`text-orange-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-orange-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Reset User Queue</p>
+                    <p className={`text-orange-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Clear pending transactions</p>
+                  </div>
+                </button>
 
-                 <button
-                   onClick={() => openEditModal(null, 'repairError')}
-                   className={`flex items-center bg-red-50 hover:bg-red-100 rounded-xl shadow-md border border-red-200 transition-all duration-200 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdBugReport className={`text-red-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-red-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Repair Error</p>
-                     <p className={`text-red-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Fix specific transaction errors</p>
-                   </div>
-                 </button>
+                <button
+                  onClick={() => openEditModal(null, 'repairError')}
+                  className={`flex items-center bg-red-900/20 hover:bg-red-900/30 rounded-xl shadow-lg border border-red-500/30 transition-all duration-200 group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdBugReport className={`text-red-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-red-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Repair Error</p>
+                    <p className={`text-red-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Fix specific transaction errors</p>
+                  </div>
+                </button>
 
-                 <button
-                   onClick={() => openEditModal(null, 'updateLevel')}
-                   className={`flex items-center bg-green-50 hover:bg-green-100 rounded-xl shadow-md border border-green-200 transition-all duration-200 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdUpdate className={`text-green-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-green-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Update User Level</p>
-                     <p className={`text-green-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Change user level manually</p>
-                   </div>
-                 </button>
-               </div>
-             </div>
-           )}
+                <button
+                  onClick={() => openEditModal(null, 'updateLevel')}
+                  className={`flex items-center bg-green-900/20 hover:bg-green-900/30 rounded-xl shadow-lg border border-green-500/30 transition-all duration-200 group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdUpdate className={`text-green-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-green-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Update User Level</p>
+                    <p className={`text-green-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Change user level manually</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
-           {/* Bulk Operations Tab */}
-           {activeTab === 'bulk-ops' && (
-             <div className="space-y-6">
-               <h2 className="text-xl font-bold text-gray-900">Bulk Operations</h2>
-               
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <button
-                   onClick={bulkOperations.processAllPendingHelps}
-                   disabled={loading}
-                   className={`flex items-center bg-blue-50 hover:bg-blue-100 rounded-xl shadow-md border border-blue-200 transition-all duration-200 disabled:opacity-50 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdSync className={`text-blue-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-blue-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Process All Pending Helps</p>
-                     <p className={`text-blue-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Batch process all pending transactions</p>
-                   </div>
-                 </button>
+          {/* Bulk Operations Tab */}
+          {activeTab === 'bulk-ops' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-white">Bulk Operations</h2>
 
-                 <button
-                   onClick={bulkOperations.refreshAllStatuses}
-                   disabled={loading}
-                   className={`flex items-center bg-green-50 hover:bg-green-100 rounded-xl shadow-md border border-green-200 transition-all duration-200 disabled:opacity-50 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdRefresh className={`text-green-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-green-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Refresh All Statuses</p>
-                     <p className={`text-green-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Update all transaction statuses</p>
-                   </div>
-                 </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={bulkOperations.processAllPendingHelps}
+                  disabled={loading}
+                  className={`flex items-center bg-blue-900/20 hover:bg-blue-900/30 rounded-xl shadow-lg border border-blue-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdSync className={`text-blue-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-blue-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Process All Pending Helps</p>
+                    <p className={`text-blue-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Batch process all pending transactions</p>
+                  </div>
+                </button>
 
-                 <button
-                   onClick={bulkOperations.emergencyReset}
-                   disabled={loading}
-                   className={`flex items-center bg-red-50 hover:bg-red-100 rounded-xl shadow-md border border-red-200 transition-all duration-200 disabled:opacity-50 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdWarning className={`text-red-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-red-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Emergency Reset</p>
-                     <p className={`text-red-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Reset all system states (DANGER)</p>
-                   </div>
-                 </button>
+                <button
+                  onClick={bulkOperations.refreshAllStatuses}
+                  disabled={loading}
+                  className={`flex items-center bg-green-900/20 hover:bg-green-900/30 rounded-xl shadow-lg border border-green-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdRefresh className={`text-green-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-green-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Refresh All Statuses</p>
+                    <p className={`text-green-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Update all transaction statuses</p>
+                  </div>
+                </button>
 
-                 <button
-                   onClick={bulkOperations.updateAllLevels}
-                   disabled={loading}
-                   className={`flex items-center bg-purple-50 hover:bg-purple-100 rounded-xl shadow-md border border-purple-200 transition-all duration-200 disabled:opacity-50 ${
-                     isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                   }`}
-                 >
-                   <MdTrendingUp className={`text-purple-600 ${
-                     isMobile ? 'w-5 h-5' : 'w-6 h-6'
-                   }`} />
-                   <div className="text-left flex-1">
-                     <p className={`font-medium text-purple-900 ${
-                       isMobile ? 'text-sm' : 'text-base'
-                     }`}>Update All Levels</p>
-                     <p className={`text-purple-700 ${
-                       isMobile ? 'text-xs' : 'text-sm'
-                     }`}>Recalculate all user levels</p>
-                   </div>
-                 </button>
-               </div>
-             </div>
-           )}
+                <button
+                  onClick={bulkOperations.emergencyReset}
+                  disabled={loading}
+                  className={`flex items-center bg-red-900/20 hover:bg-red-900/30 rounded-xl shadow-lg border border-red-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdWarning className={`text-red-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-red-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Emergency Reset</p>
+                    <p className={`text-red-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Reset all system states (DANGER)</p>
+                  </div>
+                </button>
 
-           {/* Error Logs Tab */}
-           {activeTab === 'error-logs' && (
-             <div className="space-y-6">
-               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                 <h2 className="text-xl font-bold text-gray-900">Error Logs</h2>
-                 <div className="flex items-center gap-3">
-                   <input
-                     type="text"
-                     placeholder="Search errors..."
-                     value={searchTerm}
-                     onChange={(e) => setSearchTerm(e.target.value)}
-                     className={`border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   />
-                   <select
-                     value={filterType}
-                     onChange={(e) => setFilterType(e.target.value)}
-                     className={`border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   >
-                     <option value="all">All Errors</option>
-                     <option value="payment">Payment Errors</option>
-                     <option value="user">User Errors</option>
-                     <option value="system">System Errors</option>
-                   </select>
-                 </div>
-               </div>
+                <button
+                  onClick={bulkOperations.updateAllLevels}
+                  disabled={loading}
+                  className={`flex items-center bg-purple-900/20 hover:bg-purple-900/30 rounded-xl shadow-lg border border-purple-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                    }`}
+                >
+                  <MdTrendingUp className={`text-purple-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'
+                    }`} />
+                  <div className="text-left flex-1">
+                    <p className={`font-medium text-purple-300 ${isMobile ? 'text-sm' : 'text-base'
+                      }`}>Update All Levels</p>
+                    <p className={`text-purple-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                      }`}>Recalculate all user levels</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
-               <div className="bg-gray-50 rounded-lg p-4">
-                 <div className="space-y-3">
-                   {errorLogs.length === 0 ? (
-                     <div className="text-center py-8">
-                       <FiCheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                       <p className="text-gray-600">No errors found</p>
-                     </div>
-                   ) : (
-                     errorLogs.slice(0, 20).map((error, index) => (
-                       <div key={index} className="bg-white rounded-lg p-4 border border-red-200">
-                         <div className="flex items-start justify-between">
-                           <div className="flex-1">
-                             <div className="flex items-center gap-2 mb-2">
-                               <MdError className="w-5 h-5 text-red-600" />
-                               <span className="font-medium text-red-900">{error.type || 'System Error'}</span>
-                               <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                                 {error.severity || 'High'}
-                               </span>
-                             </div>
-                             <p className="text-gray-900 mb-2">{error.message || 'Error message not available'}</p>
-                             <p className="text-sm text-gray-600">User: {error.userId || 'N/A'}</p>
-                             <p className="text-xs text-gray-500">
-                               {error.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
-                             </p>
-                           </div>
-                           <button
-                             onClick={() => openEditModal(error, 'repairError')}
-                             className="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
-                           >
-                             Fix
-                           </button>
-                         </div>
-                       </div>
-                     ))
-                   )}
-                 </div>
-               </div>
-             </div>
-           )}
+          {/* Error Logs Tab */}
+          {activeTab === 'error-logs' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-xl font-bold text-white">Error Logs</h2>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="Search errors..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={`bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  />
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className={`bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  >
+                    <option value="all">All Errors</option>
+                    <option value="payment">Payment Errors</option>
+                    <option value="user">User Errors</option>
+                    <option value="system">System Errors</option>
+                  </select>
+                </div>
+              </div>
 
-           {/* Testing Tab */}
-           {activeTab === 'testing' && (
-             <div className="space-y-6">
-               <h2 className="text-xl font-bold text-gray-900">Testing Tools</h2>
-               
-               {/* User Search */}
-               <div className="bg-gray-50 rounded-lg p-4">
-                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Select User for Testing</h3>
-                 <div className="flex gap-3">
-                   <input
-                     type="text"
-                     placeholder="Enter User ID"
-                     value={selectedUserId}
-                     onChange={(e) => setSelectedUserId(e.target.value)}
-                     className={`flex-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   />
-                   <button
-                     onClick={searchUser}
-                     disabled={userSearchLoading || !selectedUserId.trim()}
-                     className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2 ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   >
-                     {userSearchLoading ? (
-                       <MdSync className="w-4 h-4 animate-spin" />
-                     ) : (
-                       <MdSearch className="w-4 h-4" />
-                     )}
-                     Search
-                   </button>
-                 </div>
-                 
-                 {selectedUser && (
-                   <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                     <p className="font-medium text-blue-900">{selectedUser.fullName}</p>
-                     <p className="text-sm text-blue-700">Level: {selectedUser.level} | Status: {selectedUser.isBlocked ? 'Blocked' : 'Active'}</p>
-                   </div>
-                 )}
-               </div>
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
+                <div className="space-y-3">
+                  {errorLogs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FiCheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                      <p className="text-slate-400">No errors found</p>
+                    </div>
+                  ) : (
+                    errorLogs.slice(0, 20).map((error, index) => (
+                      <div key={index} className="bg-slate-900/50 rounded-lg p-4 border border-red-500/20 shadow-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <MdError className="w-5 h-5 text-red-400" />
+                              <span className="font-medium text-red-300">{error.type || 'System Error'}</span>
+                              <span className="px-2 py-1 bg-red-500/10 text-red-300 text-xs rounded-full border border-red-500/20">
+                                {error.severity || 'High'}
+                              </span>
+                            </div>
+                            <p className="text-white mb-2">{error.message || 'Error message not available'}</p>
+                            <p className="text-sm text-slate-400">User: {error.userId || 'N/A'}</p>
+                            <p className="text-xs text-slate-500">
+                              {error.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => openEditModal(error, 'repairError')}
+                            className="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20"
+                          >
+                            Fix
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-               {/* User Status Display */}
-               {selectedUser && (
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                     <h4 className="font-medium text-blue-900 mb-2">User Status</h4>
-                     <p className="text-sm text-blue-700">ID: {selectedUser.id}</p>
-                     <p className="text-sm text-blue-700">Level: {selectedUser.level}</p>
-                     <p className="text-sm text-blue-700">Status: {selectedUser.isBlocked ? 'Blocked' : 'Active'}</p>
-                   </div>
-                   
-                   <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                     <h4 className="font-medium text-green-900 mb-2">Account Info</h4>
-                     <p className="text-sm text-green-700">Email: {selectedUser.email || 'N/A'}</p>
-                     <p className="text-sm text-green-700">Phone: {selectedUser.phoneNumber || 'N/A'}</p>
-                     <p className="text-sm text-green-700">Activated: {selectedUser.isActivated ? 'Yes' : 'No'}</p>
-                   </div>
-                   
-                   <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                     <h4 className="font-medium text-yellow-900 mb-2">Payment Info</h4>
-                     <p className="text-sm text-yellow-700">Method: {selectedUser.paymentMethod || 'N/A'}</p>
-                     <p className="text-sm text-yellow-700">UPI: {selectedUser.upiId || 'N/A'}</p>
-                     <p className="text-sm text-yellow-700">Upline: {selectedUser.uplineId || 'N/A'}</p>
-                   </div>
-                 </div>
-               )}
+          {/* Testing Tab */}
+          {activeTab === 'testing' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-white">Testing Tools</h2>
 
-               {/* Simulation Tools */}
-               {selectedUser && (
-                 <div className="space-y-4">
-                   <h3 className="text-lg font-semibold text-gray-900">Simulation Tools</h3>
-                   
-                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                     <button
-                       onClick={simulateSendHelpFlow}
-                       className={`flex items-center bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <FiZap className={`text-blue-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-blue-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Send Help Flow</p>
-                         <p className={`text-blue-700 ${
-                           isMobile ? 'text-xs' : 'text-sm'
-                         }`}>Simulate sending help</p>
-                       </div>
-                     </button>
+              {/* User Search */}
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
+                <h3 className="text-lg font-semibold text-white mb-4">Select User for Testing</h3>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter User ID"
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className={`flex-1 bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  />
+                  <button
+                    onClick={searchUser}
+                    disabled={userSearchLoading || !selectedUserId.trim()}
+                    className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  >
+                    {userSearchLoading ? (
+                      <MdSync className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <MdSearch className="w-4 h-4" />
+                    )}
+                    Search
+                  </button>
+                </div>
 
-                     <button
-                       onClick={simulateReceiveHelpFlow}
-                       className={`flex items-center bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <FiTarget className={`text-green-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-green-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Receive Help Flow</p>
-                         <p className={`text-green-700 ${
-                           isMobile ? 'text-xs' : 'text-sm'
-                         }`}>Simulate receiving help</p>
-                       </div>
-                     </button>
+                {selectedUser && (
+                  <div className="mt-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                    <p className="font-medium text-blue-300">{selectedUser.fullName}</p>
+                    <p className="text-sm text-blue-400">Level: {selectedUser.level} | Status: {selectedUser.isBlocked ? 'Blocked' : 'Active'}</p>
+                  </div>
+                )}
+              </div>
 
-                     <button
-                       onClick={simulateFailedTransaction}
-                       className={`flex items-center bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <MdError className={`text-red-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-red-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Failed Transaction</p>
-                         <p className={`text-red-700 ${
-                           isMobile ? 'text-xs' : 'text-sm'
-                         }`}>Simulate payment failure</p>
-                       </div>
-                     </button>
-                   </div>
-                 </div>
-               )}
+              {/* User Status Display */}
+              {selectedUser && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-blue-900/10 rounded-lg p-4 border border-blue-500/20">
+                    <h4 className="font-medium text-blue-400 mb-2">User Status</h4>
+                    <p className="text-sm text-blue-300">ID: {selectedUser.id}</p>
+                    <p className="text-sm text-blue-300">Level: {selectedUser.level}</p>
+                    <p className="text-sm text-blue-300">Status: {selectedUser.isBlocked ? 'Blocked' : 'Active'}</p>
+                  </div>
 
-               {/* Test Scenarios */}
-               {selectedUser && (
-                 <div className="space-y-4">
-                   <h3 className="text-lg font-semibold text-gray-900">Test Scenarios</h3>
-                   
-                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-green-900/10 rounded-lg p-4 border border-green-500/20">
+                    <h4 className="font-medium text-green-400 mb-2">Account Info</h4>
+                    <p className="text-sm text-green-300">Email: {selectedUser.email || 'N/A'}</p>
+                    <p className="text-sm text-green-300">Phone: {selectedUser.phoneNumber || 'N/A'}</p>
+                    <p className="text-sm text-green-300">Activated: {selectedUser.isActivated ? 'Yes' : 'No'}</p>
+                  </div>
 
-                     <button
-                       onClick={testDelayedPayment}
-                       className={`flex items-center bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <FiClock className={`text-orange-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-orange-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Delayed Payment</p>
-                         <p className={`text-orange-700 ${
-                           isMobile ? 'text-xs' : 'text-sm'
-                         }`}>Test delayed payment scenario</p>
-                       </div>
-                     </button>
+                  <div className="bg-yellow-900/10 rounded-lg p-4 border border-yellow-500/20">
+                    <h4 className="font-medium text-yellow-400 mb-2">Payment Info</h4>
+                    <p className="text-sm text-yellow-300">Method: {selectedUser.paymentMethod || 'N/A'}</p>
+                    <p className="text-sm text-yellow-300">UPI: {selectedUser.upiId || 'N/A'}</p>
+                    <p className="text-sm text-yellow-300">Upline: {selectedUser.uplineId || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
 
-                     <button
-                       onClick={testBlockedUserScenario}
-                       className={`flex items-center bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <MdLock className={`text-purple-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-purple-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Blocked User</p>
-                         <p className={`text-purple-700 ${
-                           isMobile ? 'text-xs' : 'text-sm'
-                         }`}>Test blocked user scenario</p>
-                       </div>
-                     </button>
-                   </div>
-                 </div>
-               )}
+              {/* Simulation Tools */}
+              {selectedUser && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Simulation Tools</h3>
 
-               {/* User Management Buttons */}
-               {selectedUser && (
-                 <div className="space-y-4">
-                   <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
-                   
-                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                     <button
-                       onClick={resetUserQueues}
-                       className={`flex items-center bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <MdRestore className={`text-blue-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-blue-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Reset Queues</p>
-                       </div>
-                     </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button
+                      onClick={simulateSendHelpFlow}
+                      className={`flex items-center bg-blue-900/20 hover:bg-blue-900/30 rounded-lg border border-blue-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <FiZap className={`text-blue-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-blue-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Send Help Flow</p>
+                        <p className={`text-blue-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>Simulate sending help</p>
+                      </div>
+                    </button>
 
-                     <button
-                       onClick={suspendUser}
-                       className={`flex items-center ${selectedUser.isBlocked ? 'bg-green-50 hover:bg-green-100 border-green-200' : 'bg-red-50 hover:bg-red-100 border-red-200'} rounded-lg border transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       {selectedUser.isBlocked ? (
-                         <MdLockOpen className={`text-green-600 ${
-                           isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                         }`} />
-                       ) : (
-                         <MdLock className={`text-red-600 ${
-                           isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                         }`} />
-                       )}
-                       <div className="text-left">
-                         <p className={`font-medium ${selectedUser.isBlocked ? 'text-green-900' : 'text-red-900'} ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>
-                           {selectedUser.isBlocked ? 'Unsuspend' : 'Suspend'}
-                         </p>
-                       </div>
-                     </button>
+                    <button
+                      onClick={simulateReceiveHelpFlow}
+                      className={`flex items-center bg-green-900/20 hover:bg-green-900/30 rounded-lg border border-green-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <FiTarget className={`text-green-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-green-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Receive Help Flow</p>
+                        <p className={`text-green-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>Simulate receiving help</p>
+                      </div>
+                    </button>
 
-                     <button
-                       onClick={viewUserTimeline}
-                       className={`flex items-center bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <MdHistory className={`text-purple-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-purple-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>View Timeline</p>
-                       </div>
-                     </button>
+                    <button
+                      onClick={simulateFailedTransaction}
+                      className={`flex items-center bg-red-900/20 hover:bg-red-900/30 rounded-lg border border-red-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <MdError className={`text-red-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-red-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Failed Transaction</p>
+                        <p className={`text-red-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>Simulate payment failure</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                     <button
-                       onClick={() => setShowEditProfile(true)}
-                       className={`flex items-center bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors ${
-                         isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
-                       }`}
-                     >
-                       <MdEdit className={`text-orange-600 ${
-                         isMobile ? 'w-4 h-4' : 'w-5 h-5'
-                       }`} />
-                       <div className="text-left">
-                         <p className={`font-medium text-orange-900 ${
-                           isMobile ? 'text-sm' : 'text-base'
-                         }`}>Edit Profile</p>
-                       </div>
-                     </button>
-                   </div>
-                 </div>
-               )}
+              {/* Test Scenarios */}
+              {selectedUser && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Test Scenarios</h3>
 
-               {/* Test Results */}
-               {testResults.length > 0 && (
-                 <div className="space-y-4">
-                   <div className="flex items-center justify-between">
-                     <h3 className="text-lg font-semibold text-gray-900">Test Results</h3>
-                     <button
-                       onClick={() => setTestResults([])}
-                       className="text-sm text-gray-600 hover:text-gray-800"
-                     >
-                       Clear Results
-                     </button>
-                   </div>
-                   
-                   <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                     <div className="space-y-2">
-                       {testResults.map((result, index) => (
-                         <div key={index} className={`p-3 rounded-lg border ${
-                           result.status === 'success' ? 'bg-green-50 border-green-200' :
-                           result.status === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-                           'bg-red-50 border-red-200'
-                         }`}>
-                           <div className="flex items-start justify-between">
-                             <div className="flex-1">
-                               <p className={`font-medium ${
-                                 result.status === 'success' ? 'text-green-900' :
-                                 result.status === 'warning' ? 'text-yellow-900' :
-                                 'text-red-900'
-                               }`}>{result.type}</p>
-                               <p className={`text-sm ${
-                                 result.status === 'success' ? 'text-green-700' :
-                                 result.status === 'warning' ? 'text-yellow-700' :
-                                 'text-red-700'
-                               }`}>{result.message}</p>
-                             </div>
-                             <span className="text-xs text-gray-500">
-                               {result.timestamp.toLocaleTimeString()}
-                             </span>
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                 </div>
-               )}
-             </div>
-           )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-           {/* Audit History Tab */}
-           {activeTab === 'audit' && (
-             <div className="space-y-6">
-               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                 <h2 className="text-xl font-bold text-gray-900">Audit History</h2>
-                 <div className="flex items-center gap-3">
-                   <input
-                     type="text"
-                     placeholder="Search audit logs..."
-                     value={searchTerm}
-                     onChange={(e) => setSearchTerm(e.target.value)}
-                     className={`border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   />
-                   <button
-                     onClick={fetchDashboardData}
-                     className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 ${
-                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                     }`}
-                   >
-                     <MdRefresh className="w-4 h-4" />
-                     Refresh
-                   </button>
-                 </div>
-               </div>
+                    <button
+                      onClick={testDelayedPayment}
+                      className={`flex items-center bg-orange-900/20 hover:bg-orange-900/30 rounded-lg border border-orange-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <FiClock className={`text-orange-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-orange-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Delayed Payment</p>
+                        <p className={`text-orange-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>Test delayed payment scenario</p>
+                      </div>
+                    </button>
 
-               <div className="bg-gray-50 rounded-lg p-4">
-                 <div className="space-y-3">
-                   {auditHistory.length === 0 ? (
-                     <div className="text-center py-8">
-                       <MdHistory className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                       <p className="text-gray-600">No audit history found</p>
-                     </div>
-                   ) : (
-                     auditHistory.slice(0, 50).map((log, index) => (
-                       <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
-                         <div className="flex items-start justify-between">
-                           <div className="flex-1">
-                             <div className="flex items-center gap-2 mb-2">
-                               <FiActivity className="w-4 h-4 text-blue-600" />
-                               <span className="font-medium text-gray-900">{log.action}</span>
-                               {log.testMode && (
-                                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                                   TEST
-                                 </span>
-                               )}
-                             </div>
-                             <p className="text-gray-700 mb-2">{log.description}</p>
-                             <p className="text-sm text-gray-600">Admin: {log.adminId}</p>
-                           </div>
-                           <div className="text-right">
-                             <p className="text-xs text-gray-500">
-                               {log.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     ))
-                   )}
-                 </div>
-               </div>
-             </div>
-           )}
+                    <button
+                      onClick={testBlockedUserScenario}
+                      className={`flex items-center bg-purple-900/20 hover:bg-purple-900/30 rounded-lg border border-purple-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <MdLock className={`text-purple-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-purple-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Blocked User</p>
+                        <p className={`text-purple-400/60 ${isMobile ? 'text-xs' : 'text-sm'
+                          }`}>Test blocked user scenario</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* User Management Buttons */}
+              {selectedUser && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">User Management</h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <button
+                      onClick={resetUserQueues}
+                      className={`flex items-center bg-blue-900/20 hover:bg-blue-900/30 rounded-lg border border-blue-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <MdRestore className={`text-blue-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-blue-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Reset Queues</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={suspendUser}
+                      className={`flex items-center group ${selectedUser.isBlocked ? 'bg-green-900/20 hover:bg-green-900/30 border-green-500/30' : 'bg-red-900/20 hover:bg-red-900/30 border-red-500/30'} rounded-lg border transition-colors ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      {selectedUser.isBlocked ? (
+                        <MdLockOpen className={`text-green-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                          }`} />
+                      ) : (
+                        <MdLock className={`text-red-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                          }`} />
+                      )}
+                      <div className="text-left">
+                        <p className={`font-medium ${selectedUser.isBlocked ? 'text-green-300' : 'text-red-300'} ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>
+                          {selectedUser.isBlocked ? 'Unsuspend' : 'Suspend'}
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={viewUserTimeline}
+                      className={`flex items-center bg-purple-900/20 hover:bg-purple-900/30 rounded-lg border border-purple-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <MdHistory className={`text-purple-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-purple-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>View Timeline</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setShowEditProfile(true)}
+                      className={`flex items-center bg-orange-900/20 hover:bg-orange-900/30 rounded-lg border border-orange-500/30 transition-colors group ${isMobile ? 'gap-2 p-3' : 'gap-3 p-4'
+                        }`}
+                    >
+                      <MdEdit className={`text-orange-400 group-hover:scale-110 transition-transform duration-200 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                        }`} />
+                      <div className="text-left">
+                        <p className={`font-medium text-orange-300 ${isMobile ? 'text-sm' : 'text-base'
+                          }`}>Edit Profile</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Results */}
+              {testResults.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-white">Test Results</h3>
+                    <button
+                      onClick={() => setTestResults([])}
+                      className="text-sm text-slate-400 hover:text-slate-200"
+                    >
+                      Clear Results
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-800 rounded-lg p-4 max-h-64 overflow-y-auto border border-slate-700">
+                    <div className="space-y-2">
+                      {testResults.map((result, index) => (
+                        <div key={index} className={`p-3 rounded-lg border ${result.status === 'success' ? 'bg-green-900/20 border-green-500/20' :
+                          result.status === 'warning' ? 'bg-yellow-900/20 border-yellow-500/20' :
+                            'bg-red-900/20 border-red-500/20'
+                          }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className={`font-medium ${result.status === 'success' ? 'text-green-300' :
+                                result.status === 'warning' ? 'text-yellow-300' :
+                                  'text-red-300'
+                                }`}>{result.type}</p>
+                              <p className={`text-sm ${result.status === 'success' ? 'text-green-400' :
+                                result.status === 'warning' ? 'text-yellow-400' :
+                                  'text-red-400'
+                                }`}>{result.message}</p>
+                            </div>
+                            <span className="text-xs text-slate-500">
+                              {result.timestamp.toLocaleTimeString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Audit History Tab */}
+          {activeTab === 'audit' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-xl font-bold text-white">Audit History</h2>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="Search audit logs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={`bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  />
+                  <button
+                    onClick={fetchDashboardData}
+                    className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
+                  >
+                    <MdRefresh className="w-4 h-4" />
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
+                <div className="space-y-3">
+                  {auditHistory.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MdHistory className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                      <p className="text-slate-400">No audit history found</p>
+                    </div>
+                  ) : (
+                    auditHistory.slice(0, 50).map((log, index) => (
+                      <div key={index} className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50 shadow-sm hover:bg-slate-700/30 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FiActivity className="w-4 h-4 text-blue-400" />
+                              <span className="font-medium text-white">{log.action}</span>
+                              {log.testMode && (
+                                <span className="px-2 py-1 bg-yellow-900/20 text-yellow-300 border border-yellow-500/30 text-xs rounded-full">
+                                  TEST
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-300 mb-2">{log.description}</p>
+                            <p className="text-sm text-slate-400">Admin: {log.adminId}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-500">
+                              {log.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -2108,45 +1985,42 @@ const UserTransactionSafetyHub = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto ${
-                isMobile ? 'p-4' : 'p-6'
-              }`}
+              className={`bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-slate-700 ${isMobile ? 'p-4' : 'p-6'
+                }`}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-xl'
-                }`}>
+                <h3 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'
+                  }`}>
                   {modalType === 'editUser' && 'Edit User'}
                   {modalType === 'resetQueue' && 'Reset Queue'}
                   {modalType === 'repairError' && 'Repair Error'}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-slate-400 hover:text-white transition-colors"
                 >
                   <MdClose className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
-                <p className="text-gray-600">
+                <p className="text-slate-300">
                   {modalType === 'editUser' && 'Edit user profile and settings.'}
                   {modalType === 'resetQueue' && 'Reset user transaction queues.'}
                   {modalType === 'repairError' && 'Repair specific error conditions.'}
                 </p>
-                
+
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setShowModal(false)}
-                    className={`bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${
-                      isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                    }`}
+                    className={`bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors border border-slate-600 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
                   >
                     Cancel
                   </button>
@@ -2156,9 +2030,8 @@ const UserTransactionSafetyHub = () => {
                       setShowModal(false);
                       toast.success(`${modalType} completed successfully`);
                     }}
-                    className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-                      isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                    }`}
+                    className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                      }`}
                   >
                     Confirm
                   </button>
@@ -2176,53 +2049,49 @@ const UserTransactionSafetyHub = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-y-auto ${
-                isMobile ? 'p-4' : 'p-6'
-              }`}
+              className={`bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-y-auto border border-slate-700 ${isMobile ? 'p-4' : 'p-6'
+                }`}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-xl'
-                }`}>User Timeline - {selectedUser?.fullName}</h3>
+                <h3 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'
+                  }`}>User Timeline - {selectedUser?.fullName}</h3>
                 <button
                   onClick={() => setShowUserTimeline(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-slate-400 hover:text-white transition-colors"
                 >
                   <MdClose className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-3">
                 {userTimeline.map((item, index) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className={`w-3 h-3 rounded-full ${
-                      item.type === 'Send Help' ? 'bg-blue-500' : 'bg-green-500'
-                    }`}></div>
+                  <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600/50">
+                    <div className={`w-3 h-3 rounded-full ${item.type === 'Send Help' ? 'bg-blue-500 shadow-lg shadow-blue-500/50' : 'bg-green-500 shadow-lg shadow-green-500/50'
+                      }`}></div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-medium text-gray-900">{item.type}</p>
-                          <p className="text-sm text-gray-600">Amount: ₹{item.amount}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="font-medium text-white">{item.type}</p>
+                          <p className="text-sm text-slate-300">Amount: ₹{item.amount}</p>
+                          <p className="text-sm text-slate-300">
                             {item.type === 'Send Help' && item.receiverId && `To: ${item.receiverId}`}
                             {item.type === 'Receive Help' && item.senderId && `From: ${item.senderId}`}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs rounded-full border ${item.status === 'completed' ? 'bg-green-900/20 text-green-300 border-green-500/30' :
+                            item.status === 'pending' ? 'bg-yellow-900/20 text-yellow-300 border-yellow-500/30' :
+                              'bg-red-900/20 text-red-300 border-red-500/30'
+                            }`}>
                             {item.status}
                           </span>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             {item.createdAt.toLocaleDateString()} {item.createdAt.toLocaleTimeString()}
                           </p>
                         </div>
@@ -2231,7 +2100,7 @@ const UserTransactionSafetyHub = () => {
                   </div>
                 ))}
                 {userTimeline.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No transaction history found</p>
+                  <p className="text-center text-slate-400 py-8">No transaction history found</p>
                 )}
               </div>
             </motion.div>
@@ -2246,65 +2115,63 @@ const UserTransactionSafetyHub = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto ${
-                isMobile ? 'p-4' : 'p-6'
-              }`}
+              className={`bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-slate-700 ${isMobile ? 'p-4' : 'p-6'
+                }`}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-xl'
-                }`}>Edit Profile - {selectedUser.fullName}</h3>
+                <h3 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'
+                  }`}>Edit Profile - {selectedUser.fullName}</h3>
                 <button
                   onClick={() => setShowEditProfile(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-slate-400 hover:text-white transition-colors"
                 >
                   <MdClose className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
                   <input
                     type="text"
                     value={editProfileData.fullName || ''}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, fullName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
                   <input
                     type="email"
                     value={editProfileData.email || ''}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Phone Number</label>
                   <input
                     type="tel"
                     value={editProfileData.phoneNumber || ''}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Level</label>
                   <select
                     value={editProfileData.level || 1}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, level: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value={1}>Level 1</option>
                     <option value={2}>Level 2</option>
@@ -2313,67 +2180,65 @@ const UserTransactionSafetyHub = () => {
                     <option value={5}>Level 5</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upline ID</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Upline ID</label>
                   <input
                     type="text"
                     value={editProfileData.uplineId || ''}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, uplineId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Payment Method</label>
                   <select
                     value={editProfileData.paymentMethod || 'upi'}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="upi">UPI</option>
                     <option value="bank">Bank Transfer</option>
                     <option value="wallet">Digital Wallet</option>
                   </select>
                 </div>
-                
+
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">UPI ID</label>
                   <input
                     type="text"
                     value={editProfileData.upiId || ''}
                     onChange={(e) => setEditProfileData(prev => ({ ...prev, upiId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                   />
                 </div>
-                
+
                 <div className="md:col-span-2">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={editProfileData.isActivated || false}
                       onChange={(e) => setEditProfileData(prev => ({ ...prev, isActivated: e.target.checked }))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
                     />
-                    <span className="text-sm font-medium text-gray-700">Account Activated</span>
+                    <span className="text-sm font-medium text-slate-300">Account Activated</span>
                   </label>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowEditProfile(false)}
-                  className={`bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${
-                    isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                  }`}
+                  className={`bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors border border-slate-600 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                    }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={updateUserProfile}
-                  className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-                    isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
-                  }`}
+                  className={`bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'
+                    }`}
                 >
                   Update Profile
                 </button>
@@ -2390,18 +2255,18 @@ const UserTransactionSafetyHub = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl shadow-2xl p-6 flex items-center gap-4"
+              className="bg-slate-800 rounded-xl shadow-2xl p-6 flex items-center gap-4 border border-slate-700"
             >
-              <MdSync className="w-8 h-8 text-blue-600 animate-spin" />
+              <MdSync className="w-8 h-8 text-blue-400 animate-spin" />
               <div>
-                <p className="font-medium text-gray-900">Processing...</p>
-                <p className="text-sm text-gray-600">Please wait while we complete the operation</p>
+                <p className="font-medium text-white">Processing...</p>
+                <p className="text-sm text-slate-400">Please wait while we complete the operation</p>
               </div>
             </motion.div>
           </motion.div>

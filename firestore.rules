@@ -40,7 +40,21 @@ service cloud.firestore {
     match /users/{uid} {
       allow create: if isAuth() && request.auth.uid == uid;
       allow read, list: if isAuth() || isAdmin();
-      allow update: if isAuth() && (request.auth.uid == uid || isAdmin() || isAgent());
+      allow update: if isAuth() && (
+        // Standard User: Can only update non-sensitive profile fields
+        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny([
+            'level', 'levelStatus', 'helpReceived', 'isActivated', 'isBlocked', 
+            'isOnHold', 'isReceivingHeld', 'lastUnblockedAtCount', 'referralCount', 
+            'totalEarnings', 'totalReceived', 'totalSent', 'totalTeam', 
+            'uplineId', 'sponsorId', 'helpVisibility', 'role', 'userId', 
+            'isVerified', 'isSuspended', 'createdAt', 'activeReceiveCount'
+          ])
+        )
+        // Admin/Agent: Full access for operational management
+        || isAdmin() 
+        || isAgent()
+      );
       allow delete: if false;
     }
 

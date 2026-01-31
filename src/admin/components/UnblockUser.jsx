@@ -1,225 +1,211 @@
-import React, { useState } from 'react';
-import { db, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from '../../config/firebase';
-import { FiUser, FiSearch, FiUnlock, FiAlertCircle, FiCheckCircle, FiLoader, FiShield } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { db, collection, query, where, or, onSnapshot, functions } from '../../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import {
+    FiUser,
+    FiUnlock,
+    FiAlertCircle,
+    FiCheckCircle,
+    FiLoader,
+    FiSearch,
+    FiFilter,
+    FiRefreshCw
+} from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const UnblockUser = () => {
-    const { user: adminUser } = useAuth();
-    const [userId, setUserId] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [foundUser, setFoundUser] = useState(null);
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [unblocking, setUnblocking] = useState(false);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [processingId, setProcessingId] = useState(null);
 
-    const handleSearch = async (e) => {
-        if (e) e.preventDefault();
-        if (!userId.trim()) return;
+    useEffect(() => {
+        // Fetch users who have any blocking flag set to true
+        const q = query(
+            collection(db, 'users'),
+            or(
+                where('isBlocked', '==', true),
+                where('isOnHold', '==', true),
+                where('isReceivingHeld', '==', true)
+            )
+        );
 
-        setLoading(true);
-        setFoundUser(null);
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const blockedUsers = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setUsers(blockedUsers);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching blocked users:", error);
+            toast.error("Failed to load blocked users");
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const handleUnblock = async (targetUid, userId) => {
+        if (processingId) return;
+
+        const confirmUnblock = window.confirm(`Are you sure you want to unblock user ${userId}?`);
+        if (!confirmUnblock) return;
+
+        setProcessingId(targetUid);
         try {
-            const q = query(collection(db, 'users'), where('userId', '==', userId.trim().toUpperCase()));
-            const snapshot = await getDocs(q);
+            const resumeBlockedReceives = httpsCallable(functions, 'resumeBlockedReceives');
+            const result = await resumeBlockedReceives({ uid: targetUid });
 
-            if (snapshot.empty) {
-                toast.error("User not found");
+            if (result.data?.ok) {
+                toast.success(`User ${userId} unblocked successfully!`);
             } else {
-                const userDoc = snapshot.docs[0];
-                setFoundUser({ id: userDoc.id, ...userDoc.data() });
+                toast.error(result.data?.error || "Failed to unblock user");
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Error searching user");
+            console.error("Unblock error:", error);
+            toast.error(error.message || "An error occurred while unblocking");
         } finally {
-            setLoading(false);
+            setProcessingId(null);
         }
     };
 
-    const handleUnblock = async () => {
-        if (!foundUser || !adminUser) return;
-        setUnblocking(true);
-        try {
-            const userRef = doc(db, 'users', foundUser.id);
-            await updateDoc(userRef, {
-                isBlocked: false,
-                blockReason: null,
-                blockRefId: null,
-                blockedAt: null,
-                blockedBySystem: false,
-                blockedHelpRef: null,
-                unblockedAt: serverTimestamp(),
-                unblockedBy: adminUser.uid
-            });
+    const filteredUsers = users.filter(u =>
+        u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-            toast.success("User unblocked successfully!");
-            setFoundUser(prev => ({
-                ...prev,
-                isBlocked: false,
-                blockReason: null,
-                blockedAt: null,
-                blockedBySystem: false
-            }));
-            setShowConfirm(false);
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to unblock user");
-        } finally {
-            setUnblocking(false);
-        }
-    };
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <FiLoader className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+                <p className="text-slate-400 font-medium">Loading blocked users...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="p-6 lg:p-10 bg-slate-900 min-h-screen">
-            <div className="max-w-xl mx-auto">
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
-                        <FiUnlock className="w-6 h-6 text-emerald-500" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-white uppercase tracking-tight">Unblock User</h1>
-                        <p className="text-slate-400 text-sm">Search and restore account access</p>
-                    </div>
-                </div>
-
-                {/* Search Box */}
-                <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 mb-8">
-                    <form onSubmit={handleSearch} className="flex gap-3">
-                        <div className="relative flex-1">
-                            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                                value={userId}
-                                onChange={e => setUserId(e.target.value)}
-                                placeholder="Enter User ID (e.g. HH001)"
-                                className="w-full bg-slate-900 border border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-emerald-500 transition-all font-mono"
-                            />
+        <div className="p-4 sm:p-6 lg:p-8 bg-slate-900 min-h-screen text-slate-200">
+            <div className="max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center border border-red-500/20">
+                            <FiUnlock className="w-5 h-5 text-red-500" />
                         </div>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 rounded-2xl font-bold transition-all disabled:opacity-50 flex items-center justify-center min-w-[120px]"
-                        >
-                            {loading ? <FiLoader className="animate-spin" /> : 'Search'}
-                        </button>
-                    </form>
+                        <div>
+                            <h1 className="text-xl font-bold text-white tracking-tight">Blocked Users</h1>
+                            <p className="text-slate-500 text-xs">Manage restricts and restore access</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-full px-3 py-1.5">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total:</span>
+                        <span className="text-sm font-black text-emerald-400">{users.length}</span>
+                    </div>
                 </div>
 
-                <AnimatePresence>
-                    {foundUser && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-slate-800 border border-slate-700 rounded-[2.5rem] overflow-hidden shadow-2xl"
-                        >
-                            <div className="p-8">
-                                <div className="flex items-center justify-between mb-8">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 shadow-inner">
-                                            <FiUser className="w-8 h-8 text-slate-500" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-white">{foundUser.fullName || foundUser.displayName || 'Unnamed User'}</h3>
-                                            <p className="text-slate-500 text-sm font-mono uppercase tracking-wider">{foundUser.userId}</p>
-                                        </div>
-                                    </div>
-                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${foundUser.isBlocked
-                                            ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                                            : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                        }`}>
-                                        {foundUser.isBlocked ? 'Blocked' : 'Active'}
-                                    </div>
-                                </div>
+                {/* Search & Filter */}
+                <div className="mb-6 relative group">
+                    <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Search by User ID, Name, or Email..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all"
+                    />
+                </div>
 
-                                <div className="space-y-6 mb-10">
-                                    <div className="bg-slate-950/50 rounded-2xl p-6 border border-slate-700/50">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-4">
-                                            <div>
-                                                <span className="text-[10px] font-bold text-slate-600 uppercase block mb-1 tracking-widest">Email Address</span>
-                                                <span className="text-slate-300 text-sm font-medium">{foundUser.email}</span>
+                {/* Users List */}
+                <div className="space-y-2">
+                    <AnimatePresence mode='popLayout'>
+                        {filteredUsers.length > 0 ? (
+                            filteredUsers.map((u) => (
+                                <motion.div
+                                    key={u.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 sm:p-4 hover:border-slate-600/50 transition-all group"
+                                >
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            {/* Profile Icon */}
+                                            <div className="hidden xs:flex w-10 h-10 bg-slate-900 rounded-lg items-center justify-center border border-slate-700/50 text-slate-500 group-hover:text-emerald-500 transition-colors">
+                                                <FiUser className="w-5 h-5" />
                                             </div>
-                                            <div>
-                                                <span className="text-[10px] font-bold text-slate-600 uppercase block mb-1 tracking-widest">Current Status</span>
-                                                <span className={`text-sm font-bold ${foundUser.isBlocked ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                    {foundUser.isBlocked ? 'Access Restricted' : 'Active Account'}
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-bold text-slate-600 uppercase block mb-1 tracking-widest">Block Reason</span>
-                                                <span className="text-slate-300 text-sm font-medium">{foundUser.blockReason || 'No violations'}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-bold text-slate-600 uppercase block mb-1 tracking-widest">Blocked At</span>
-                                                <span className="text-slate-300 text-sm font-medium">
-                                                    {foundUser.blockedAt ? new Date(foundUser.blockedAt.toDate ? foundUser.blockedAt.toDate() : foundUser.blockedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
-                                                </span>
+
+                                            {/* User Info */}
+                                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">User Details</span>
+                                                    <h3 className="text-sm font-bold text-white truncate">{u.fullName || 'Unnamed'}</h3>
+                                                    <p className="text-[10px] font-mono text-slate-400 uppercase">{u.userId || 'No ID'}</p>
+                                                </div>
+
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">Level & Reason</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-emerald-400 px-1.5 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/10">
+                                                            {u.level || u.levelStatus || 'Star'}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+                                                            {u.holdReason || u.blockReason || 'Manual Block'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-1 items-center">
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block w-full mb-0.5">Status Flags</span>
+                                                    {u.isBlocked && <span className="text-[9px] font-black bg-red-500/10 text-red-500 border border-red-500/20 px-1.5 py-0.5 rounded-md uppercase">Blocked</span>}
+                                                    {u.isOnHold && <span className="text-[9px] font-black bg-orange-500/10 text-orange-500 border border-orange-500/20 px-1.5 py-0.5 rounded-md uppercase">On Hold</span>}
+                                                    {u.isReceivingHeld && <span className="text-[9px] font-black bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded-md uppercase">Rcv Held</span>}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                {foundUser.isBlocked ? (
-                                    <button
-                                        onClick={() => setShowConfirm(true)}
-                                        className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 active:scale-[0.98]"
-                                    >
-                                        <FiUnlock className="w-5 h-5" />
-                                        Unblock Account
-                                    </button>
-                                ) : (
-                                    <div className="py-5 bg-slate-900/50 rounded-2xl text-center border border-slate-700 border-dashed">
-                                        <p className="text-slate-600 text-[10px] font-bold uppercase tracking-[0.3em]">User access is already restored</p>
+                                        {/* Action */}
+                                        <div className="flex sm:justify-end items-center">
+                                            <button
+                                                onClick={() => handleUnblock(u.id, u.userId)}
+                                                disabled={processingId === u.id}
+                                                className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${processingId === u.id
+                                                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                                        : 'bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-900/20'
+                                                    }`}
+                                            >
+                                                {processingId === u.id ? (
+                                                    <FiLoader className="w-3.5 h-3.5 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <FiUnlock className="w-3.5 h-3.5" />
+                                                        Unblock
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Confirmation Modal */}
-                <AnimatePresence>
-                    {showConfirm && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                </motion.div>
+                            ))
+                        ) : (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowConfirm(false)}
-                                className="absolute inset-0 bg-slate-950/90 backdrop-blur-md"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                                animate={{ scale: 1, opacity: 1, y: 0 }}
-                                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                                className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 max-w-sm w-full relative z-10 text-center shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]"
+                                className="py-16 text-center bg-slate-800/20 border border-slate-700/30 border-dashed rounded-3xl"
                             >
-                                <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-red-500/10">
-                                    <FiAlertCircle className="w-10 h-10 text-red-500" />
+                                <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-800 shadow-inner">
+                                    <FiCheckCircle className="w-8 h-8 text-slate-700" />
                                 </div>
-                                <h3 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">Confirm Reset?</h3>
-                                <p className="text-slate-500 text-sm mb-10 leading-relaxed font-medium">
-                                    This will immediately restore access for <span className="text-slate-100 font-bold">{foundUser.userId}</span>. Are you absolutely certain?
-                                </p>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setShowConfirm(false)}
-                                        className="py-4 bg-slate-800 hover:bg-slate-750 text-slate-400 rounded-2xl font-bold transition-all text-sm uppercase tracking-widest border border-slate-700"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handleUnblock}
-                                        disabled={unblocking}
-                                        className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest shadow-lg shadow-emerald-900/20"
-                                    >
-                                        {unblocking ? <FiLoader className="animate-spin" /> : 'Proceed'}
-                                    </button>
-                                </div>
+                                <h3 className="text-white font-bold mb-1">All Clear</h3>
+                                <p className="text-slate-500 text-xs">No blocked or held users found.</p>
                             </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );

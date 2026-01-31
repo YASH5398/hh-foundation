@@ -23,6 +23,7 @@ import {
   increment,
   runTransaction,
   arrayUnion,
+  or,
   Timestamp
 } from "firebase/firestore";
 
@@ -137,5 +138,6 @@ export {
   increment,
   runTransaction,
   arrayUnion,
+  or,
   Timestamp
 };

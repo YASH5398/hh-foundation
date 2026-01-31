@@ -31,7 +31,7 @@ import { getProfileImageUrl } from '../../utils/profileUtils';
 import { useReceiveHelpFlow } from '../../hooks/useHelpFlow';
 import { useAuth } from '../../context/AuthContext';
 import CountdownTimer from '../common/CountdownTimer';
-import { HELP_STATUS, normalizeStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
+import { HELP_STATUS, HELP_STATUS_LABELS, normalizeStatus, isActiveStatus, canRequestPayment, canConfirmPayment, isConfirmedStatus } from '../../config/helpStatus';
 import { useCountdown } from '../../hooks/useCountdown';
 import { isIncomeBlocked, getRequiredPaymentForUnblock } from '../../shared/mlmCore';
 
@@ -60,6 +60,10 @@ function ReceiveHelpRefactored() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedUserHelp, setSelectedUserHelp] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     receiveHelps,
@@ -432,33 +436,38 @@ function ReceiveHelpRefactored() {
                       </div>
 
                       {/* Payment Proof Section */}
-                      {(help.paymentDetails?.screenshotUrl || help.utrNumber) && (
+                      {normalizeStatus(help.status) === HELP_STATUS.PAYMENT_DONE && (
                         <div className="border-t border-gray-200 pt-4 space-y-3">
-                          <h4 className="font-semibold text-gray-700">Payment Proof</h4>
+                          <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-green-600" />
+                            Payment Proof
+                          </h4>
 
-                          {help.utrNumber && (
+                          {help.payment?.utr && (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <span className="font-medium w-20">UTR No:</span>
-                              <span className="font-mono bg-gray-100 px-2 py-1 rounded select-all">
-                                {help.utrNumber}
+                              <span className="font-mono bg-green-50 text-green-700 px-3 py-1.5 rounded-lg select-all border border-green-100 font-bold">
+                                {help.payment.utr}
                               </span>
                             </div>
                           )}
 
-                          {help.paymentDetails?.screenshotUrl && (
+                          {help.payment?.screenshotUrl && (
                             <div className="mt-2">
-                              <p className="text-xs text-gray-500 mb-1">Passbook/Screenshot:</p>
+                              <p className="text-xs text-gray-500 mb-2">Transaction Screenshot:</p>
                               <div
-                                className="relative group cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-gray-50 w-full h-32"
-                                onClick={() => setFullscreenImage(help.paymentDetails.screenshotUrl)}
+                                className="relative group cursor-zoom-in overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 w-full h-48"
+                                onClick={() => setFullscreenImage(help.payment.screenshotUrl)}
                               >
                                 <img
-                                  src={help.paymentDetails.screenshotUrl}
+                                  src={help.payment.screenshotUrl}
                                   alt="Payment Proof"
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                  <Eye className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                  <div className="bg-white/90 p-3 rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform duration-300">
+                                    <Eye className="w-6 h-6 text-indigo-600" />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -491,44 +500,65 @@ function ReceiveHelpRefactored() {
                       )}
 
                       {/* Actions */}
-                      <div className="space-y-2">
+                      <div className="space-y-3 pt-4">
                         {(() => {
-                          // CHECK IF PAYMENT PROOF EXISTS
-                          const hasPaymentProof = help.paymentDetails?.screenshotUrl || help.utrNumber;
+                          const status = normalizeStatus(help.status);
 
-                          // If payment proof exists, show "Confirm Payment" button
-                          if (hasPaymentProof) {
-                            const isConfirmed = isConfirmedStatus(help.status);
-
-                            if (isConfirmed) {
-                              return (
-                                <button
-                                  disabled
-                                  className="w-full bg-green-500 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-90"
-                                >
-                                  <CheckCircle className="w-5 h-5" />
-                                  Payment Confirmed
-                                </button>
-                              );
-                            }
-
+                          // 1. TERMINAL STATES - No actions
+                          if (!isActiveStatus(status)) {
+                            const isConfirmed = isConfirmedStatus(status) || status === HELP_STATUS.FORCE_CONFIRMED;
                             return (
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                  setSelectedHelpId(help.id);
-                                  setShowConfirmModal(true);
-                                }}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/30"
-                              >
-                                <CheckCircle className="w-5 h-5" />
-                                Confirm Payment
-                              </motion.button>
+                              <div className={`w-full text-center py-3 rounded-xl font-bold flex items-center justify-center gap-2 ${isConfirmed ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'
+                                }`}>
+                                {isConfirmed ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                                {HELP_STATUS_LABELS[status] || 'Completed'}
+                              </div>
                             );
                           }
 
-                          // OTHERWISE SHOW REQUEST PAYMENT / COUNTDOWN
+                          // 2. PAYMENT DONE - Show Confirm / Reject
+                          if (status === HELP_STATUS.PAYMENT_DONE) {
+                            return (
+                              <div className="grid grid-cols-2 gap-3">
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setSelectedHelpId(help.id);
+                                    setShowConfirmModal(true);
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-200 flex flex-col items-center justify-center"
+                                >
+                                  <Check className="w-5 h-5 mb-1" />
+                                  <span className="text-xs">Confirm</span>
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setRejectId(help.id);
+                                    setShowRejectModal(true);
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-all border border-red-100 flex flex-col items-center justify-center"
+                                >
+                                  <X className="w-5 h-5 mb-1" />
+                                  <span className="text-xs">Reject</span>
+                                </motion.button>
+                              </div>
+                            );
+                          }
+
+                          // 3. PAYMENT REQUESTED - Waiting state
+                          if (status === HELP_STATUS.PAYMENT_REQUESTED) {
+                            return (
+                              <div className="w-full bg-blue-50 text-blue-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-blue-100 animate-pulse">
+                                <Clock className="w-5 h-5" />
+                                Waiting for Proof
+                              </div>
+                            );
+                          }
+
+                          // 4. ASSIGNED - Request Payment
                           const { active: isCooldown, remaining } = getCooldownStatus(help);
                           return (
                             <motion.button
@@ -536,19 +566,19 @@ function ReceiveHelpRefactored() {
                               whileTap={!isCooldown ? { scale: 0.98 } : {}}
                               onClick={() => !isCooldown && handleRequestPayment(help.id)}
                               disabled={isCooldown}
-                              className={`w-full font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${isCooldown
-                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                : 'bg-purple-600 hover:bg-purple-700 text-white'
+                              className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${isCooldown
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200'
                                 }`}
                             >
                               {isCooldown ? (
                                 <>
                                   <Clock className="w-4 h-4" />
-                                  Request again in {formatCountdown(remaining)}
+                                  Ready in {formatCountdown(remaining)}
                                 </>
                               ) : (
                                 <>
-                                  <Send className="w-4 h-4" />
+                                  <Zap className="w-4 h-4" />
                                   Request Payment
                                 </>
                               )}
@@ -587,45 +617,126 @@ function ReceiveHelpRefactored() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={() => setShowConfirmModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Confirm Payment Received</h2>
-              <p className="text-gray-600 mb-6">
-                Are you sure you have received the payment from the sender?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={async () => {
-                    if (selectedHelpId) {
-                      await confirmPayment(selectedHelpId);
-                      setShowConfirmModal(false);
-                      setSelectedHelpId(null);
-                    }
-                  }}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Confirm
-                </motion.button>
+              <div className="bg-green-600 p-6 text-center">
+                <CheckCircle className="w-16 h-16 text-white/50 mx-auto mb-2" />
+                <h2 className="text-2xl font-black text-white">Payment Received?</h2>
+              </div>
+              <div className="p-8">
+                <p className="text-gray-600 text-center mb-8 leading-relaxed">
+                  Only confirm if you have verified the amount in your <span className="font-bold text-gray-900 text-lg">Bank/UPI App</span>. This action is irreversible.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all"
+                  >
+                    Not Yet
+                  </button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={isSubmitting}
+                    onClick={async () => {
+                      if (selectedHelpId) {
+                        setIsSubmitting(true);
+                        try {
+                          await confirmPayment(selectedHelpId);
+                          setShowConfirmModal(false);
+                          setSelectedHelpId(null);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-green-200 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Yes, Received!'}
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* Reject Payment Modal */}
+      <AnimatePresence>
+        {showRejectModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              if (!isSubmitting) setShowRejectModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-red-600 p-6 text-center">
+                <AlertCircle className="w-16 h-16 text-white/50 mx-auto mb-2" />
+                <h2 className="text-2xl font-black text-white">Reject Request</h2>
+              </div>
+              <div className="p-8">
+                <p className="text-gray-600 text-center mb-6 text-sm">
+                  Please provide a reason for rejecting this payment proof.
+                </p>
+
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Example: UTR number is fake or amount not received..."
+                  className="w-full h-32 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 focus:border-red-500 focus:ring-0 transition-colors resize-none text-gray-700"
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowRejectModal(false)}
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all disabled:opacity-50"
+                  >
+                    Back
+                  </button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={!rejectReason.trim() || isSubmitting}
+                    onClick={async () => {
+                      if (rejectId && rejectReason.trim()) {
+                        setIsSubmitting(true);
+                        try {
+                          await rejectPaymentRequest(rejectId, rejectReason);
+                          setShowRejectModal(false);
+                          setRejectId(null);
+                          setRejectReason('');
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Reject Proof'}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

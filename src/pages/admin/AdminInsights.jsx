@@ -51,56 +51,56 @@ const AdminInsights = () => {
       try {
         setLoading(true);
         console.log('Starting Admin Insights data fetch...');
-        
+
         // 24h window
         const now = Timestamp.now();
         const yesterday = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
-        
+
         // Users
         console.log('Fetching users...');
         const usersSnap = await getDocs(collection(db, 'users'));
         const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         console.log('Users fetched:', users.length);
-      // New Joins (24h)
-      const joins = users.filter(u => u.createdAt && u.createdAt.toDate && u.createdAt.toDate() > new Date(Date.now() - 24*60*60*1000)).length;
-      // Blocked Users
-      const blocked = users.filter(u => u.isBlocked).length;
-      // Upgrades Done (24h)
-      const upgrades = users.filter(u => u.levelStatusChangedAt && u.levelStatusChangedAt.toDate && u.levelStatusChangedAt.toDate() > new Date(Date.now() - 24*60*60*1000)).length;
-      // E-PIN In Wallet
-      const epinWallet = users.reduce((sum, u) => sum + (Array.isArray(u.epins) ? u.epins.length : 0), 0);
-      // Duplicate Referrals (same phone/whatsapp/ip)
-      const phoneMap = {}, waMap = {}, ipMap = {}, multiIdsMap = {}, suspicious = [];
-      users.forEach(u => {
-        if (u.phone) phoneMap[u.phone] = (phoneMap[u.phone] || 0) + 1;
-        if (u.whatsapp) waMap[u.whatsapp] = (waMap[u.whatsapp] || 0) + 1;
-        if (u.ipAddress) ipMap[u.ipAddress] = (ipMap[u.ipAddress] || 0) + 1;
-        if (u.deviceToken) multiIdsMap[u.deviceToken] = (multiIdsMap[u.deviceToken] || 0) + 1;
-      });
-      const dupRef = Object.values(phoneMap).filter(v => v > 1).length + Object.values(waMap).filter(v => v > 1).length + Object.values(ipMap).filter(v => v > 1).length;
-      const multiIds = Object.values(multiIdsMap).filter(v => v > 1).length;
+        // New Joins (24h)
+        const joins = users.filter(u => u.createdAt && u.createdAt.toDate && u.createdAt.toDate() > new Date(Date.now() - 24 * 60 * 60 * 1000)).length;
+        // Blocked Users
+        const blocked = users.filter(u => u.isBlocked).length;
+        // Upgrades Done (24h)
+        const upgrades = users.filter(u => u.levelStatusChangedAt && u.levelStatusChangedAt.toDate && u.levelStatusChangedAt.toDate() > new Date(Date.now() - 24 * 60 * 60 * 1000)).length;
+        // E-PIN In Wallet
+        const epinWallet = users.reduce((sum, u) => sum + (Array.isArray(u.epins) ? u.epins.length : 0), 0);
+        // Duplicate Referrals (same phone/whatsapp/ip)
+        const phoneMap = {}, waMap = {}, ipMap = {}, multiIdsMap = {}, suspicious = [];
+        users.forEach(u => {
+          if (u.phone) phoneMap[u.phone] = (phoneMap[u.phone] || 0) + 1;
+          if (u.whatsapp) waMap[u.whatsapp] = (waMap[u.whatsapp] || 0) + 1;
+          if (u.ipAddress) ipMap[u.ipAddress] = (ipMap[u.ipAddress] || 0) + 1;
+          if (u.deviceToken) multiIdsMap[u.deviceToken] = (multiIdsMap[u.deviceToken] || 0) + 1;
+        });
+        const dupRef = Object.values(phoneMap).filter(v => v > 1).length + Object.values(waMap).filter(v => v > 1).length + Object.values(ipMap).filter(v => v > 1).length;
+        const multiIds = Object.values(multiIdsMap).filter(v => v > 1).length;
         // Testimonials
         console.log('Fetching testimonials...');
         const testimonialsSnap = await getDocs(collection(db, 'testimonials'));
         const testimonials = testimonialsSnap.size;
         console.log('Testimonials fetched:', testimonials);
-        
+
         // E-PIN Requests
         console.log('Fetching epin requests...');
         const epinReqSnap = await getDocs(collection(db, 'epinRequests'));
         const epinReq = epinReqSnap.size;
         console.log('Epin requests fetched:', epinReq);
-        
+
         // SendHelp
         console.log('Fetching sendHelp data...');
         const sendHelpSnap = await getDocs(collection(db, 'sendHelp'));
         let sendHelp = 0;
-        sendHelpSnap.forEach(d => { 
+        sendHelpSnap.forEach(d => {
           const amount = d.data().amount || 0;
           sendHelp += amount;
         });
         console.log('SendHelp total amount:', sendHelp);
-        
+
         // ReceiveHelp
         console.log('Fetching receiveHelp data...');
         const receiveHelpSnap = await getDocs(collection(db, 'receiveHelp'));
@@ -111,28 +111,35 @@ const AdminInsights = () => {
           if (d.data().status === 'received') payments += amount;
         });
         console.log('ReceiveHelp total amount:', receiveHelp, 'Payments:', payments);
-      // Fake UTR
-      const utrSnap = await getDocs(collection(db, 'utrChecker'));
-      const utrMap = {};
-      utrSnap.forEach(d => {
-        const utr = d.data().utr;
-        if (utr) utrMap[utr] = (utrMap[utr] || 0) + 1;
-      });
-      const fakeUtr = Object.values(utrMap).filter(v => v > 1).length;
-      // Screenshot Pending
-      const sendHelpPending = sendHelpSnap.docs.filter(d => d.data().screenshotUrl && !d.data().screenshotVerified).length;
-      // Suspicious
+        // Fake UTR
+        const utrSnap = await getDocs(collection(db, 'utrChecker'));
+        const utrMap = {};
+        utrSnap.forEach(d => {
+          const utr = d.data().utr;
+          if (utr) utrMap[utr] = (utrMap[utr] || 0) + 1;
+        });
+        const fakeUtr = Object.values(utrMap).filter(v => v > 1).length;
+        // Screenshot Pending
+        const sendHelpPending = sendHelpSnap.docs.filter(d => d.data().screenshotUrl && !d.data().screenshotVerified).length;
+        // Suspicious
         const suspiciousCount = suspicious.length;
-        
+
         console.log('Setting metrics and alerts...');
         setMetrics({ joins, payments, testimonials, blocked, upgrades, epinReq, epinWallet, sendHelp, receiveHelp });
         setAlerts({ fakeUtr, dupRef, pendingScreens: sendHelpPending, suspicious: suspiciousCount, multiIds });
         setUsers(users); // Save all users for alert details
-        
+
         console.log('Admin Insights data fetch completed successfully');
         setLoading(false);
       } catch (error) {
         console.error('Error fetching Admin Insights data:', error);
+
+        if (error.code === 'permission-denied') {
+          showToast('Permission Denied: Access restricted to Admins.', 'error');
+        } else {
+          showToast('Failed to load insights data', 'error');
+        }
+
         setLoading(false);
         // Set default values on error
         setMetrics({ joins: 0, payments: 0, testimonials: 0, blocked: 0, upgrades: 0, epinReq: 0, epinWallet: 0, sendHelp: 0, receiveHelp: 0 });
@@ -305,102 +312,102 @@ const AdminInsights = () => {
               </motion.button>
             ))}
           </div>
-        {/* Alert Details Modal (expanded) */}
-        {alertDetail && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-4 sm:p-6 lg:p-8 max-w-7xl w-full max-h-[95vh] overflow-hidden relative">
-              <div className="absolute top-4 right-4 z-50">
-                <button
-                  className="rounded-full bg-slate-700 hover:bg-slate-600 shadow-lg border border-slate-600 text-xl text-slate-400 hover:text-white focus:text-white focus:outline-none transition-all duration-200 w-10 h-10 flex items-center justify-center hover:scale-110"
-                  aria-label="Close"
-                  onClick={() => setAlertDetail(null)}
-                >
-                  &times;
-                </button>
-              </div>
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold mb-2 flex items-center gap-3 text-white">
-                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
-                    {ALERTS.find(a => a.key === alertDetail)?.icon}
-                  </div>
-                  {ALERTS.find(a => a.key === alertDetail)?.label}
-                </h3>
-                <p className="text-slate-400">{alertDetailsList[alertDetail]}</p>
-              </div>
-              <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
-                <table className="min-w-full text-sm text-left border border-slate-700 bg-slate-800/50 rounded-lg overflow-hidden">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-slate-700 to-slate-800 text-white border-b border-slate-600">
-                      <th className="px-4 py-3 font-semibold">User ID</th>
-                      <th className="px-4 py-3 font-semibold">Name</th>
-                      <th className="px-4 py-3 font-semibold">Email</th>
-                      <th className="px-4 py-3 font-semibold">Phone</th>
-                      <th className="px-4 py-3 font-semibold">Reason</th>
-                      <th className="px-4 py-3 font-semibold">Join Date</th>
-                      <th className="px-4 py-3 font-semibold">Status</th>
-                      <th className="px-4 py-3 font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(alertUsers[alertDetail] || []).length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-8 text-slate-400 bg-slate-900/30">No affected users found.</td></tr>
-                    ) : (alertUsers[alertDetail] || []).map(user => (
-                      <tr key={user.id} className="border-b border-slate-700/50 last:border-0 bg-slate-900/20 hover:bg-slate-800/30 transition-colors">
-                        <td className="px-4 py-3 font-mono text-slate-300">{user.userId}</td>
-                        <td className="px-4 py-3 text-white font-medium">{user.fullName}</td>
-                        <td className="px-4 py-3 text-slate-300">{user.email}</td>
-                        <td className="px-4 py-3 text-slate-300">{user.phone}</td>
-                        <td className="px-4 py-3 text-orange-400">{alertDetail === 'fakeUtr' ? 'Duplicate UTR' : alertDetail === 'dupRef' ? 'Duplicate Referral' : alertDetail === 'pendingScreens' ? 'Pending Screenshot' : alertDetail === 'suspicious' ? 'Suspicious' : 'Multiple IDs'}</td>
-                        <td className="px-4 py-3 text-slate-400">{user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : '-'}</td>
-                        <td className="px-4 py-3">
-                          {user.isBlocked ? <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-900/50 text-red-300 border border-red-700 rounded-full text-xs font-medium"><Ban className="w-4 h-4" /> Blocked</span> : <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-900/50 text-green-300 border border-green-700 rounded-full text-xs font-medium"><CheckCircle className="w-4 h-4" /> Active</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {!user.isBlocked && (
-                            <button
-                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all duration-200 hover:shadow-lg hover:scale-105"
-                              disabled={blockLoading[user.id]}
-                              onClick={() => setConfirmBlock({ open: true, user })}
-                            >
-                              {blockLoading[user.id] ? 'Blocking...' : 'Block User'}
-                            </button>
-                          )}
-                        </td>
+          {/* Alert Details Modal (expanded) */}
+          {alertDetail && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-4 sm:p-6 lg:p-8 max-w-7xl w-full max-h-[95vh] overflow-hidden relative">
+                <div className="absolute top-4 right-4 z-50">
+                  <button
+                    className="rounded-full bg-slate-700 hover:bg-slate-600 shadow-lg border border-slate-600 text-xl text-slate-400 hover:text-white focus:text-white focus:outline-none transition-all duration-200 w-10 h-10 flex items-center justify-center hover:scale-110"
+                    aria-label="Close"
+                    onClick={() => setAlertDetail(null)}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold mb-2 flex items-center gap-3 text-white">
+                    <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
+                      {ALERTS.find(a => a.key === alertDetail)?.icon}
+                    </div>
+                    {ALERTS.find(a => a.key === alertDetail)?.label}
+                  </h3>
+                  <p className="text-slate-400">{alertDetailsList[alertDetail]}</p>
+                </div>
+                <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
+                  <table className="min-w-full text-sm text-left border border-slate-700 bg-slate-800/50 rounded-lg overflow-hidden">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-slate-700 to-slate-800 text-white border-b border-slate-600">
+                        <th className="px-4 py-3 font-semibold">User ID</th>
+                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">Email</th>
+                        <th className="px-4 py-3 font-semibold">Phone</th>
+                        <th className="px-4 py-3 font-semibold">Reason</th>
+                        <th className="px-4 py-3 font-semibold">Join Date</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 font-semibold">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            {/* Block confirmation dialog */}
-            {confirmBlock.open && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-2xl border border-slate-700 p-6 max-w-sm w-full relative">
-                  <button className="absolute top-3 right-3 text-xl text-slate-400 hover:text-white transition-colors" onClick={() => setConfirmBlock({ open: false, user: null })}>&times;</button>
-                  <div className="mb-4">
-                    <h4 className="text-xl font-bold text-white mb-2">Block User?</h4>
-                    <p className="text-slate-300 leading-relaxed">Are you sure you want to block <span className="font-semibold text-orange-400">{confirmBlock.user?.fullName}</span>?</p>
-                  </div>
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white font-medium transition-all duration-200"
-                      onClick={() => setConfirmBlock({ open: false, user: null })}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold transition-all duration-200 hover:shadow-lg hover:scale-105"
-                      onClick={() => handleBlockUser(confirmBlock.user)}
-                      disabled={blockLoading[confirmBlock.user?.id]}
-                    >
-                      Yes, Block
-                    </button>
-                  </div>
+                    </thead>
+                    <tbody>
+                      {(alertUsers[alertDetail] || []).length === 0 ? (
+                        <tr><td colSpan={8} className="text-center py-8 text-slate-400 bg-slate-900/30">No affected users found.</td></tr>
+                      ) : (alertUsers[alertDetail] || []).map(user => (
+                        <tr key={user.id} className="border-b border-slate-700/50 last:border-0 bg-slate-900/20 hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-mono text-slate-300">{user.userId}</td>
+                          <td className="px-4 py-3 text-white font-medium">{user.fullName}</td>
+                          <td className="px-4 py-3 text-slate-300">{user.email}</td>
+                          <td className="px-4 py-3 text-slate-300">{user.phone}</td>
+                          <td className="px-4 py-3 text-orange-400">{alertDetail === 'fakeUtr' ? 'Duplicate UTR' : alertDetail === 'dupRef' ? 'Duplicate Referral' : alertDetail === 'pendingScreens' ? 'Pending Screenshot' : alertDetail === 'suspicious' ? 'Suspicious' : 'Multiple IDs'}</td>
+                          <td className="px-4 py-3 text-slate-400">{user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : '-'}</td>
+                          <td className="px-4 py-3">
+                            {user.isBlocked ? <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-900/50 text-red-300 border border-red-700 rounded-full text-xs font-medium"><Ban className="w-4 h-4" /> Blocked</span> : <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-900/50 text-green-300 border border-green-700 rounded-full text-xs font-medium"><CheckCircle className="w-4 h-4" /> Active</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {!user.isBlocked && (
+                              <button
+                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all duration-200 hover:shadow-lg hover:scale-105"
+                                disabled={blockLoading[user.id]}
+                                onClick={() => setConfirmBlock({ open: true, user })}
+                              >
+                                {blockLoading[user.id] ? 'Blocking...' : 'Block User'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+              {/* Block confirmation dialog */}
+              {confirmBlock.open && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-2xl border border-slate-700 p-6 max-w-sm w-full relative">
+                    <button className="absolute top-3 right-3 text-xl text-slate-400 hover:text-white transition-colors" onClick={() => setConfirmBlock({ open: false, user: null })}>&times;</button>
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-white mb-2">Block User?</h4>
+                      <p className="text-slate-300 leading-relaxed">Are you sure you want to block <span className="font-semibold text-orange-400">{confirmBlock.user?.fullName}</span>?</p>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                      <button
+                        className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white font-medium transition-all duration-200"
+                        onClick={() => setConfirmBlock({ open: false, user: null })}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold transition-all duration-200 hover:shadow-lg hover:scale-105"
+                        onClick={() => handleBlockUser(confirmBlock.user)}
+                        disabled={blockLoading[confirmBlock.user?.id]}
+                      >
+                        Yes, Block
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

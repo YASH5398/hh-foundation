@@ -56,10 +56,14 @@ const isIncomeBlocked = (user) => {
     return false;
   }
 
+  const helpReceived = user.helpReceived || 0;
 
+  // New: If they have already been unblocked at this exact count, they are NOT blocked
+  if (user.lastUnblockedAtCount === helpReceived) {
+    return false;
+  }
 
   const config = LEVEL_CONFIG[user.level];
-  const helpReceived = user.helpReceived || 0;
   return config.blockPoints.includes(helpReceived);
 };
 

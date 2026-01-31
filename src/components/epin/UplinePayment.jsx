@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../config/firebase';
+import { db, functions } from '../../config/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import SendHelp from '../help/SendHelp';
+import { toast } from 'react-hot-toast';
 
 const UplinePayment = () => {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const [pendingUplinePayments, setPendingUplinePayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,34 +42,23 @@ const UplinePayment = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
+  import { functions } from '../../config/firebase';
+  import { httpsCallable } from 'firebase/functions';
+
+  // ... inside the component
   const handleConfirmUplinePayment = async (paymentId, senderId, level, amount) => {
     setLoading(true);
     setError('');
     try {
-      // Update uplinePayment status to Completed
-      const paymentRef = doc(db, 'uplinePayments', paymentId);
-      await updateDoc(paymentRef, { status: 'Completed' });
+      // Call Cloud Function to resolve upline payment securely
+      const resolveUplinePayment = httpsCallable(functions, "resolveUplinePayment");
+      await resolveUplinePayment({ paymentId, action: 'confirm' });
 
-      // Unblock sender's status
-      const senderRef = doc(db, 'users', senderId);
-      await updateDoc(senderRef, { isOnHold: false, uplinePaymentDue: false });
-
-      // Log in helpHistory
-      await addDoc(collection(db, 'helpHistory'), {
-        action: 'upline_payment_completed',
-        receiverId: currentUser.uid,
-        senderId: senderId,
-        level: level,
-        amount: amount,
-        status: 'Completed',
-        timestamp: serverTimestamp(),
-        uplinePaymentDocId: paymentId,
-      });
-
+      toast.success('Upline payment confirmed successfully!');
       setLoading(false);
     } catch (err) {
       console.error('Error confirming upline payment:', err);
-      setError('Failed to confirm upline payment. Please try again.');
+      setError('Failed to confirm upline payment. ' + err.message);
       setLoading(false);
     }
   };

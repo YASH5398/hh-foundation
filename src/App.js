@@ -121,6 +121,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/register',
+    element: (
+      <PublicRoute>
+        <Signup />
+      </PublicRoute>
+    ),
+  },
+  {
     path: '/agent-login',
     element: <AgentLogin />,
   },

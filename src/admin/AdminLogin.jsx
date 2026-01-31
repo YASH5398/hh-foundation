@@ -35,16 +35,22 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-lg z-10">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Admin Login
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 p-10 bg-slate-800 rounded-xl shadow-2xl border border-slate-700 z-10">
+        <div>
+          {/* Add logo or icon if needed */}
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+            Admin Login
+          </h2>
+          <p className="mt-2 text-center text-sm text-slate-400">
+            Sign in to access the administrative dashboard
+          </p>
+        </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">
+            <div className="mb-4">
+              <label htmlFor="email-address" className="block text-sm font-medium text-slate-400 mb-2">
                 Email address
               </label>
               <input
@@ -53,14 +59,14 @@ const AdminLogin = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                className="appearance-none relative block w-full px-4 py-3 border border-slate-600 placeholder-slate-500 text-white bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition-colors"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-2">
                 Password
               </label>
               <input
@@ -69,8 +75,8 @@ const AdminLogin = () => {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none relative block w-full px-4 py-3 border border-slate-600 placeholder-slate-500 text-white bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition-colors"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -79,7 +85,7 @@ const AdminLogin = () => {
 
           {/* Show detailed error in development */}
           {errorDetails && process.env.NODE_ENV === 'development' && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            <div className="text-sm text-red-400 bg-red-900/20 border border-red-500/30 p-2 rounded">
               Debug Error: {errorDetails}
             </div>
           )}
@@ -88,7 +94,7 @@ const AdminLogin = () => {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
             >
               {isLoggingIn ? 'Logging in...' : 'Sign in as Admin'}
             </button>
@@ -96,7 +102,7 @@ const AdminLogin = () => {
 
           {/* Development helper text */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 text-xs text-gray-500 text-center">
+            <div className="mt-4 text-xs text-slate-500 text-center">
               <p>Default Admin Credentials (Development Only):</p>
               <p>Email: admin@hhfoundation.com</p>
               <p>Password: admin123456</p>

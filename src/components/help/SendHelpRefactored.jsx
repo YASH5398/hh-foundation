@@ -198,8 +198,8 @@ const ErrorState = ({ error, onRetry, isRetrying }) => (
       onClick={onRetry}
       disabled={isRetrying}
       className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying
-          ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
-          : 'bg-red-600 hover:bg-red-700 text-white'
+        ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+        : 'bg-red-600 hover:bg-red-700 text-white'
         }`}
     >
       {isRetrying ? (
@@ -262,13 +262,6 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         <div className="mb-6">
           <CountdownTimer
             targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
-            onExpire={() => {
-              if (helpStatus !== HELP_STATUS.CONFIRMED) {
-                markHelpAsExpired(transactionId, helpData.senderUid, helpData.receiverUid)
-                  .then(() => toast.error('Time expired! Your ID has been temporarily blocked.'))
-                  .catch(err => console.error('Expiry error:', err));
-              }
-            }}
             label="Payment Deadline"
           />
         </div>
@@ -326,8 +319,8 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
             whileTap={{ scale: 0.98 }}
             onClick={onPaymentClick}
             className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${isPaymentRequested
-                ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse'
-                : 'bg-slate-900 hover:bg-slate-800 text-white'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
               }`}
           >
             <FiCreditCard className="w-4 h-4" />

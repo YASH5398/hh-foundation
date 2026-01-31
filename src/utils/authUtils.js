@@ -26,12 +26,12 @@ export const getUserProfile = async (uid) => {
     console.log('🔍 getUserProfile: Fetching profile for uid:', uid);
     console.log('🔍 getUserProfile: Firebase project:', db.app.options.projectId);
     console.log('🔍 getUserProfile: Firebase auth domain:', db.app.options.authDomain);
-    
+
     const userDoc = doc(db, 'users', uid);
     const snapshot = await getDoc(userDoc);
-    
+
     console.log('🔍 getUserProfile: Document exists?', snapshot.exists());
-    
+
     if (snapshot.exists()) {
       const data = { id: snapshot.id, ...snapshot.data() };
       console.log('🔍 getUserProfile: Profile data -', {
@@ -68,7 +68,7 @@ export const checkAdminRole = async (user) => {
   try {
     console.log('🔍 checkAdminRole: Checking admin role for uid:', user.uid);
     console.log('🔍 checkAdminRole: Firebase project:', db.app.options.projectId);
-    
+
     // CRITICAL: Check Firestore role field, not custom claims
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (userDoc.exists()) {
@@ -243,11 +243,14 @@ export const createUserAccount = async (userData) => {
       createdAt: serverTimestamp(),
       role: "user",
       isActivated: false,
+      level: "Star",
+      levelStatus: "Star",
       totalEarnings: 0,
       referralCount: 0,
       helpReceived: 0,
       totalReceived: 0,
-      totalSent: 0
+      totalSent: 0,
+      helpVisibility: true
     });
 
     return { success: true, userId: userId, user: { ...userCredential.user, uid } };

@@ -225,118 +225,171 @@ function UserManager() {
 
         {/* Users Table */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Table Header */}
-            <div className="px-6 py-4 border-b border-slate-700">
-              <div className="grid grid-cols-11 gap-4 text-sm font-medium text-slate-300">
-                <div className="col-span-4">User</div>
-                <div className="col-span-2">User ID</div>
-                <div className="col-span-2">Level</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-1">Actions</div>
-              </div>
+          {/* Desktop Table Header */}
+          <div className="hidden md:block px-6 py-4 border-b border-slate-700">
+            <div className="grid grid-cols-11 gap-4 text-sm font-medium text-slate-300">
+              <div className="col-span-4">User</div>
+              <div className="col-span-2">User ID</div>
+              <div className="col-span-2">Level</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-1">Actions</div>
             </div>
+          </div>
 
-            {/* Table Body */}
-            <AnimatePresence>
-              {filteredUsers.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="px-6 py-12 text-center text-slate-400"
-                >
-                  {searchTerm ? 'No users found matching your search.' : 'No users available.'}
-                </motion.div>
-              ) : (
-                <div className="divide-y divide-slate-700">
-                  {filteredUsers.map((user, index) => (
-                    <motion.div
-                      key={user.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.02 }}
-                      whileHover={{ backgroundColor: "rgba(51, 65, 85, 0.5)" }}
-                      className="px-6 py-4 hover:bg-slate-700/50 transition-colors duration-200"
-                    >
-                      <div className="grid grid-cols-11 gap-4 items-center">
-                        {/* Avatar & Name */}
-                        <div className="col-span-4 flex items-center space-x-3">
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                              {(user.fullName || 'U').charAt(0).toUpperCase()}
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-600 rounded-full flex items-center justify-center border-2 border-slate-900">
-                              {user.isActivated ? (
-                                <FaUserCheck className="w-2 h-2 text-green-400" />
-                              ) : (
-                                <FaUserTimes className="w-2 h-2 text-red-400" />
-                              )}
-                            </div>
+          {/* Table Body */}
+          <AnimatePresence>
+            {filteredUsers.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-6 py-12 text-center text-slate-400"
+              >
+                {searchTerm ? 'No users found matching your search.' : 'No users available.'}
+              </motion.div>
+            ) : (
+              <div className="divide-y divide-slate-700">
+                {filteredUsers.map((user, index) => (
+                  <motion.div
+                    key={user.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3, delay: index * 0.02 }}
+                    className="transition-colors duration-200"
+                  >
+                    {/* Desktop Row */}
+                    <div className="hidden md:grid grid-cols-11 gap-4 items-center px-6 py-4 hover:bg-slate-700/50">
+                      {/* Avatar & Name */}
+                      <div className="col-span-4 flex items-center space-x-3">
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                            {(user.fullName || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-white truncate">{user.fullName}</div>
-                          </div>
-                        </div>
-
-                        {/* User ID */}
-                        <div className="col-span-2">
-                          <span className="text-sm text-slate-300 font-mono bg-slate-700 px-2 py-1 rounded-lg">
-                            {user.userId || 'HHF00000'}
-                          </span>
-                        </div>
-
-                        {/* Level Badge */}
-                        <div className="col-span-2">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                            {user.levelStatus || 'Star'}
-                          </span>
-                        </div>
-
-                        {/* Status */}
-                        <div className="col-span-2">
-                          <div className="flex flex-col gap-1">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${
-                              user.isActivated
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            }`}>
-                              {user.isActivated ? 'Active' : 'Inactive'}
-                            </span>
-                            {user.isBlocked && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                                Blocked
-                              </span>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-slate-600 rounded-full flex items-center justify-center border-2 border-slate-900">
+                            {user.isActivated ? (
+                              <FaUserCheck className="w-2 h-2 text-green-400" />
+                            ) : (
+                              <FaUserTimes className="w-2 h-2 text-red-400" />
                             )}
                           </div>
                         </div>
-
-                        {/* Actions */}
-                        <div className="col-span-1 flex items-center space-x-1">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(user)}
-                            className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded-lg transition-colors duration-200"
-                            title="Edit User"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDeleteUser(user)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors duration-200"
-                            title="Delete User"
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </motion.button>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-white truncate">{user.fullName}</div>
                         </div>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </AnimatePresence>
+
+                      {/* User ID */}
+                      <div className="col-span-2">
+                        <span className="text-sm text-slate-300 font-mono bg-slate-700 px-2 py-1 rounded-lg">
+                          {user.userId || 'HHF00000'}
+                        </span>
+                      </div>
+
+                      {/* Level Badge */}
+                      <div className="col-span-2">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          {user.levelStatus || 'Star'}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="col-span-2">
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${user.isActivated
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}>
+                            {user.isActivated ? 'Active' : 'Inactive'}
+                          </span>
+                          {user.isBlocked && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                              Blocked
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="col-span-1 flex items-center space-x-1">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          onClick={() => handleEdit(user)}
+                          className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded-lg transition-colors duration-200"
+                          title="Edit User"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors duration-200"
+                          title="Delete User"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    {/* Mobile Card */}
+                    <div className="md:hidden px-6 py-4 border-b border-slate-700/50 hover:bg-slate-800/50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border border-slate-600">
+                              {(user.fullName || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="absolute -bottom-1 -right-1">
+                              {user.isActivated ? (
+                                <FaUserCheck className="w-4 h-4 text-green-400 bg-slate-900 rounded-full border border-slate-900" />
+                              ) : (
+                                <FaUserTimes className="w-4 h-4 text-red-400 bg-slate-900 rounded-full border border-slate-900" />
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-white">{user.fullName}</h3>
+                            <p className="text-xs text-slate-400 font-mono">{user.userId || 'HHF00000'}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="p-2 bg-slate-700 text-blue-400 rounded-lg"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user)}
+                            className="p-2 bg-slate-700 text-red-400 rounded-lg"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-500/30">
+                          {user.levelStatus || 'Star'}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${user.isActivated
+                            ? 'bg-green-900/30 text-green-300 border border-green-500/30'
+                            : 'bg-red-900/30 text-red-300 border border-red-500/30'
+                          }`}>
+                          {user.isActivated ? 'Active' : 'Inactive'}
+                        </span>
+                        {user.isBlocked && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-900/30 text-red-300 border border-red-500/30">
+                            Blocked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Edit Modal */}
@@ -427,324 +480,324 @@ function UserManager() {
                     }}
                     className="space-y-8"
                   >
-                  {/* Profile Section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-3">
-                      <FaUser className="w-5 h-5 text-slate-400" />
-                      <h3 className="text-lg font-semibold text-white">Profile Information</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">User ID</label>
-                        <input
-                          type="text"
-                          value={editUser.id || ''}
-                          disabled
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-400 text-sm font-mono"
-                        />
+                    {/* Profile Section */}
+                    <div className="space-y-6">
+                      <div className="flex items-center space-x-3">
+                        <FaUser className="w-5 h-5 text-slate-400" />
+                        <h3 className="text-lg font-semibold text-white">Profile Information</h3>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">Full Name</label>
-                        <input
-                          type="text"
-                          value={editUser.fullName || ''}
-                          onChange={(e) => handleInputChange('fullName', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">Email</label>
-                        <input
-                          type="email"
-                          value={editUser.email || ''}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">Phone</label>
-                        <input
-                          type="tel"
-                          value={editUser.phone || ''}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">WhatsApp</label>
-                        <input
-                          type="tel"
-                          value={editUser.whatsapp || ''}
-                          onChange={(e) => handleInputChange('whatsapp', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">Sponsor ID</label>
-                        <input
-                          type="text"
-                          value={editUser.sponsorId || ''}
-                          onChange={(e) => handleInputChange('sponsorId', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Methods */}
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-3">
-                      <FaShieldAlt className="w-5 h-5 text-slate-400" />
-                      <h3 className="text-lg font-semibold text-white">Payment Methods</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">PhonePe</label>
-                        <input
-                          type="text"
-                          value={editUser.paymentMethod?.phonePe || ''}
-                          onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'phonePe')}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">GPay</label>
-                        <input
-                          type="text"
-                          value={editUser.paymentMethod?.gpay || ''}
-                          onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'gpay')}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">UPI ID</label>
-                        <input
-                          type="text"
-                          value={editUser.paymentMethod?.upiId || ''}
-                          onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'upiId')}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="text-base font-medium text-slate-200">Bank Details</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-slate-300">Account Holder</label>
+                          <label className="block text-sm font-medium text-slate-300">User ID</label>
                           <input
                             type="text"
-                            value={editUser.paymentMethod?.bank?.accountHolder || ''}
-                            onChange={(e) => handleBankChange('accountHolder', e.target.value)}
+                            value={editUser.id || ''}
+                            disabled
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-400 text-sm font-mono"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">Full Name</label>
+                          <input
+                            type="text"
+                            value={editUser.fullName || ''}
+                            onChange={(e) => handleInputChange('fullName', e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">Email</label>
+                          <input
+                            type="email"
+                            value={editUser.email || ''}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">Phone</label>
+                          <input
+                            type="tel"
+                            value={editUser.phone || ''}
+                            onChange={(e) => handleInputChange('phone', e.target.value)}
                             className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-slate-300">Account Number</label>
+                          <label className="block text-sm font-medium text-slate-300">WhatsApp</label>
+                          <input
+                            type="tel"
+                            value={editUser.whatsapp || ''}
+                            onChange={(e) => handleInputChange('whatsapp', e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">Sponsor ID</label>
                           <input
                             type="text"
-                            value={editUser.paymentMethod?.bank?.accountNumber || ''}
-                            onChange={(e) => handleBankChange('accountNumber', e.target.value)}
+                            value={editUser.sponsorId || ''}
+                            onChange={(e) => handleInputChange('sponsorId', e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Methods */}
+                    <div className="space-y-6">
+                      <div className="flex items-center space-x-3">
+                        <FaShieldAlt className="w-5 h-5 text-slate-400" />
+                        <h3 className="text-lg font-semibold text-white">Payment Methods</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">PhonePe</label>
+                          <input
+                            type="text"
+                            value={editUser.paymentMethod?.phonePe || ''}
+                            onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'phonePe')}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">GPay</label>
+                          <input
+                            type="text"
+                            value={editUser.paymentMethod?.gpay || ''}
+                            onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'gpay')}
                             className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                           />
                         </div>
 
                         <div className="md:col-span-2 space-y-2">
-                          <label className="block text-sm font-medium text-slate-300">IFSC Code</label>
+                          <label className="block text-sm font-medium text-slate-300">UPI ID</label>
                           <input
                             type="text"
-                            value={editUser.paymentMethod?.bank?.ifsc || ''}
-                            onChange={(e) => handleBankChange('ifsc', e.target.value)}
+                            value={editUser.paymentMethod?.upiId || ''}
+                            onChange={(e) => handleInputChange('paymentMethod', e.target.value, 'upiId')}
                             className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                           />
                         </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Status & Access */}
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-3">
-                      <FaShieldAlt className="w-5 h-5 text-slate-400" />
-                      <h3 className="text-lg font-semibold text-white">Status & Access Control</h3>
-                    </div>
+                      <div className="space-y-4">
+                        <h4 className="text-base font-medium text-slate-200">Bank Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-slate-300">Account Holder</label>
+                            <input
+                              type="text"
+                              value={editUser.paymentMethod?.bank?.accountHolder || ''}
+                              onChange={(e) => handleBankChange('accountHolder', e.target.value)}
+                              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="flex items-center p-4 bg-slate-700 rounded-xl border border-slate-600">
-                        <input
-                          type="checkbox"
-                          id="isActivated"
-                          checked={editUser.isActivated || false}
-                          onChange={(e) => handleInputChange('isActivated', e.target.checked)}
-                          className="h-5 w-5 text-green-500 focus:ring-green-500 bg-slate-600 border-slate-500 rounded"
-                        />
-                        <label htmlFor="isActivated" className="ml-3 block text-sm font-medium text-white">
-                          Account Activated
-                        </label>
-                      </div>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-slate-300">Account Number</label>
+                            <input
+                              type="text"
+                              value={editUser.paymentMethod?.bank?.accountNumber || ''}
+                              onChange={(e) => handleBankChange('accountNumber', e.target.value)}
+                              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
 
-                      <div className="flex items-center p-4 bg-slate-700 rounded-xl border border-slate-600">
-                        <input
-                          type="checkbox"
-                          id="isBlocked"
-                          checked={editUser.isBlocked || false}
-                          onChange={(e) => handleInputChange('isBlocked', e.target.checked)}
-                          className="h-5 w-5 text-red-500 focus:ring-red-500 bg-slate-600 border-slate-500 rounded"
-                        />
-                        <label htmlFor="isBlocked" className="ml-3 block text-sm font-medium text-white">
-                          Account Blocked
-                        </label>
-                      </div>
-
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="block text-sm font-medium text-slate-300">User Role</label>
-                        <select
-                          value={editUser.role || 'user'}
-                          onChange={(e) => handleInputChange('role', e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        >
-                          <option value="user" className="bg-slate-700">User</option>
-                          <option value="agent" className="bg-slate-700">Agent</option>
-                          <option value="admin" className="bg-slate-700">Admin</option>
-                        </select>
+                          <div className="md:col-span-2 space-y-2">
+                            <label className="block text-sm font-medium text-slate-300">IFSC Code</label>
+                            <input
+                              type="text"
+                              value={editUser.paymentMethod?.bank?.ifsc || ''}
+                              onChange={(e) => handleBankChange('ifsc', e.target.value)}
+                              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-600">
-                    <motion.button
-                      type="submit"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg hover:shadow-xl border border-slate-600"
-                      onClick={() => setIsModalOpen(false)}
-                      disabled={saving}
-                    >
-                      Cancel
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg hover:shadow-xl"
-                      onClick={() => setResetConfirm(true)}
-                      disabled={saving}
-                    >
-                      Reset Progress
-                    </motion.button>
-                  </div>
-                </form>
-
-                {/* Reset Confirmation */}
-                <AnimatePresence>
-                  {resetConfirm && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-6 bg-red-500/10 border border-red-500/20 rounded-xl p-6"
-                    >
-                      <p className="text-red-400 mb-6 text-base font-medium">
-                        Are you sure you want to reset this user's progress? This action cannot be undone.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg"
-                          onClick={handleResetProgress}
-                        >
-                          Yes, Reset Progress
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors shadow-lg border border-slate-600"
-                          onClick={() => setResetConfirm(false)}
-                        >
-                          Cancel
-                        </motion.button>
+                    {/* Status & Access */}
+                    <div className="space-y-6">
+                      <div className="flex items-center space-x-3">
+                        <FaShieldAlt className="w-5 h-5 text-slate-400" />
+                        <h3 className="text-lg font-semibold text-white">Status & Access Control</h3>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
-                {/* Delete Confirmation */}
-                <AnimatePresence>
-                  {deleteConfirm && userToDelete && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-6 bg-red-500/10 border border-red-500/20 rounded-xl p-6"
-                    >
-                      <div className="flex items-center mb-4">
-                        <FaTrash className="w-6 h-6 text-red-500 mr-3" />
-                        <h3 className="text-red-400 text-lg font-semibold">Delete User Permanently</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex items-center p-4 bg-slate-700 rounded-xl border border-slate-600">
+                          <input
+                            type="checkbox"
+                            id="isActivated"
+                            checked={editUser.isActivated || false}
+                            onChange={(e) => handleInputChange('isActivated', e.target.checked)}
+                            className="h-5 w-5 text-green-500 focus:ring-green-500 bg-slate-600 border-slate-500 rounded"
+                          />
+                          <label htmlFor="isActivated" className="ml-3 block text-sm font-medium text-white">
+                            Account Activated
+                          </label>
+                        </div>
+
+                        <div className="flex items-center p-4 bg-slate-700 rounded-xl border border-slate-600">
+                          <input
+                            type="checkbox"
+                            id="isBlocked"
+                            checked={editUser.isBlocked || false}
+                            onChange={(e) => handleInputChange('isBlocked', e.target.checked)}
+                            className="h-5 w-5 text-red-500 focus:ring-red-500 bg-slate-600 border-slate-500 rounded"
+                          />
+                          <label htmlFor="isBlocked" className="ml-3 block text-sm font-medium text-white">
+                            Account Blocked
+                          </label>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-2">
+                          <label className="block text-sm font-medium text-slate-300">User Role</label>
+                          <select
+                            value={editUser.role || 'user'}
+                            onChange={(e) => handleInputChange('role', e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          >
+                            <option value="user" className="bg-slate-700">User</option>
+                            <option value="agent" className="bg-slate-700">Agent</option>
+                            <option value="admin" className="bg-slate-700">Admin</option>
+                          </select>
+                        </div>
                       </div>
-                      <p className="text-red-400 mb-4 text-base font-medium">
-                        Are you sure you want to permanently delete <strong>{userToDelete.fullName}</strong> (ID: {userToDelete.userId})?
-                      </p>
-                      <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 mb-6">
-                        <p className="text-red-300 text-sm mb-2 font-medium">This will permanently delete:</p>
-                        <ul className="text-red-300 text-sm space-y-1 ml-4">
-                          <li>• User account and profile data</li>
-                          <li>• All send help and receive help records</li>
-                          <li>• Help history and notifications</li>
-                          <li>• FCM tokens and chat data</li>
-                          <li>• Firebase Authentication account</li>
-                        </ul>
-                        <p className="text-red-300 text-sm mt-3 font-medium">
-                          ⚠️ This action cannot be undone!
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-600">
+                      <motion.button
+                        type="submit"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        disabled={saving}
+                      >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg hover:shadow-xl border border-slate-600"
+                        onClick={() => setIsModalOpen(false)}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg hover:shadow-xl"
+                        onClick={() => setResetConfirm(true)}
+                        disabled={saving}
+                      >
+                        Reset Progress
+                      </motion.button>
+                    </div>
+                  </form>
+
+                  {/* Reset Confirmation */}
+                  <AnimatePresence>
+                    {resetConfirm && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-6 bg-red-500/10 border border-red-500/20 rounded-xl p-6"
+                      >
+                        <p className="text-red-400 mb-6 text-base font-medium">
+                          Are you sure you want to reset this user's progress? This action cannot be undone.
                         </p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                          onClick={confirmDeleteUser}
-                          disabled={deleting}
-                        >
-                          {deleting ? 'Deleting...' : 'Yes, Delete User'}
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors shadow-lg border border-slate-600 disabled:opacity-60"
-                          onClick={() => setDeleteConfirm(false)}
-                          disabled={deleting}
-                        >
-                          Cancel
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg"
+                            onClick={handleResetProgress}
+                          >
+                            Yes, Reset Progress
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors shadow-lg border border-slate-600"
+                            onClick={() => setResetConfirm(false)}
+                          >
+                            Cancel
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Delete Confirmation */}
+                  <AnimatePresence>
+                    {deleteConfirm && userToDelete && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-6 bg-red-500/10 border border-red-500/20 rounded-xl p-6"
+                      >
+                        <div className="flex items-center mb-4">
+                          <FaTrash className="w-6 h-6 text-red-500 mr-3" />
+                          <h3 className="text-red-400 text-lg font-semibold">Delete User Permanently</h3>
+                        </div>
+                        <p className="text-red-400 mb-4 text-base font-medium">
+                          Are you sure you want to permanently delete <strong>{userToDelete.fullName}</strong> (ID: {userToDelete.userId})?
+                        </p>
+                        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 mb-6">
+                          <p className="text-red-300 text-sm mb-2 font-medium">This will permanently delete:</p>
+                          <ul className="text-red-300 text-sm space-y-1 ml-4">
+                            <li>• User account and profile data</li>
+                            <li>• All send help and receive help records</li>
+                            <li>• Help history and notifications</li>
+                            <li>• FCM tokens and chat data</li>
+                            <li>• Firebase Authentication account</li>
+                          </ul>
+                          <p className="text-red-300 text-sm mt-3 font-medium">
+                            ⚠️ This action cannot be undone!
+                          </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                            onClick={confirmDeleteUser}
+                            disabled={deleting}
+                          >
+                            {deleting ? 'Deleting...' : 'Yes, Delete User'}
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-semibold transition-colors shadow-lg border border-slate-600 disabled:opacity-60"
+                            onClick={() => setDeleteConfirm(false)}
+                            disabled={deleting}
+                          >
+                            Cancel
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </motion.div>

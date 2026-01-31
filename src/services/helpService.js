@@ -582,58 +582,27 @@ export async function checkUserBlockedStatus(userUid) {
 /**
  * UNBLOCK USER (ADMIN ONLY)
  */
-export async function unblockUser(userUid, adminUid) {
-  if (!userUid || !adminUid) {
-    throw new Error('User UID and admin UID are required');
+/**
+ * UNBLOCK USER (ADMIN ONLY)
+ * Uses Cloud Function for security
+ */
+export async function unblockUser(userUid) {
+  if (!userUid) {
+    throw new Error('User UID is required');
   }
 
   try {
-    await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, 'users', userUid);
-      const userDoc = await transaction.get(userRef);
-
-      if (!userDoc.exists) {
-        throw new Error('User not found');
-      }
-
-      const userData = userDoc.data();
-
-      if (!userData.isBlocked) {
-        throw new Error('User is not blocked');
-      }
-
-      // Unblock the user - FULL RESET
-      transaction.update(userRef, {
-        isBlocked: false,
-        blockReason: null,
-        blockedAt: null,
-        blockedHelpId: null,
-        blockedBySystem: false,
-        unblockedAt: serverTimestamp(),
-        unblockedBy: adminUid
-      });
-
-      return {
-        success: true,
-        userUid,
-        previousBlockReason: userData.blockReason
-      };
-    });
-
+    const resumeBlockedReceives = httpsCallable(functions, "resumeBlockedReceives");
+    const res = await resumeBlockedReceives({ uid: userUid });
+    return { success: !!res.data.data?.ok };
   } catch (error) {
-    console.error('Error unblocking user:', error);
-    throw error;
+    throw new Error(mapFirebaseError(error));
   }
 }
 
 /**
  * CANCEL HELP
  * Cancel a help assignment (admin only or by participants)
- */
-/**
- * REJECT PAYMENT - Receiver rejects payment proof, allows sender to re-submit
- * Updates both receiveHelp and sendHelp: payment_requested → pending
- * Adds rejection metadata for tracking
  */
 export async function cancelHelp(helpId, reason = 'Cancelled by user') {
   if (!helpId) throw new Error('Help ID is required');
@@ -669,49 +638,5 @@ export async function rejectPayment(helpId, rejectReason = 'Payment proof reject
   }
 }
 
-/**
- * Handle help document expiry (24-hour timeout)
- * Marks help as TIMEOUT and blocks the sender
- */
-export async function markHelpAsExpired(helpId, senderUid, receiverUid) {
-  try {
-    if (!helpId || !senderUid) throw new Error("Missing required parameters");
+// markHelpAsExpired REMOVED - handled by processHelpTimeouts Cloud Function 
 
-    await runTransaction(db, async (transaction) => {
-      const helpRef = doc(db, 'sendHelp', helpId);
-      const userRef = doc(db, 'users', senderUid);
-
-      const helpDoc = await transaction.get(helpRef);
-      if (!helpDoc.exists()) throw new Error("Help document not found");
-
-      const helpData = helpDoc.data();
-
-      // ONLY expire if not already confirmed or paid
-      if (helpData.status === HELP_STATUS.CONFIRMED || helpData.status === HELP_STATUS.TIMEOUT) {
-        return;
-      }
-
-      // 1. Update help status to TIMEOUT
-      transaction.update(helpRef, {
-        status: HELP_STATUS.TIMEOUT,
-        expiredAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      // 2. Block the sender
-      transaction.update(userRef, {
-        isBlocked: true,
-        blockReason: 'send_help_timeout',
-        blockedHelpRef: helpId,
-        blockedAt: serverTimestamp()
-      });
-
-      console.log(`✅ Help ${helpId} marked as EXPIRED. User ${senderUid} BLOCKED.`);
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error in markHelpAsExpired:', error);
-    throw new Error(mapFirebaseError(error));
-  }
-}

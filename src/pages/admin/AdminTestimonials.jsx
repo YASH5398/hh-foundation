@@ -49,7 +49,12 @@ const AdminTestimonials = () => {
       setTestimonials(testimonialData);
     } catch (error) {
       console.error("Error fetching testimonial requests:", error);
-      toast.error("Failed to load testimonial requests");
+      if (error.code === 'permission-denied') {
+        toast.error("Permission Denied: Access restricted to Admins.");
+      } else {
+        toast.error("Failed to load testimonial requests");
+      }
+      setTestimonials([]);
     } finally {
       setLoading(false);
     }
@@ -69,7 +74,7 @@ const AdminTestimonials = () => {
     )
     .sort((a, b) => {
       let aVal, bVal;
-      switch(sortBy) {
+      switch (sortBy) {
         case "name":
           aVal = (a.name || "").toLowerCase();
           bVal = (b.name || "").toLowerCase();
@@ -552,9 +557,9 @@ const AdminTestimonials = () => {
                             {statusBadge?.icon && <statusBadge.icon className={`w-3 h-3 ${STATUS_BADGES[t.status]?.color}`} />}
                             <span className={STATUS_BADGES[t.status]?.color}>
                               {t.status === 'approved' ? 'Approved' :
-                               t.status === 'rejected' ? 'Rejected' :
-                               t.status === 'waiting_video' ? 'Waiting' :
-                               t.status}
+                                t.status === 'rejected' ? 'Rejected' :
+                                  t.status === 'waiting_video' ? 'Waiting' :
+                                    t.status}
                             </span>
                           </div>
                         </td>
@@ -631,18 +636,18 @@ const AdminTestimonials = () => {
                         className="w-5 h-5 mt-1 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
                       />
                       <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-white">{t.name}</h3>
-                      </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-white">{t.name}</h3>
+                        </div>
                         <div className="text-slate-400 text-sm font-mono mb-1">{t.userId}</div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full ${STATUS_BADGES[t.status]?.bg} ${STATUS_BADGES[t.status]?.border} border`}>
                             {statusBadge?.icon && <statusBadge.icon className={`w-3 h-3 ${STATUS_BADGES[t.status]?.color}`} />}
                             <span className={STATUS_BADGES[t.status]?.color}>
                               {t.status === 'approved' ? 'Approved' :
-                               t.status === 'rejected' ? 'Rejected' :
-                               t.status === 'waiting_video' ? 'Waiting' :
-                               t.status}
+                                t.status === 'rejected' ? 'Rejected' :
+                                  t.status === 'waiting_video' ? 'Waiting' :
+                                    t.status}
                             </span>
                           </span>
                           <span className="inline-flex items-center px-3 py-1 bg-slate-700/50 text-slate-300 border border-slate-600 rounded-full text-xs font-medium capitalize">

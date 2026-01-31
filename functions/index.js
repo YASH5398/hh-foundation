@@ -63,14 +63,6 @@ const HELP_STATUSES = Object.freeze({
   FORCE_CONFIRMED: 'force_confirmed'
 });
 
-const LEVEL_RECEIVE_LIMITS = Object.freeze({
-  Star: 3,
-  Silver: 9,
-  Gold: 27,
-  Platinum: 81,
-  Diamond: 243
-});
-
 // Timeouts (ms) - server authority only
 const ASSIGNED_TO_REQUEST_TIMEOUT_MS = 60 * 60 * 1000; // 1h for receiver to request payment
 const PAYMENT_REQUEST_TO_DONE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h for sender to pay
@@ -107,11 +99,6 @@ const assertAdmin = (request) => {
 const canTransition = (from, to) => {
   const set = allowedTransitions[from];
   return !!set && set.has(to);
-};
-
-const getReceiveLimitForLevel = (levelName) => {
-  const normalized = normalizeLevelName(levelName);
-  return LEVEL_RECEIVE_LIMITS[normalized] || LEVEL_RECEIVE_LIMITS.Star;
 };
 
 // Use shared eligibility functions directly - no need to redefine
@@ -225,7 +212,7 @@ exports.getReceiveEligibility = httpsOnCall(async (request) => {
         // REMOVED: upgradeRequired, sponsorPaymentPending, paymentBlocked
       },
       activeReceiveCount: userData?.activeReceiveCount || 0,
-      levelAllowedLimit: getReceiveLimitForLevel(userData?.level || userData?.levelStatus)
+      levelAllowedLimit: getTotalHelpsByLevel(userData?.level || userData?.levelStatus)
     }
   };
 });
@@ -380,24 +367,19 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         return defaultVal;
       };
 
-      // UNIFIED RECEIVER QUERY - Apply SAME filters in both primary and fallback
-      const buildReceiverQuery = (isMainQuery = true) => {
-        let query = db.collection('users')
+      // UNIFIED RECEIVER QUERY - Strictly SAME LEVEL ONLY
+      const buildReceiverQuery = () => {
+        return db.collection('users')
           .where('isActivated', '==', true)
           .where('isBlocked', '==', false)
           .where('isReceivingHeld', '==', false)
-          .where('helpVisibility', '!=', false); // Allow null/undefined but block explicit false
-
-        // Add level matching for main query only
-        if (isMainQuery) {
-          query = query.where('level', '==', senderLevel);
-        }
-
-        return query.limit(500);
+          .where('helpVisibility', '==', true)
+          .where('level', '==', senderLevel)
+          .limit(500);
       };
 
       // Main query: Match sender level and all eligibility criteria
-      const receiverQuery = buildReceiverQuery(true);
+      const receiverQuery = buildReceiverQuery();
 
       console.log('[startHelpAssignment] receiver.query.spec', {
         collection: 'users',
@@ -479,64 +461,12 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         });
       }
 
-      // FALLBACK STRATEGY: If zero eligible found, try without level matching
-      if (!chosenReceiverRef && !chosenReceiver) {
-        console.log('[startHelpAssignment] fallback.trigger', {
-          reason: 'zero_receivers_from_main_query',
-          attempting: 'fallback_without_level_matching'
-        });
-
-        const fallbackQuery = buildReceiverQuery(false); // No level matching
-
-        let fallbackSnap;
-        try {
-          fallbackSnap = await tx.get(fallbackQuery);
-        } catch (e) {
-          console.log('[startHelpAssignment] fallback.query.failed', { errorMsg: e?.message });
-          fallbackSnap = { docs: [], empty: true };
-        }
-
-        if (fallbackSnap && !fallbackSnap.empty) {
-          // Apply same eligibility filtering
-          const fallbackCandidates = fallbackSnap.docs
-            .map(doc => ({
-              ref: doc.ref,
-              id: doc.id,
-              data: doc.data(),
-              _normalized: {
-                referralCount: normalizeNumber(doc.data()?.referralCount, 0),
-                level: normalizeLevelName(doc.data()?.level || doc.data()?.levelStatus)
-              }
-            }))
-            // Apply shared eligibility logic
-            .filter(u => isReceiverEligibleStrict(u.data))
-            .filter(u => u.id !== senderUid)
-            .filter(u => u.data?.isSystemAccount !== true)
-            .sort((a, b) => b._normalized.referralCount - a._normalized.referralCount);
-
-          if (fallbackCandidates.length > 0) {
-            const chosen = fallbackCandidates[0];
-            chosenReceiverRef = chosen.ref;
-            chosenReceiver = chosen.data;
-            chosenReceiverUid = chosen.id;
-            fallbackUsed = true;
-
-            console.log('[startHelpAssignment] fallback.success', {
-              selectedUid: chosen.id,
-              userId: chosen.data?.userId || null,
-              candidatesAvailable: fallbackCandidates.length,
-              level: chosen._normalized.level
-            });
-          }
-        }
-      }
-
-      // Final check: no receivers found even after fallback
+      // Final check: no receivers found in main query (SAME LEVEL ONLY)
       if (!chosenReceiverRef || !chosenReceiver) {
-        console.log('[startHelpAssignment] no_eligible_receiver', {
+        console.log('[startHelpAssignment] no_eligible_receiver_same_level', {
           mainQuery: receiverSnap.size,
           afterFiltering: afterNormalization,
-          fallbackUsed: fallbackUsed
+          senderLevel
         });
 
         return {
@@ -581,7 +511,7 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       const sendHelpRef = db.collection('sendHelp').doc(helpId);
       const receiveHelpRef = db.collection('receiveHelp').doc(helpId);
 
-      const receiverLimit = getReceiveLimitForLevel(chosenReceiver.level || chosenReceiver.levelStatus);
+      const receiverLimit = getTotalHelpsByLevel(normalizeLevelName(chosenReceiver.level || chosenReceiver.levelStatus));
       const receiverActiveCount = chosenReceiver.activeReceiveCount || 0;
       if (receiverActiveCount >= receiverLimit) {
         throw new HttpsError('failed-precondition', 'Receiver slot full');
@@ -1280,14 +1210,16 @@ exports.processHelpTimeouts = onSchedule('every 1 minutes', async () => {
         timeoutReason = 'receiver_no_request';
         tx.update(receiverUserRef, {
           isReceivingHeld: true,
-          isOnHold: true
+          isOnHold: true,
+          holdReason: 'receiver_no_request'
         });
       }
 
       if (r.status === HELP_STATUSES.PAYMENT_REQUESTED) {
         timeoutReason = 'sender_no_payment';
         tx.update(senderUserRef, {
-          isOnHold: true
+          isOnHold: true,
+          holdReason: 'sender_no_payment'
         });
       }
 
@@ -1295,7 +1227,8 @@ exports.processHelpTimeouts = onSchedule('every 1 minutes', async () => {
         timeoutReason = 'receiver_no_confirmation';
         tx.update(receiverUserRef, {
           isReceivingHeld: true,
-          isOnHold: true
+          isOnHold: true,
+          holdReason: 'receiver_no_confirmation'
         });
       }
 
@@ -1486,28 +1419,48 @@ const createActivityNotificationData = (params) => {
 };
 
 const internalResumeBlockedReceives = async (targetUid) => {
-  await db.runTransaction(async (tx) => {
+  return await db.runTransaction(async (tx) => {
     const userRef = db.collection('users').doc(targetUid);
     const userSnap = await tx.get(userRef);
-    if (!userSnap.exists) return;
+    if (!userSnap.exists) return { activeReceiveCount: 0 };
 
-    // UNIFIED FLAG RESET - only reset the two main flags
+    const userData = userSnap.data();
+
+    // Healing logic: Ensure level is a valid string for standardized queries
+    const levelMapping = { 1: 'Star', 2: 'Silver', 3: 'Gold', 4: 'Platinum', 5: 'Diamond' };
+    const VALID_LEVELS = new Set(['Star', 'Silver', 'Gold', 'Platinum', 'Diamond', 'completed']);
+    let healedLevel = userData.level;
+
+    if (!healedLevel || !VALID_LEVELS.has(String(healedLevel))) {
+      healedLevel = levelMapping[userData.level] || userData.levelStatus || 'Star';
+      // Final string cast if still numeric or weird
+      if (levelMapping[healedLevel]) healedLevel = levelMapping[healedLevel];
+      if (!VALID_LEVELS.has(healedLevel)) healedLevel = 'Star';
+    }
+
+    // Recalculate active counts inside the transaction for atomicity
+    const activeQuery = db.collection('receiveHelp')
+      .where('receiverUid', '==', targetUid)
+      .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE]);
+
+    const activeSnap = await tx.get(activeQuery);
+    const activeCount = Math.max(0, activeSnap.docs.filter(d => d.data()?.slotReleased !== true).length);
+
     tx.update(userRef, {
+      level: healedLevel, // Apply healed level string
       isReceivingHeld: false,
       isOnHold: false,
-      // REMOVED: sponsorPaymentPending, upgradeRequired, paymentBlocked
+      isBlocked: false,
+      blockReason: null,
+      blockedHelpRef: null,
+      holdReason: null,
+      lastUnblockedAtCount: userData?.helpReceived || 0,
+      activeReceiveCount: activeCount,
       lastUnblockTime: admin.firestore.FieldValue.serverTimestamp()
     });
-  });
 
-  const activeSnap = await db
-    .collection('receiveHelp')
-    .where('receiverUid', '==', targetUid)
-    .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE])
-    .get();
-  const activeCount = activeSnap.docs.filter(d => d.data()?.slotReleased !== true).length;
-  await db.collection('users').doc(targetUid).set({ activeReceiveCount: activeCount }, { merge: true });
-  return { activeReceiveCount: activeCount };
+    return { activeReceiveCount: activeCount };
+  });
 };
 
 exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', async (change, context) => {
@@ -1775,7 +1728,7 @@ exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
       isReceivingHeld: false,
       isBlocked: false,
       isOnHold: false,
-      levelStatus: senderLevel
+      level: senderLevel
     });
 
     const receiverQuery = db
@@ -1785,7 +1738,7 @@ exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
       .where('isReceivingHeld', '==', false)
       .where('isBlocked', '==', false)
       .where('isOnHold', '==', false)
-      .where('levelStatus', '==', senderLevel);
+      .where('level', '==', senderLevel);
 
     const snap = await receiverQuery.get();
 
@@ -1837,7 +1790,7 @@ exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
           isReceivingHeld: false,
           isBlocked: false,
           isOnHold: false,
-          levelStatus: senderLevel
+          level: senderLevel
         }
       },
       result: {
@@ -1978,3 +1931,145 @@ exports.checkEpinHttp = httpsOnRequest(async (req, res) => {
 // ============================
 // Exported from functions/chatbot/handleChatbotMessage.js
 exports.handleChatbotMessage = handleChatbotMessage;
+// Cloud Function to securely resolve upline/sponsor payments
+exports.resolveUplinePayment = httpsOnCall(async (request) => {
+  assertAuth(request);
+  const callerUid = request.auth.uid;
+  const { paymentId, action = 'confirm' } = request.data || {};
+
+  if (!paymentId) throw new HttpsError('invalid-argument', 'paymentId is required');
+
+  return await db.runTransaction(async (tx) => {
+    const paymentRef = db.collection('uplinePayments').doc(paymentId);
+    const paymentSnap = await tx.get(paymentRef);
+
+    if (!paymentSnap.exists) throw new HttpsError('not-found', 'Payment request not found');
+    const paymentData = paymentSnap.data();
+
+    // Security: Only the intended receiver can confirm the payment
+    if (paymentData.receiverId !== callerUid) {
+      throw new HttpsError('permission-denied', 'You are not the authorized receiver for this payment');
+    }
+
+    if (paymentData.status === 'Completed') return { ok: true, alreadyDone: true };
+
+    if (action === 'confirm') {
+      // 1. Update payment status
+      tx.update(paymentRef, {
+        status: 'Completed',
+        confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // 2. Unblock the sender
+      const senderRef = db.collection('users').doc(paymentData.senderId);
+      const senderSnap = await tx.get(senderRef);
+      if (senderSnap.exists) {
+        const senderData = senderSnap.data();
+        tx.update(senderRef, {
+          isReceivingHeld: false,
+          isOnHold: false,
+          uplinePaymentDue: false,
+          lastUnblockedAtCount: senderData.helpReceived || 0,
+          lastUnblockTime: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      // 3. Log in helpHistory
+      const historyRef = db.collection('helpHistory').doc();
+      tx.set(historyRef, {
+        action: 'upline_payment_completed',
+        receiverId: callerUid,
+        senderId: paymentData.senderId,
+        level: paymentData.level || 'Unknown',
+        amount: paymentData.amount || 0,
+        status: 'Completed',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        uplinePaymentDocId: paymentId,
+      });
+
+      console.log(`✅ Upline payment ${paymentId} confirmed by ${callerUid} for sender ${paymentData.senderId}`);
+    }
+
+    return { ok: true };
+  });
+});
+
+// Migration Function: Fix missing helpVisibility fields
+// Only admins can trigger this via HTTPS call
+exports.runHelpVisibilityMigration = httpsOnCall(async (request) => {
+  assertAuth(request);
+  const callerUid = request.auth.uid;
+
+  // Verify admin status
+  const callerSnap = await db.collection('users').doc(callerUid).get();
+  if (!callerSnap.exists || callerSnap.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admins can run migrations');
+  }
+
+  console.log('[MIGRATION] Starting helpVisibility migration...');
+
+  // Find users where helpVisibility is completely missing
+  // Since Firestore doesn't support "where field is missing", we fetch potential candidates
+  // and check locally. Limit to 100 per run to avoid timeouts.
+  const usersSnap = await db.collection('users').limit(1000).get();
+  const batch = db.batch();
+  let updateCount = 0;
+
+  usersSnap.forEach(docSnap => {
+    const data = docSnap.data();
+    // If helpVisibility is neither true nor false, it is missing
+    if (data.helpVisibility !== true && data.helpVisibility !== false) {
+      batch.update(docSnap.ref, {
+        helpVisibility: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      updateCount++;
+    }
+  });
+
+  if (updateCount > 0) {
+    await batch.commit();
+  }
+
+  console.log(`[MIGRATION] Completed. Updated ${updateCount} users.`);
+  return { ok: true, updateCount };
+});
+// Cloud Function: Migrate user levels to string format (Data Alignment)
+exports.migrateUserLevelsToString = httpsOnCall(async (request) => {
+  assertAdmin(request);
+
+  let processed = 0;
+  let healed = 0;
+
+  try {
+    const usersSnap = await db.collection('users').where('isActivated', '==', true).get();
+
+    // Process in sequence to avoid hitting transaction limits if any, 
+    // or we could use Promise.all with chunks
+    for (const doc of usersSnap.docs) {
+      processed++;
+      try {
+        // internalResumeBlockedReceives now handles:
+        // 1. Level string healing (numeric to Star, etc.)
+        // 2. Transctional activeReceiveCount recalculation
+        // 3. Clearing all stale timeout residue (holdReason, etc.)
+        await internalResumeBlockedReceives(doc.id);
+        healed++;
+      } catch (e) {
+        console.error(`[MIGRATION] Failed to heal user ${doc.id}:`, e);
+      }
+    }
+
+    return {
+      success: true,
+      processed,
+      healed,
+      message: `Healing complete. Audited ${processed} activated users, successfully healed ${healed}.`
+    };
+
+  } catch (error) {
+    console.error('[migrateUserLevelsToString] Error:', error);
+    throw new HttpsError('internal', error.message);
+  }
+});
