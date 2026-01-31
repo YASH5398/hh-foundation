@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FiAlertTriangle, FiUser, FiClock, FiDollarSign, FiActivity,
   FiEye, FiFilter, FiRefreshCw, FiDownload, FiSearch,
-  FiCalendar, FiTrendingUp, FiAlertCircle, FiShield
+  FiCalendar, FiTrendingUp, FiAlertCircle, FiShield, FiX
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -363,10 +363,10 @@ const SuspiciousActivityDetection = () => {
   // Get risk level color
   const getRiskLevelColor = (riskLevel) => {
     switch (riskLevel) {
-      case 'high': return 'text-red-600 bg-red-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'high': return 'text-red-400 bg-red-500/20 border border-red-500/30';
+      case 'medium': return 'text-yellow-400 bg-yellow-500/20 border border-yellow-500/30';
+      case 'low': return 'text-green-400 bg-green-500/20 border border-green-500/30';
+      default: return 'text-slate-400 bg-slate-500/20 border border-slate-500/30';
     }
   };
 
@@ -418,15 +418,14 @@ const SuspiciousActivityDetection = () => {
   }, [filters]);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
+    <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <FiAlertTriangle className="w-6 h-6 mr-2 text-red-500" />
+          <h1 className="text-2xl font-bold text-white flex items-center">
+            <FiAlertTriangle className="w-6 h-6 mr-2 text-red-400" />
             Suspicious Activity Detection
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-slate-400 mt-1">
             Monitor and detect potentially suspicious user activities
           </p>
         </div>
@@ -434,7 +433,7 @@ const SuspiciousActivityDetection = () => {
           <button
             onClick={exportActivities}
             disabled={suspiciousActivities.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
           >
             <FiDownload className="w-4 h-4" />
             <span>Export</span>
@@ -442,7 +441,7 @@ const SuspiciousActivityDetection = () => {
           <button
             onClick={loadSuspiciousActivities}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
           >
             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -450,19 +449,17 @@ const SuspiciousActivityDetection = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-4">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <FiFilter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filters:</span>
+            <FiFilter className="w-4 h-4 text-slate-400" />
+            <span className="text-sm font-medium text-slate-300">Filters:</span>
           </div>
           
-          {/* Activity Type Filter */}
           <select
             value={filters.activityType}
             onChange={(e) => setFilters(prev => ({ ...prev, activityType: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {activityTypes.map(type => (
               <option key={type.value} value={type.value}>
@@ -471,11 +468,10 @@ const SuspiciousActivityDetection = () => {
             ))}
           </select>
           
-          {/* Risk Level Filter */}
           <select
             value={filters.riskLevel}
             onChange={(e) => setFilters(prev => ({ ...prev, riskLevel: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {riskLevels.map(level => (
               <option key={level.value} value={level.value}>
@@ -484,11 +480,10 @@ const SuspiciousActivityDetection = () => {
             ))}
           </select>
           
-          {/* Date Range Filter */}
           <select
             value={filters.dateRange}
             onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {dateRanges.map(range => (
               <option key={range.value} value={range.value}>
@@ -497,61 +492,56 @@ const SuspiciousActivityDetection = () => {
             ))}
           </select>
           
-          {/* Activity Count */}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center space-x-2 text-sm text-slate-400">
             <span>Found: {suspiciousActivities.length} activities</span>
           </div>
         </div>
       </div>
 
-      {/* Activities List */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-slate-800/50 rounded-xl border border-slate-700/50">
         {loading ? (
           <div className="p-8 text-center">
-            <FiRefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-4 animate-spin" />
-            <p className="text-gray-500">Detecting suspicious activities...</p>
+            <FiRefreshCw className="h-8 w-8 text-slate-500 mx-auto mb-4 animate-spin" />
+            <p className="text-slate-400">Detecting suspicious activities...</p>
           </div>
         ) : suspiciousActivities.length === 0 ? (
           <div className="p-8 text-center">
-            <FiShield className="h-12 w-12 text-green-300 mx-auto mb-4" />
-            <p className="text-gray-500">No suspicious activities detected</p>
-            <p className="text-sm text-gray-400">All user activities appear normal</p>
+            <FiShield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <p className="text-slate-400">No suspicious activities detected</p>
+            <p className="text-sm text-slate-500">All user activities appear normal</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-700/50">
             {suspiciousActivities.map((activity) => (
               <motion.div
                 key={activity.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="p-4 hover:bg-slate-700/30 transition-colors cursor-pointer"
                 onClick={() => handleActivityClick(activity)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 flex-1">
-                    {/* Activity Icon */}
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
                         {getActivityTypeIcon(activity.type)}
                       </div>
                     </div>
                     
-                    {/* Activity Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-lg font-semibold text-white truncate">
                           {activity.userName}
                         </h3>
                         
-                        {/* Risk Level Badge */}
                         <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskLevelColor(activity.riskLevel)}`}>
                           {activity.riskLevel.toUpperCase()} RISK
                         </div>
                       </div>
                       
-                      <p className="text-gray-600 mb-2">{activity.description}</p>
+                      <p className="text-slate-300 mb-2">{activity.description}</p>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center space-x-4 text-sm text-slate-400">
                         <div className="flex items-center space-x-1">
                           <FiUser className="w-4 h-4" />
                           <span>{activity.userEmail}</span>
@@ -564,14 +554,13 @@ const SuspiciousActivityDetection = () => {
                     </div>
                   </div>
                   
-                  {/* View Details Button */}
                   <div className="flex items-center space-x-2 ml-4">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleActivityClick(activity);
                       }}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                      className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
                       title="View Details"
                     >
                       <FiEye className="w-4 h-4" />
@@ -584,69 +573,68 @@ const SuspiciousActivityDetection = () => {
         )}
       </div>
 
-      {/* Activity Details Modal */}
       <AnimatePresence>
         {showDetails && selectedActivity && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
             onClick={() => setShowDetails(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-slate-800 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-xl font-bold text-white flex items-center">
                     {getActivityTypeIcon(selectedActivity.type)}
                     <span className="ml-2">Activity Details</span>
                   </h2>
                   <button
                     onClick={() => setShowDetails(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors"
+                    className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors"
                   >
-                    ×
+                    <FiX className="w-6 h-6" />
                   </button>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">User</label>
-                      <p className="text-gray-900">{selectedActivity.userName}</p>
+                      <label className="text-sm font-medium text-slate-400">User</label>
+                      <p className="text-white">{selectedActivity.userName}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Email</label>
-                      <p className="text-gray-900">{selectedActivity.userEmail}</p>
+                      <label className="text-sm font-medium text-slate-400">Email</label>
+                      <p className="text-white">{selectedActivity.userEmail}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Risk Level</label>
+                      <label className="text-sm font-medium text-slate-400">Risk Level</label>
                       <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRiskLevelColor(selectedActivity.riskLevel)}`}>
                         {selectedActivity.riskLevel.toUpperCase()}
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Detected At</label>
-                      <p className="text-gray-900">{formatDate(selectedActivity.timestamp, { includeTime: true })}</p>
+                      <label className="text-sm font-medium text-slate-400">Detected At</label>
+                      <p className="text-white">{formatDate(selectedActivity.timestamp, { includeTime: true })}</p>
                     </div>
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Description</label>
-                    <p className="text-gray-900">{selectedActivity.description}</p>
+                    <label className="text-sm font-medium text-slate-400">Description</label>
+                    <p className="text-white">{selectedActivity.description}</p>
                   </div>
                   
                   {selectedActivity.details && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Additional Details</label>
-                      <div className="bg-gray-50 rounded-lg p-4 mt-2">
-                        <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <label className="text-sm font-medium text-slate-400">Additional Details</label>
+                      <div className="bg-slate-700/50 rounded-lg p-4 mt-2">
+                        <pre className="text-sm text-slate-300 whitespace-pre-wrap">
                           {JSON.stringify(selectedActivity.details, null, 2)}
                         </pre>
                       </div>
@@ -657,7 +645,7 @@ const SuspiciousActivityDetection = () => {
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
                     onClick={() => setShowDetails(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 text-white bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
                   >
                     Close
                   </button>

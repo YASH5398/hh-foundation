@@ -66,6 +66,7 @@ const AgentDashboard = () => {
     { id: 'analytics', label: 'Analytics', icon: FiBarChart2, path: '/agent-dashboard/analytics' },
     { id: 'user-management', label: 'Users', icon: FiUsers, path: '/agent-dashboard/user-management' },
     { id: 'epin-checker', label: 'EPIN Tools', icon: FiCreditCard, path: '/agent-dashboard/epin-checker' },
+    { id: 'level-leakage', label: 'Level Leakage', icon: FiActivity, path: '/agent-dashboard/level-leakage' },
     { id: 'settings', label: 'Settings', icon: FiSettings, path: '/agent-dashboard/settings' },
   ];
 

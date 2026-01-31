@@ -1,4 +1,3 @@
-import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 // Dashboard routes are now defined inline
 
@@ -6,7 +5,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './admin/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import DashboardWrapper from './components/auth/DashboardWrapper';
 import AdminProtectedRoute from './admin/ProtectedRoute';
 import PublicRoute from './components/auth/PublicRoute';
 
@@ -24,9 +22,7 @@ import UserDetails from './pages/UserDetails';
 import Leaderboard from './components/leaderboard/Leaderboard';
 import ProfileSettings from './components/profile/ProfileSettings';
 import DirectReferrals from './components/team/DirectReferrals';
-import TransactionHistory from './components/history/TransactionHistory';
 import SupportPage from './pages/SupportPage';
-import SupportHub from './pages/SupportHub';
 import ChatbotSupport from './pages/support/ChatbotSupport';
 import EarnFreeEPIN from './pages/EarnFreeEPIN';
 import Tasks from './pages/Tasks';
@@ -75,6 +71,7 @@ import SuspiciousActivityDetection from './components/agent/SuspiciousActivityDe
 import AgentProtectedRoute from './components/AgentProtectedRoute';
 import UpcomingPay from './pages/agent/UpcomingPay';
 import SpamMonitor from './pages/agent/SpamMonitor';
+import LevelLeakageDetector from './pages/agent/LevelLeakageDetector';
 
 // Admin Components
 import UserManager from './admin/UserManager';
@@ -236,7 +233,7 @@ export const router = createBrowserRouter([
       { path: 'user-help-tracker', element: <UserHelpTracker /> },
       { path: 'upcoming-pay', element: <UpcomingPay /> },
       { path: 'spam-monitor', element: <SpamMonitor /> },
-      { path: 'suspicious-activity', element: <SuspiciousActivityDetection /> }
+      { path: 'level-leakage', element: <LevelLeakageDetector /> }
     ]
   },
 

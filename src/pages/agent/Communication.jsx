@@ -120,8 +120,8 @@ const Communication = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full">
+      <div className="w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Agent to Admin Communication</h1>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiSearch, FiUser, FiAlertCircle, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import { db } from '../../config/firebase';
@@ -249,8 +249,8 @@ const UpcomingPay = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="w-full">
+      <div className="w-full">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Upcoming Payment Tracker</h1>
           <p className="text-slate-400 mt-1">Search user to analyze payment status</p>

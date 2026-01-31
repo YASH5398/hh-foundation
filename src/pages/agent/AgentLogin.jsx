@@ -25,7 +25,7 @@ const AgentLogin = () => {
     if (!authLoading && currentUser && currentUser.emailVerified) {
       navigate('/agent-dashboard', { replace: true });
     }
-  }, [currentUser?.uid, currentUser?.emailVerified, authLoading, navigate]);
+  }, [currentUser?.uid, currentUser?.emailVerified, authLoading]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
