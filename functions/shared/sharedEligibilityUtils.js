@@ -17,7 +17,7 @@ const { isIncomeBlocked } = require('./mlmCore');
 const normalizeLevel = (userData) => {
   // Priority: level field first, then levelStatus for backward compatibility
   const levelValue = userData.level || userData.levelStatus;
-  
+
   if (!levelValue) return 'Star';
 
   // If already a string, return as-is
@@ -29,7 +29,7 @@ const normalizeLevel = (userData) => {
   if (typeof levelValue === 'number') {
     const levelMap = {
       1: 'Star',
-      2: 'Silver', 
+      2: 'Silver',
       3: 'Gold',
       4: 'Platinum',
       5: 'Diamond'
@@ -55,6 +55,13 @@ const checkSendHelpEligibility = (userData) => {
   //   return { eligible: false, reason: 'User not activated' };
   // }
 
+  const userLevel = normalizeLevel(userData);
+
+  // NEW: Star level business rule - only one send help allowed
+  if (userLevel === 'Star' && userData.starSendHelpDone === true) {
+    return { eligible: false, reason: 'Already activated - you can only send help once at Star level' };
+  }
+
   // UNIFIED BLOCKING FLAGS - only check isOnHold and isBlocked
   if (userData.isBlocked === true) {
     return { eligible: false, reason: 'Account is blocked' };
@@ -65,7 +72,7 @@ const checkSendHelpEligibility = (userData) => {
   }
 
   // Income blocking check using MLM core logic
-  if (isIncomeBlocked({ ...userData, level: normalizeLevel(userData) })) {
+  if (isIncomeBlocked({ ...userData, level: userLevel })) {
     return { eligible: false, reason: 'Income is blocked - complete required payments' };
   }
 
@@ -122,12 +129,12 @@ const checkReceiveHelpEligibility = (userData) => {
 const isReceiverEligibleStrict = (userData) => {
   // Use the basic eligibility function first
   const { eligible } = checkReceiveHelpEligibility(userData);
-  
+
   if (!eligible) return false;
 
   // Additional business logic checks - REMOVED conflicting flags
   // No longer checking upgradeRequired, sponsorPaymentPending, paymentBlocked
-  
+
   // Check receive limit based on level
   const userLevel = normalizeLevel(userData);
   const LEVEL_RECEIVE_LIMITS = {
@@ -137,10 +144,13 @@ const isReceiverEligibleStrict = (userData) => {
     Platinum: 81,
     Diamond: 243
   };
-  
+
   const limit = LEVEL_RECEIVE_LIMITS[userLevel] || LEVEL_RECEIVE_LIMITS.Star;
-  if ((userData.activeReceiveCount || 0) >= limit) return false;
-  
+  const helpReceived = userData.helpReceived || 0;
+  const activeCount = userData.activeReceiveCount || 0;
+
+  if ((helpReceived + activeCount) >= limit) return false;
+
   return true;
 };
 
@@ -160,7 +170,7 @@ const getReceiverIneligibilityReason = (userData) => {
     if (reason.includes('level')) return 'level_status_missing';
     return 'not_eligible';
   }
-  
+
   // Check additional business logic
   const userLevel = normalizeLevel(userData);
   const LEVEL_RECEIVE_LIMITS = {
@@ -170,10 +180,13 @@ const getReceiverIneligibilityReason = (userData) => {
     Platinum: 81,
     Diamond: 243
   };
-  
+
   const limit = LEVEL_RECEIVE_LIMITS[userLevel] || LEVEL_RECEIVE_LIMITS.Star;
-  if ((userData.activeReceiveCount || 0) >= limit) return 'receive_limit_reached';
-  
+  const helpReceived = userData.helpReceived || 0;
+  const activeCount = userData.activeReceiveCount || 0;
+
+  if ((helpReceived + activeCount) >= limit) return 'receive_limit_reached';
+
   return 'not_eligible';
 };
 

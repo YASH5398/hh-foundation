@@ -21,8 +21,9 @@ import {
   onSnapshot,
   serverTimestamp,
   runTransaction,
-  Timestamp } from
-'../config/firebase';
+  Timestamp
+} from
+  '../config/firebase';
 
 import { httpsCallable } from 'firebase/functions';
 import { waitForAuthReady } from './authReady';
@@ -277,7 +278,7 @@ export async function createSendHelpAssignment(senderUser) {
   } catch (error) {
     // Handle specific "no eligible receiver" case - this is a BUSINESS CASE, not an error
     if (error?.code === 'functions/failed-precondition' && (
-    error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
+      error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
       const err = new Error('No eligible receivers available right now.');
       err.code = error.code;
       err.isNoReceiver = true;
@@ -287,9 +288,9 @@ export async function createSendHelpAssignment(senderUser) {
 
     // Handle other "no receiver" cases for backward compatibility
     const isNoReceiver =
-    error?.code === 'functions/failed-precondition' ||
-    error?.message?.includes('No eligible receivers') ||
-    error?.message?.includes('no eligible receivers');
+      error?.code === 'functions/failed-precondition' ||
+      error?.message?.includes('No eligible receivers') ||
+      error?.message?.includes('no eligible receivers');
 
     if (isNoReceiver) {
       const err = new Error('No eligible receivers available right now.');
@@ -427,12 +428,23 @@ export async function disputePayment(helpId, disputeReason) {
 /**
  * GET USER HELP STATUS
  * Check if user has active helps
+ * CRITICAL: Only return TRULY ACTIVE helps (not confirmed/completed)
  */
 export async function getUserHelpStatus(userUid) {
   if (!userUid) return { hasActiveHelp: false };
 
   try {
     await waitForAuthReady();
+
+    // Fetch user data for activation check
+    const userRef = doc(db, 'users', userUid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+    const isAlreadyActivated = userData?.isActivated === true || userData?.starSendHelpDone === true;
+
+    // CRITICAL FIX: Only query for TRULY ACTIVE statuses
+    // DO NOT include 'confirmed', 'force_confirmed', or 'completed'
+    // These are terminal/finalized statuses that should NOT appear as active
     const activeStatuses = [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE];
 
     // Check send helps
@@ -450,8 +462,8 @@ export async function getUserHelpStatus(userUid) {
     );
 
     const [sendHelpSnap, receiveHelpSnap] = await Promise.all([
-    getDocs(sendHelpQuery),
-    getDocs(receiveHelpQuery)]
+      getDocs(sendHelpQuery),
+      getDocs(receiveHelpQuery)]
     );
 
     const hasActiveSendHelp = !sendHelpSnap.empty;
@@ -459,6 +471,8 @@ export async function getUserHelpStatus(userUid) {
 
     return {
       hasActiveHelp: hasActiveSendHelp || hasActiveReceiveHelp,
+      isAlreadyActivated,
+      userData,
       activeSendHelp: hasActiveSendHelp ? { id: sendHelpSnap.docs[0].id, ...sendHelpSnap.docs[0].data() } : null,
       activeReceiveHelp: hasActiveReceiveHelp ? { id: receiveHelpSnap.docs[0].id, ...receiveHelpSnap.docs[0].data() } : null
     };
@@ -469,12 +483,13 @@ export async function getUserHelpStatus(userUid) {
   }
 }
 
+
 /**
  * LISTEN TO HELP STATUS CHANGES
  * Real-time listener with proper cleanup
  */
 export function listenToHelpStatus(helpId, callback) {
-  if (!helpId) return () => {};
+  if (!helpId) return () => { };
 
   const helpRef = doc(db, 'sendHelp', helpId);
 
@@ -503,7 +518,7 @@ export function listenToHelpStatus(helpId, callback) {
 export function listenToReceiveHelps(userUid, callback) {
   if (!userUid) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const receiveHelpQuery = query(

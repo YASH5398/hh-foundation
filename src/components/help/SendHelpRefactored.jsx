@@ -12,10 +12,11 @@ import PaymentProofForm from './PaymentProofForm';
 import SendHelpFlowContainer from './SendHelpFlow/SendHelpFlowContainer';
 import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof, markHelpAsExpired } from '../../services/helpService';
 import { HELP_STATUS, normalizeStatus } from '../../config/helpStatus';
+import { normalizeLevel } from '../../utils/eligibilityUtils';
 import CountdownTimer from '../common/CountdownTimer';
 import { waitForAuthReady } from '../../services/authReady';
 import { uploadImageResumable } from '../../services/storageUpload';
-import { auth } from '../../config/firebase';
+import { auth, db, doc, onSnapshot, getDoc } from '../../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 // UI State Constants - Clear mapping of UI states to help statuses
@@ -40,6 +41,7 @@ const UI_STATES = {
 
   // Error states
   NO_RECEIVER_AVAILABLE: 'no_receiver_available',
+  ALREADY_ACTIVATED: 'already_activated',
   ERROR: 'error'
 };
 
@@ -71,10 +73,16 @@ const getUIState = (helpStatus, hasReceiver, isLoading, hasError, errorType, noR
         return UI_STATES.PAYMENT_SUBMITTED;
       case HELP_STATUS.CONFIRMED:
       case HELP_STATUS.FORCE_CONFIRMED:
+      case 'completed':
         return UI_STATES.COMPLETED;
       default:
         return UI_STATES.RECEIVER_ASSIGNED;
     }
+  }
+
+  // Handle already activated as a valid business case
+  if (errorType === 'ALREADY_ACTIVATED' || helpStatus === 'completed' || helpStatus === 'confirmed') {
+    return UI_STATES.ALREADY_ACTIVATED;
   }
 
   // Default state
@@ -83,18 +91,18 @@ const getUIState = (helpStatus, hasReceiver, isLoading, hasError, errorType, noR
 
 // UI State Components
 const InitializingState = () =>
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
-  
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+
     <div className="flex justify-center mb-6">
       <div className="relative w-16 h-16">
         <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-        className="absolute inset-0">
-        
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          className="absolute inset-0">
+
           <FiLoader className="w-full h-full text-blue-500" />
         </motion.div>
       </div>
@@ -105,22 +113,22 @@ const InitializingState = () =>
 
 
 const WaitingForReceiverState = () =>
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
-  
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+
     <div className="relative mb-8">
       <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-      className="w-20 h-20 rounded-full border-4 border-slate-200 border-t-blue-500 mx-auto" />
-    
+        animate={{ rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        className="w-20 h-20 rounded-full border-4 border-slate-200 border-t-blue-500 mx-auto" />
+
       <motion.div
-      animate={{ scale: [1, 1.2, 1] }}
-      transition={{ duration: 2, repeat: Infinity }}
-      className="absolute inset-0 flex items-center justify-center">
-      
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="absolute inset-0 flex items-center justify-center">
+
         <FiUser className="w-8 h-8 text-blue-500" />
       </motion.div>
     </div>
@@ -128,29 +136,29 @@ const WaitingForReceiverState = () =>
     <p className="text-slate-600 mb-6">Matching you with the perfect receiver</p>
     <div className="flex items-center justify-center gap-2">
       {[0, 1, 2].map((i) =>
-    <motion.div
-      key={i}
-      animate={{ scale: [1, 1.3, 1] }}
-      transition={{ duration: 1.4, delay: i * 0.2, repeat: Infinity }}
-      className="w-2 h-2 bg-blue-500 rounded-full" />
+        <motion.div
+          key={i}
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.4, delay: i * 0.2, repeat: Infinity }}
+          className="w-2 h-2 bg-blue-500 rounded-full" />
 
-    )}
+      )}
     </div>
   </motion.div>;
 
 
 const NoReceiverAvailableState = () =>
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
-  
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+
     <motion.div
-    initial={{ scale: 0 }}
-    animate={{ scale: 1 }}
-    transition={{ delay: 0.1, type: 'spring' }}
-    className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
-    
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.1, type: 'spring' }}
+      className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+
       <FiClock className="w-8 h-8 text-amber-600" />
     </motion.div>
     <h2 className="text-xl font-bold text-slate-900 mb-2">No Receivers Available</h2>
@@ -163,9 +171,9 @@ const NoReceiverAvailableState = () =>
       <p>• No action needed from you</p>
     </div>
     <motion.button
-    disabled={true}
-    className="w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 text-slate-500 cursor-not-allowed">
-    
+      disabled={true}
+      className="w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 text-slate-500 cursor-not-allowed">
+
       <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
         <FiLoader className="w-4 h-4" />
       </motion.div>
@@ -174,18 +182,49 @@ const NoReceiverAvailableState = () =>
   </motion.div>;
 
 
-const ErrorState = ({ error, onRetry, isRetrying }) =>
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-red-200/50">
-  
+const AlreadyActivatedState = () =>
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="bg-gradient-to-br from-white to-green-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-green-200/50">
+
     <motion.div
-    initial={{ scale: 0 }}
-    animate={{ scale: 1 }}
-    transition={{ delay: 0.1, type: 'spring' }}
-    className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
-    
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+
+      <FiCheckCircle className="w-10 h-10 text-green-600" />
+    </motion.div>
+
+    <h2 className="text-2xl font-bold text-slate-900 mb-2">Congratulations 🎉</h2>
+    <p className="text-slate-600 mb-6">Your account has been activated!</p>
+
+    <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm text-left">
+      <p className="text-sm text-slate-600 leading-relaxed">
+        You have successfully completed your activation payment. You will now receive help from 3 users before you can upgrade to Silver level.
+      </p>
+    </div>
+
+    <div className="flex items-center justify-center gap-2 text-green-600 font-bold">
+      <FiCheckCircle className="w-5 h-5" />
+      <span>Activation Complete</span>
+    </div>
+  </motion.div>;
+
+
+const ErrorState = ({ error, onRetry, isRetrying }) =>
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-red-200/50">
+
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.1, type: 'spring' }}
+      className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
+
       <FiAlertTriangle className="w-8 h-8 text-red-600" />
     </motion.div>
     <h2 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h2>
@@ -193,28 +232,28 @@ const ErrorState = ({ error, onRetry, isRetrying }) =>
       {error || 'An unexpected error occurred. Please try again.'}
     </p>
     <motion.button
-    whileHover={{ scale: isRetrying ? 1 : 1.02 }}
-    whileTap={{ scale: isRetrying ? 1 : 0.98 }}
-    onClick={onRetry}
-    disabled={isRetrying}
-    className={`w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying ?
-    'bg-slate-100 text-slate-500 cursor-not-allowed' :
-    'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg'}`
-    }>
-    
+      whileHover={{ scale: isRetrying ? 1 : 1.02 }}
+      whileTap={{ scale: isRetrying ? 1 : 0.98 }}
+      onClick={onRetry}
+      disabled={isRetrying}
+      className={`w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying ?
+        'bg-slate-100 text-slate-500 cursor-not-allowed' :
+        'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg'}`
+      }>
+
       {isRetrying ?
-    <>
+        <>
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
             <FiLoader className="w-4 h-4" />
           </motion.div>
           Retrying...
         </> :
 
-    <>
+        <>
           <FiRefreshCw className="w-4 h-4" />
           Try Again
         </>
-    }
+      }
     </motion.button>
   </motion.div>;
 
@@ -239,14 +278,14 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-slate-200/50">
-      
+
       {/* Payment Request Alert */}
       {isPaymentRequested &&
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 p-4 rounded-xl">
-        
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 p-4 rounded-xl">
+
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
               <FiAlertTriangle className="w-5 h-5 text-orange-600" />
@@ -261,11 +300,11 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
 
       {/* 24-Hour Countdown Timer */}
       {helpData?.createdAt &&
-      <div className="mb-6">
+        <div className="mb-6">
           <CountdownTimer
-          targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
-          label="Payment Deadline" />
-        
+            targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
+            label="Payment Deadline" />
+
         </div>
       }
 
@@ -275,7 +314,7 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-center mb-6 shadow-lg">
-        
+
         <p className="text-blue-100 text-sm font-medium mb-2">Amount to Send</p>
         <p className="text-5xl font-black text-white mb-1">₹300</p>
         <p className="text-blue-100 text-xs">One-time activation payment</p>
@@ -287,14 +326,14 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="bg-white rounded-xl p-5 mb-6 border border-slate-200 shadow-sm">
-        
+
         <div className="flex items-center gap-4 mb-4">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.25, type: 'spring' }}
             className="w-14 h-14 rounded-xl overflow-hidden shadow-md flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
-            
+
             <img
               src={receiver?.profileImage || '/images/default-avatar.png'}
               alt={receiver?.name || 'Receiver'}
@@ -302,7 +341,7 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
               onError={(e) => {
                 e.target.style.display = 'none';
               }} />
-            
+
           </motion.div>
           <div className="flex-1">
             <h3 className="text-lg font-bold text-slate-900 mb-1">{receiver?.name || 'Loading...'}</h3>
@@ -329,7 +368,7 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="bg-white rounded-xl p-5 mb-6 border border-slate-200 shadow-sm">
-        
+
         <h4 className="text-sm font-bold text-slate-900 mb-3">Payment Methods</h4>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
@@ -350,15 +389,15 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
       {/* Action Buttons */}
       <div className="space-y-3">
         {showPayButton &&
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onPaymentClick}
-          className={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-lg ${isPaymentRequested ?
-          'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white animate-pulse shadow-orange-200' :
-          'bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white shadow-slate-300'}`
-          }>
-          
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onPaymentClick}
+            className={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-lg ${isPaymentRequested ?
+              'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white animate-pulse shadow-orange-200' :
+              'bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white shadow-slate-300'}`
+            }>
+
             <FiCreditCard className="w-5 h-5" />
             {isPaymentRequested ? 'Complete Payment Now' : 'Send Help'}
           </motion.button>
@@ -369,7 +408,7 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowChat(true)}
           className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200">
-          
+
           <FiMessageCircle className="w-4 h-4" />
           Chat with Receiver
         </motion.button>
@@ -377,15 +416,15 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
 
       {/* Chat Modal */}
       {transactionId &&
-      <TransactionChat
-        transactionType="sendHelp"
-        transactionId={transactionId}
-        otherUser={{
-          name: receiver?.name,
-          profileImage: receiver?.profileImage
-        }}
-        isOpen={showChat}
-        onClose={() => setShowChat(false)} />
+        <TransactionChat
+          transactionType="sendHelp"
+          transactionId={transactionId}
+          otherUser={{
+            name: receiver?.name,
+            profileImage: receiver?.profileImage
+          }}
+          isOpen={showChat}
+          onClose={() => setShowChat(false)} />
 
       }
     </motion.div>);
@@ -393,11 +432,11 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
 };
 
 const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, transactionId }) =>
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-8 max-w-md w-full text-center border border-blue-200/50">
-  
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-8 max-w-md w-full text-center border border-blue-200/50">
+
     {/* Status Icon */}
     <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
       <FiCheckCircle className="w-10 h-10 text-blue-600" />
@@ -415,51 +454,51 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
 
     {/* Payment Details */}
     {helpData?.paymentDetails &&
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="bg-white rounded-xl p-4 mb-6 text-left border border-slate-200 shadow-sm">
-    
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-xl p-4 mb-6 text-left border border-slate-200 shadow-sm">
+
         <h4 className="font-bold text-slate-900 mb-3">Payment Details</h4>
         {helpData.paymentDetails.utrNumber &&
-    <div className="mb-3">
+          <div className="mb-3">
             <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-1">UTR/Transaction ID</p>
             <p className="font-mono text-sm font-bold text-slate-800 break-all bg-slate-50 rounded-lg p-2">{helpData.paymentDetails.utrNumber}</p>
           </div>
-    }
+        }
         {helpData.paymentDetails.screenshotUrl &&
-    <div>
+          <div>
             <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-2">Screenshot</p>
             <img
-        src={helpData.paymentDetails.screenshotUrl}
-        alt="Payment proof"
-        className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
-      
+              src={helpData.paymentDetails.screenshotUrl}
+              alt="Payment proof"
+              className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
+
           </div>
-    }
+        }
       </motion.div>
-  }
+    }
 
     {/* Receiver Info */}
     {receiver &&
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.25 }}
-    className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
-    
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
+
         <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-3">Receiver</p>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
             <img
-          src={receiver.profileImage || '/images/default-avatar.png'}
-          alt={receiver.name}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.style.display = 'none';
-          }} />
-        
+              src={receiver.profileImage || '/images/default-avatar.png'}
+              alt={receiver.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }} />
+
           </div>
           <div className="text-left">
             <p className="font-bold text-slate-900">{receiver.name}</p>
@@ -467,26 +506,26 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
           </div>
         </div>
       </motion.div>
-  }
+    }
 
     {/* Chat Button */}
     <motion.button
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={() => setShowChat(true)}
-    className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 mb-4 border border-slate-200">
-    
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => setShowChat(true)}
+      className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 mb-4 border border-slate-200">
+
       <FiMessageCircle className="w-4 h-4" />
       Chat with Receiver
     </motion.button>
 
     {/* Info Message */}
     <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ delay: 0.3 }}
-    className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-    
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+
       <p className="text-sm text-blue-900 leading-relaxed">
         <strong>Next Steps:</strong> The receiver will verify your payment. Your account activates once confirmed.
       </p>
@@ -494,66 +533,66 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
 
     {/* Chat Modal */}
     {transactionId &&
-  <TransactionChat
-    transactionType="sendHelp"
-    transactionId={transactionId}
-    otherUser={{
-      name: receiver?.name,
-      profileImage: receiver?.profileImage
-    }}
-    isOpen={showChat}
-    onClose={() => setShowChat(false)} />
+      <TransactionChat
+        transactionType="sendHelp"
+        transactionId={transactionId}
+        otherUser={{
+          name: receiver?.name,
+          profileImage: receiver?.profileImage
+        }}
+        isOpen={showChat}
+        onClose={() => setShowChat(false)} />
 
-  }
+    }
   </motion.div>;
 
 
 const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
-<motion.div
-  initial={{ opacity: 0, scale: 0.95 }}
-  animate={{ opacity: 1, scale: 1 }}
-  className="bg-gradient-to-br from-white to-green-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-green-200/50">
-  
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="bg-gradient-to-br from-white to-green-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-green-200/50">
+
     {/* Success Icon */}
     <motion.div
-    initial={{ scale: 0 }}
-    animate={{ scale: 1 }}
-    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-    className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
-    
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+
       <FiCheckCircle className="w-10 h-10 text-green-600" />
     </motion.div>
 
     {/* Status Header */}
     <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.1 }}
-    className="mb-6">
-    
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="mb-6">
+
       <h2 className="text-2xl font-bold text-slate-900 mb-2">Help Completed!</h2>
       <p className="text-slate-600">Your account is now fully activated</p>
     </motion.div>
 
     {/* Receiver Info */}
     {receiver &&
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.15 }}
-    className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
-    
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
+
         <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-3">Payment sent to</p>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
             <img
-          src={receiver.profileImage || '/images/default-avatar.png'}
-          alt={receiver.name}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.style.display = 'none';
-          }} />
-        
+              src={receiver.profileImage || '/images/default-avatar.png'}
+              alt={receiver.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }} />
+
           </div>
           <div className="text-left">
             <p className="font-bold text-slate-900">{receiver.name}</p>
@@ -561,15 +600,15 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
           </div>
         </div>
       </motion.div>
-  }
+    }
 
     {/* Success Message */}
     <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ delay: 0.2 }}
-    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
-    
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
+
       <p className="text-sm text-green-900 leading-relaxed">
         <strong>Congratulations!</strong> Your account is now fully activated. Access all features and start receiving help.
       </p>
@@ -577,14 +616,14 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
 
     {/* Next Help Button (if eligible) */}
     {showNextHelp &&
-  <button
-    onClick={onNextHelp}
-    className="w-full py-4 px-6 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
-    
+      <button
+        onClick={onNextHelp}
+        className="w-full py-4 px-6 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
+
         <FiUser className="w-5 h-5" />
         Send Next Help
       </button>
-  }
+    }
   </motion.div>;
 
 
@@ -630,7 +669,7 @@ const SendHelpRefactored = () => {
     if (unsubHelpRef.current) {
       try {
         unsubHelpRef.current();
-      } catch (_) {}
+      } catch (_) { }
     }
 
     const unsub = listenToHelpStatus(helpId, (docData) => {
@@ -643,6 +682,18 @@ const SendHelpRefactored = () => {
         lastPaymentRequestAt: docData.lastPaymentRequestAt,
         fullData: docData
       }));
+
+      const status = normalizeStatus(docData.status);
+      const isFinalized = [HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED, HELP_STATUS.COMPLETED].includes(status);
+
+      // If help is finalized, do not update receiver details to prevent flash of receiver card
+      if (isFinalized) {
+        setHelpStatus(status);
+        setHelpData(docData);
+        setReceiver(null); // Explicitly clear receiver for finalized help
+        updateUIState(status, false, false, false, 'ALREADY_ACTIVATED', false);
+        return;
+      }
 
       setHelpData(docData);
       setHelpStatus(docData.status);
@@ -684,10 +735,28 @@ const SendHelpRefactored = () => {
     setErrorType(null);
 
     try {
+      // FETCH FRESH USER DATA - Do not rely on context or cache
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+
       // Check for existing help
-      const status = await getUserHelpStatus(auth.currentUser.uid);
-      if (status?.activeSendHelp?.id) {
-        attachHelpListener(status.activeSendHelp.id);
+      const statusResult = await getUserHelpStatus(auth.currentUser.uid);
+
+      // HARD GUARD: If user is already activated according to document flags
+      const userLevel = normalizeLevel({ level: userData?.level || userData?.levelStatus });
+      if (statusResult.isAlreadyActivated || (userLevel === 'Star' && userData?.starSendHelpDone === true)) {
+        console.log('[SendHelp] User already activated detected via statusResult, aborting');
+        setErrorType('ALREADY_ACTIVATED');
+        setReceiver(null);
+        setTransactionId(null);
+        setHelpData(null);
+        updateUIState(null, false, false, false, 'ALREADY_ACTIVATED', false);
+        return;
+      }
+
+      if (statusResult?.activeSendHelp?.id) {
+        attachHelpListener(statusResult.activeSendHelp.id);
         return;
       }
 
@@ -700,12 +769,15 @@ const SendHelpRefactored = () => {
     } catch (err) {
       console.error(String('Error in initialize:') + " " + String(err));
 
-      // Check if this is a business case (no receivers available)
-      if (err?.isBusinessCase === true ||
-      err?.isNoReceiver === true ||
-      err?.code === 'functions/failed-precondition' ||
-      err?.message?.includes('NO_ELIGIBLE_RECEIVER') ||
-      err?.message?.includes('No eligible receivers available')) {
+      // Check if this is a business case (no receivers available or already activated)
+      if (err?.reason === 'ALREADY_ACTIVATED' || err?.message?.includes('ALREADY_ACTIVATED')) {
+        setErrorType('ALREADY_ACTIVATED');
+        updateUIState(null, false, false, false, 'ALREADY_ACTIVATED', false);
+      } else if (err?.isBusinessCase === true ||
+        err?.isNoReceiver === true ||
+        err?.code === 'functions/failed-precondition' ||
+        err?.message?.includes('NO_ELIGIBLE_RECEIVER') ||
+        err?.message?.includes('No eligible receivers available')) {
         // This is a valid business case, not an error
         setError(null);
         setErrorType('NO_ELIGIBLE_RECEIVER');
@@ -757,6 +829,12 @@ const SendHelpRefactored = () => {
   const handleSendHelpFlowComplete = (finalHelpData) => {
     // Update the UI state to show completion
     setShowSendHelpFlow(false);
+
+    // Clear receiver state immediately to prevent stale UI
+    setReceiver(null);
+    setTransactionId(null);
+    setHelpData(null);
+
     setUIState(UI_STATES.COMPLETED);
     toast.success('Payment confirmed! Your account is activated!');
     // Optionally refresh or navigate
@@ -829,18 +907,58 @@ const SendHelpRefactored = () => {
     }
   }, [paymentRequestHelp?.id]);
 
-  // Auth state listener
+  // Combined Auth and REAL-TIME User Document listener
   useEffect(() => {
+    let unsubscribeUser = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Cleanup previous user listener if any
+      if (unsubscribeUser) {
+        unsubscribeUser();
+        unsubscribeUser = null;
+      }
+
       if (!user) {
         setUIState(UI_STATES.INITIALIZING);
         initStartedRef.current = false;
         return;
       }
-      initialize();
+
+      // Start listening to the source of truth: THE USER DOCUMENT
+      unsubscribeUser = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+        if (!snap.exists()) return;
+
+        const userData = snap.data();
+
+        // CRITICAL: Star level business rule - check if already activated IN REAL TIME
+        const currentLevel = userData.level || userData.levelStatus;
+        if (currentLevel === 'Star' && userData.starSendHelpDone === true) {
+          console.log('[SendHelp] Star user REAL-TIME activated detected');
+
+          // Force clear ALL state IMMEDIATELY - no stale data allowed
+          setReceiver(null);
+          setTransactionId(null);
+          setHelpData(null);
+          setShowSendHelpFlow(false);
+          setErrorType('ALREADY_ACTIVATED');
+          setUIState(UI_STATES.ALREADY_ACTIVATED);
+
+          // Mark as initialized so no redundant API calls happen
+          initStartedRef.current = true;
+          return;
+        }
+
+        // Check if we need to initialize (only once per session or when state resets)
+        if (!initStartedRef.current) {
+          initialize();
+        }
+      });
     });
 
-    return unsubscribeAuth;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeUser) unsubscribeUser();
+    };
   }, []);
 
   // Cleanup
@@ -849,7 +967,7 @@ const SendHelpRefactored = () => {
       if (unsubHelpRef.current) {
         try {
           unsubHelpRef.current();
-        } catch (_) {}
+        } catch (_) { }
       }
     };
   }, []);
@@ -881,8 +999,34 @@ const SendHelpRefactored = () => {
 
   }
 
-  // Render based on UI state
+  // Render based on UI state - PRIORITY DRIVEN
   const renderUIState = () => {
+    // 1. HIGHEST PRIORITY: Activation status and UI Hard Guard
+    const userLevel = normalizeLevel({ level: currentUser?.level || currentUser?.levelStatus });
+    const isActuallyActivated = currentUser?.isActivated === true || (userLevel === 'Star' && currentUser?.starSendHelpDone === true);
+
+    if (uiState === UI_STATES.ALREADY_ACTIVATED ||
+      isActuallyActivated ||
+      helpStatus === 'completed' ||
+      helpStatus === HELP_STATUS.COMPLETED ||
+      helpData?.status === 'completed') {
+      return <AlreadyActivatedState />;
+    }
+
+    // 2. ERROR HANDLING
+    if (uiState === UI_STATES.ERROR) {
+      return <ErrorState
+        error={error}
+        onRetry={handleRetry}
+        isRetrying={isRetrying} />;
+    }
+
+    // 3. NO RECEIVERS AVAILABLE
+    if (uiState === UI_STATES.NO_RECEIVER_AVAILABLE) {
+      return <NoReceiverAvailableState />;
+    }
+
+    // 4. FLOW STATES
     switch (uiState) {
       case UI_STATES.INITIALIZING:
         return <InitializingState />;
@@ -890,16 +1034,17 @@ const SendHelpRefactored = () => {
       case UI_STATES.WAITING_FOR_RECEIVER:
         return <WaitingForReceiverState />;
 
-      case UI_STATES.NO_RECEIVER_AVAILABLE:
-        return <NoReceiverAvailableState />;
-
-      case UI_STATES.ERROR:
-        return <ErrorState error={error} onRetry={handleRetry} isRetrying={isRetrying} />;
-
       case UI_STATES.SEND_HELP_FLOW:
         return null; // Flow is rendered separately above
 
-      case UI_STATES.RECEIVER_ASSIGNED:
+      case UI_STATES.RECEIVER_ASSIGNED: {
+        const status = normalizeStatus(helpStatus);
+        const isActive = [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED].includes(status);
+
+        if (!isActive || !receiver) {
+          return <InitializingState />;
+        }
+
         return (
           <ReceiverAssignedState
             receiver={receiver}
@@ -908,37 +1053,39 @@ const SendHelpRefactored = () => {
             onPaymentClick={handlePayNowClick}
             showChat={showChat}
             setShowChat={setShowChat}
-            transactionId={transactionId} />);
+            transactionId={transactionId} />
+        );
+      }
 
+      case UI_STATES.PAYMENT_SUBMITTED: {
+        const status = normalizeStatus(helpStatus);
+        if (status !== HELP_STATUS.PAYMENT_DONE || !receiver) {
+          return <InitializingState />;
+        }
 
-
-      case UI_STATES.PAYMENT_SUBMITTED:
         return (
           <PaymentSubmittedState
             receiver={receiver}
             helpData={helpData}
             showChat={showChat}
             setShowChat={setShowChat}
-            transactionId={transactionId} />);
-
-
+            transactionId={transactionId} />
+        );
+      }
 
       case UI_STATES.COMPLETED:
-        return (
-          <CompletedState
-            receiver={receiver}
-            showNextHelp={currentUser?.isActivated}
-            onNextHelp={() => {
-              // Reset for next help
-              setHelpStatus(null);
-              setReceiver(null);
-              setTransactionId(null);
-              setHelpData(null);
-              initStartedRef.current = false;
-              initialize();
-            }} />);
-
-
+        return <CompletedState
+          receiver={receiver}
+          showNextHelp={currentUser?.isActivated}
+          onNextHelp={() => {
+            // Reset for next help
+            setHelpStatus(null);
+            setReceiver(null);
+            setTransactionId(null);
+            setHelpData(null);
+            initStartedRef.current = false;
+            initialize();
+          }} />;
 
       default:
         return <InitializingState />;
@@ -953,7 +1100,7 @@ const SendHelpRefactored = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 text-center">
-          
+
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Send Help</h1>
           <p className="text-slate-600">Complete your payment to activate your account</p>
         </motion.div>
@@ -966,52 +1113,54 @@ const SendHelpRefactored = () => {
         </AnimatePresence>
       </div>
 
-      {/* Payment Modal - Show receiver's payment methods */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => {
-          setShowPaymentModal(false);
-          setShowPaymentConfirmation(false);
-          setShowPaymentProofForm(false);
-        }}
-        receiver={receiver}
-        paymentDetails={helpData?.paymentDetails}
-        onProceed={handlePaymentMethodsConfirm}
-        isProceedLoading={false} />
-      
-
-      {/* Payment Confirmation Dialog - Ask "Are you sure?" */}
-      <PaymentDoneConfirmation
-        isOpen={showPaymentConfirmation && !showPaymentProofForm}
-        onConfirm={handlePaymentConfirmationConfirm}
-        onCancel={() => setShowPaymentConfirmation(false)}
-        isLoading={false}
-        receiver={receiver} />
-      
-
-      {/* Payment Proof Form - Upload screenshot and UTR */}
-      <AnimatePresence>
-        {showPaymentProofForm &&
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <PaymentProofForm
-            onSubmit={handlePaymentProofSubmit}
-            onBack={() => setShowPaymentProofForm(false)}
-            isSubmitting={isSubmitting}
+      {/* Modals - Strictly Gated by UI State */}
+      {uiState !== UI_STATES.ALREADY_ACTIVATED && (
+        <>
+          {/* Payment Modal */}
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setShowPaymentConfirmation(false);
+              setShowPaymentProofForm(false);
+            }}
             receiver={receiver}
-            paymentAmount={300} />
-          
-          </div>
-        }
-      </AnimatePresence>
+            paymentDetails={helpData?.paymentDetails}
+            onProceed={handlePaymentMethodsConfirm}
+            isProceedLoading={false} />
 
-      {/* Payment Request Popup */}
-      <PaymentRequestPopup
-        isOpen={paymentRequestHelp !== null}
-        onClose={handlePaymentRequestPopupClose}
-        onPay={handlePaymentRequestPopupPay}
-        receiver={receiver}
-        helpData={paymentRequestHelp} />
-      
+          {/* Payment Confirmation Dialog */}
+          <PaymentDoneConfirmation
+            isOpen={showPaymentConfirmation && !showPaymentProofForm}
+            onConfirm={handlePaymentConfirmationConfirm}
+            onCancel={() => setShowPaymentConfirmation(false)}
+            isLoading={false}
+            receiver={receiver} />
+
+          {/* Payment Proof Form */}
+          <AnimatePresence>
+            {showPaymentProofForm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                <PaymentProofForm
+                  onSubmit={handlePaymentProofSubmit}
+                  onBack={() => setShowPaymentProofForm(false)}
+                  isSubmitting={isSubmitting}
+                  receiver={receiver}
+                  paymentAmount={300} />
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Payment Request Popup */}
+          <PaymentRequestPopup
+            isOpen={paymentRequestHelp !== null}
+            onClose={handlePaymentRequestPopupClose}
+            onPay={handlePaymentRequestPopupPay}
+            receiver={receiver}
+            helpData={paymentRequestHelp} />
+        </>
+      )}
+
 
     </div>);
 
@@ -1031,14 +1180,14 @@ const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => 
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
         onClick={onClose}>
-        
+
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
           onClick={(e) => e.stopPropagation()}>
-          
+
           {/* Alert Icon */}
           <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FiAlertTriangle className="w-8 h-8 text-orange-600" />
@@ -1057,7 +1206,7 @@ const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => 
             <button
               onClick={onClose}
               className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors">
-              
+
               Later
             </button>
             <motion.button
@@ -1065,7 +1214,7 @@ const PaymentRequestPopup = ({ isOpen, onClose, onPay, receiver, helpData }) => 
               whileTap={{ scale: 0.98 }}
               onClick={onPay}
               className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors">
-              
+
               Pay Now
             </motion.button>
           </div>

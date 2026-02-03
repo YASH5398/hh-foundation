@@ -282,6 +282,22 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
     };
 
     const senderRef = db.collection('users').doc(senderUid);
+
+    // MANDATORY BACKEND GUARD: Star level users can only send help once
+    const senderSnapForGuard = await senderRef.get();
+    if (senderSnapForGuard.exists) {
+      const sData = senderSnapForGuard.data();
+      const sLevel = normalizeLevelName(sData.level || sData.levelStatus);
+      if (sLevel === 'Star' && sData.starSendHelpDone === true) {
+        console.warn(`[startHelpAssignment] BLOCKED: Star user ${senderUid} attempted re-assignment after activation (starSendHelpDone=true)`);
+        return {
+          state: 'ALREADY_ACTIVATED',
+          success: false,
+          message: 'Your account is already activated.'
+        };
+      }
+    }
+
     const idempotencyRef = db.collection('helpIdempotency').doc(`${senderUid}_${idempotencyKey}`);
 
     const result = await db.runTransaction(async (tx) => {
@@ -405,6 +421,21 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         isEmpty: receiverSnap.empty
       });
 
+      // EXCLUSION: Fetch all receivers this sender has already assisted
+      const previouslyHelpedQuery = db.collection('sendHelp')
+        .where('senderUid', '==', senderUid)
+        .where('status', 'in', [HELP_STATUSES.CONFIRMED, HELP_STATUSES.FORCE_CONFIRMED]);
+
+      let previouslyHelpedSnap;
+      try {
+        previouslyHelpedSnap = await tx.get(previouslyHelpedQuery);
+      } catch (e) {
+        safeThrowInternal(e, { step: 'tx.get.previouslyHelpedQuery' });
+      }
+
+      const excludedReceiverUids = new Set(previouslyHelpedSnap.docs.map(d => d.data().receiverUid));
+      excludedReceiverUids.add(senderUid); // Also exclude self
+
       // Post-fetch processing with shared eligibility logic
       let receiversToCheck = receiverSnap.docs
         .map(doc => ({
@@ -418,13 +449,20 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
             isBlocked: normalizeBoolean(doc.data()?.isBlocked),
             isReceivingHeld: normalizeBoolean(doc.data()?.isReceivingHeld),
             referralCount: normalizeNumber(doc.data()?.referralCount, 0),
+            helpReceived: normalizeNumber(doc.data()?.helpReceived, 0),
+            activeReceiveCount: normalizeNumber(doc.data()?.activeReceiveCount, 0),
             level: normalizeLevelName(doc.data()?.level || doc.data()?.levelStatus)
           }
         }))
         // Apply shared eligibility logic
         .filter(u => isReceiverEligibleStrict(u.data))
-        // Exclude sender UID
-        .filter(u => u.id !== senderUid)
+        // NEW: Exclude receivers who already reached their helpReceived limit for the current level
+        .filter(u => {
+          const limit = getTotalHelpsByLevel(u._normalized.level);
+          return u._normalized.helpReceived < limit;
+        })
+        // NEW: Exclude receivers this sender has already confirmed help to
+        .filter(u => !excludedReceiverUids.has(u.id))
         // Exclude system accounts
         .filter(u => u.data?.isSystemAccount !== true)
         // Sort by referralCount DESC
@@ -438,13 +476,13 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       console.log('[startHelpAssignment] receiver.filtering', {
         afterQuery: receiverSnap.size,
         afterEligibilityCheck: afterNormalization,
-        senderExcluded: receiverSnap.docs.some(d => d.id === senderUid) ? true : false
+        senderExcluded: excludedReceiverUids.has(senderUid),
+        previouslyAssistedExcluded: excludedReceiverUids.size - 1
       });
 
       let chosenReceiverRef = null;
       let chosenReceiver = null;
       let chosenReceiverUid = null;
-      let fallbackUsed = false;
 
       // Pick first receiver if any
       if (receiversToCheck.length > 0) {
@@ -457,7 +495,8 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
           selectedUid: chosen.id,
           userId: chosen.data?.userId || null,
           referralCount: chosen._normalized.referralCount,
-          level: chosen._normalized.level
+          level: chosen._normalized.level,
+          helpReceived: chosen._normalized.helpReceived
         });
       }
 
@@ -994,18 +1033,6 @@ exports.receiverResolvePayment = httpsOnCall(async (request) => {
       tx.update(receiveRef, patch);
 
       await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid: r.receiverUid });
-
-      // OPTIMIZATION: Activate sender if this is their first confirmed help
-      const senderRef = db.collection('users').doc(s.senderUid);
-      const senderSnap = await tx.get(senderRef);
-      if (senderSnap.exists && senderSnap.data().isActivated !== true) {
-        tx.update(senderRef, {
-          isActivated: true,
-          activatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          level: 'Star', // Ensure level is set
-          levelStatus: 'active'
-        });
-      }
     }
 
     if (action === 'dispute') {
@@ -1128,18 +1155,6 @@ exports.adminForceConfirm = httpsOnCall(async (request) => {
     tx.update(receiveRef, patch);
 
     await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid: r.receiverUid });
-
-    // OPTIMIZATION: Activate sender if this is their first confirmed help (Admin Force)
-    const senderRef = db.collection('users').doc(s.senderUid);
-    const senderSnap = await tx.get(senderRef);
-    if (senderSnap.exists && senderSnap.data().isActivated !== true) {
-      tx.update(senderRef, {
-        isActivated: true,
-        activatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        level: 'Star',
-        levelStatus: 'active'
-      });
-    }
   });
 
   await writeAdminActionLog({ actionType: 'force_confirm', helpId, performedBy, reason });
@@ -1492,44 +1507,101 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
       if (![HELP_STATUSES.CONFIRMED, HELP_STATUSES.FORCE_CONFIRMED].includes(r.status)) return;
 
       const userRef = db.collection('users').doc(receiverUid);
-      const userSnap = await tx.get(userRef);
+      const senderRef = db.collection('users').doc(after.senderUid);
+      const [userSnap, senderSnap] = await Promise.all([tx.get(userRef), tx.get(senderRef)]);
+
       if (!userSnap.exists) {
         tx.update(receiveRef, { incomeProcessed: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         tx.update(sendRef, { incomeProcessed: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         return;
       }
+
       const userData = userSnap.data();
       const prevHelpReceived = userData.helpReceived || 0;
       const nextHelpReceived = prevHelpReceived + 1;
 
       const receiverUpdate = {
         helpReceived: nextHelpReceived,
+        lastHelpAt: admin.firestore.FieldValue.serverTimestamp(),
         totalReceived: (userData.totalReceived || 0) + (r.amount || 0)
       };
 
       // Apply blocking logic using shared MLM core - UNIFIED FLAGS ONLY
-      const userWithNewCount = { ...userData, level: userData.level || userData.levelStatus, helpReceived: nextHelpReceived };
+      const userLevel = normalizeLevel({ level: userData.level || userData.levelStatus });
+      const userWithNewCount = { ...userData, level: userLevel, helpReceived: nextHelpReceived };
+
       if (isIncomeBlocked(userWithNewCount)) {
         receiverUpdate.isReceivingHeld = true;
         receiverUpdate.isOnHold = true;
-
-        // REMOVED: upgradeRequired and sponsorPaymentPending flags
-        // These are handled by external payment systems, not help eligibility
       }
 
-      if (nextHelpReceived >= getTotalHelpsByLevel(userData.level || userData.levelStatus)) {
+      if (nextHelpReceived >= getTotalHelpsByLevel(userLevel)) {
         receiverUpdate.levelStatus = 'completed';
       }
 
       tx.update(userRef, receiverUpdate);
 
-      const processedPatch = {
-        incomeProcessed: true,
-        incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      };
-      tx.update(receiveRef, processedPatch);
-      tx.update(sendRef, processedPatch);
+      // Ensure sender is activated - Centralized logic
+      if (senderSnap.exists) {
+        const senderData = senderSnap.data();
+        const senderUpdate = {};
+        const senderLvl = normalizeLevel({ level: senderData.level || senderData.levelStatus });
+
+        // Requirements: Set activated and starSendHelpDone
+        if (senderData.isActivated !== true) {
+          senderUpdate.isActivated = true;
+          senderUpdate.activatedAt = admin.firestore.FieldValue.serverTimestamp();
+          senderUpdate.level = senderData.level || 'Star';
+          senderUpdate.levelStatus = 'active';
+        }
+
+        // Star level users must have starSendHelpDone set to true after their first help is confirmed
+        if (senderLvl === 'Star' && senderData.starSendHelpDone !== true) {
+          senderUpdate.starSendHelpDone = true;
+          // Ensure activation too just in case
+          senderUpdate.isActivated = true;
+        }
+
+        if (Object.keys(senderUpdate).length > 0) {
+          tx.update(senderRef, senderUpdate);
+        }
+
+        // NEW: Star level business rule - mark help as 'completed' 
+        // This prevents the confirmed help from appearing as "active" in the UI
+        if (senderLvl === 'Star') {
+          console.log(`[onReceiveHelpStatusProcessed] Star level detected for sender ${after.senderUid}, setting status to completed`);
+          const starProcessedPatch = {
+            status: 'completed',
+            completedAt: admin.firestore.FieldValue.serverTimestamp(),
+            completedBy: 'system_star_auto_transition',
+            incomeProcessed: true,
+            incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          };
+          tx.update(receiveRef, starProcessedPatch);
+          tx.update(sendRef, starProcessedPatch);
+          console.log(`[onReceiveHelpStatusProcessed] Successfully completed help ${helpId} for Star user`);
+        } else {
+          // For other levels, we can still use confirmed
+          const standardProcessedPatch = {
+            incomeProcessed: true,
+            incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          };
+          tx.update(receiveRef, standardProcessedPatch);
+          tx.update(sendRef, standardProcessedPatch);
+        }
+      } else {
+        // Fallback if sender doesn't exist
+        const processedPatch = {
+          incomeProcessed: true,
+          incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        tx.update(receiveRef, processedPatch);
+        tx.update(sendRef, processedPatch);
+      }
+      console.log(`[onReceiveHelpStatusProcessed] Successfully processed income for help ${helpId}`);
     });
   } catch (e) {
     console.error('[onReceiveHelpStatusProcessed] Error:', e);

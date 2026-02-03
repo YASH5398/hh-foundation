@@ -12,7 +12,8 @@ export const HELP_STATUS = {
   TIMEOUT: 'timeout',
   CANCELLED: 'cancelled',
   DISPUTED: 'disputed',
-  FORCE_CONFIRMED: 'force_confirmed'
+  FORCE_CONFIRMED: 'force_confirmed',
+  COMPLETED: 'completed'
 };
 
 export const HELP_STATUS_LABELS = {
@@ -23,7 +24,8 @@ export const HELP_STATUS_LABELS = {
   [HELP_STATUS.TIMEOUT]: 'Timeout',
   [HELP_STATUS.CANCELLED]: 'Cancelled',
   [HELP_STATUS.DISPUTED]: 'Disputed',
-  [HELP_STATUS.FORCE_CONFIRMED]: 'Force Confirmed'
+  [HELP_STATUS.FORCE_CONFIRMED]: 'Force Confirmed',
+  [HELP_STATUS.COMPLETED]: 'Completed'
 };
 
 /**
@@ -37,7 +39,7 @@ export const isActiveStatus = (status) => {
  * Check if a status is completed
  */
 export const isCompletedStatus = (status) => {
-  return [HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED, HELP_STATUS.CANCELLED, HELP_STATUS.TIMEOUT].includes(status);
+  return [HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED, HELP_STATUS.CANCELLED, HELP_STATUS.TIMEOUT, HELP_STATUS.COMPLETED].includes(status);
 };
 
 /**
@@ -65,7 +67,7 @@ export const canConfirmPayment = (status) => {
  * Check if a status is confirmed
  */
 export const isConfirmedStatus = (status) => {
-  return status === HELP_STATUS.CONFIRMED;
+  return status === HELP_STATUS.CONFIRMED || status === HELP_STATUS.COMPLETED;
 };
 
 /**
@@ -96,6 +98,7 @@ export const normalizeStatus = (status) => {
     case 'disputed': return HELP_STATUS.DISPUTED;
     case 'forceconfirmed':
     case 'force_confirmed': return HELP_STATUS.FORCE_CONFIRMED;
+    case 'completed': return HELP_STATUS.COMPLETED;
     default: return HELP_STATUS.ASSIGNED;
   }
 };
