@@ -89,7 +89,7 @@ class NotificationPreferencesService {
         return defaults;
       }
     } catch (error) {
-      console.error('Error getting user preferences:', error);
+      console.error(String('Error getting user preferences:') + " " + String(error));
       return this.getDefaultPreferences();
     }
   }
@@ -111,7 +111,7 @@ class NotificationPreferencesService {
       console.log('User preferences saved successfully');
       return { success: true };
     } catch (error) {
-      console.error('Error saving user preferences:', error);
+      console.error(String('Error saving user preferences:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -131,7 +131,7 @@ class NotificationPreferencesService {
       await updateDoc(userPrefsRef, updateData);
       return { success: true };
     } catch (error) {
-      console.error('Error updating preference:', error);
+      console.error(String('Error updating preference:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -146,7 +146,7 @@ class NotificationPreferencesService {
   deepMerge(target, source) {
     const result = { ...target };
 
-    Object.keys(source).forEach(key => {
+    Object.keys(source).forEach((key) => {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.deepMerge(target[key] || {}, source[key]);
       } else {
@@ -196,7 +196,7 @@ class NotificationPreferencesService {
       };
 
     } catch (error) {
-      console.error('Error checking notification preferences:', error);
+      console.error(String('Error checking notification preferences:') + " " + String(error));
       return { send: true, sound: true, push: true }; // Default to sending
     }
   }
@@ -229,7 +229,7 @@ class NotificationPreferencesService {
       const defaults = this.getDefaultPreferences();
       return await this.saveUserPreferences(userId, defaults);
     } catch (error) {
-      console.error('Error resetting preferences:', error);
+      console.error(String('Error resetting preferences:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -244,7 +244,7 @@ class NotificationPreferencesService {
         exportedAt: new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error exporting preferences:', error);
+      console.error(String('Error exporting preferences:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -261,7 +261,7 @@ class NotificationPreferencesService {
       const mergedPrefs = this.mergeWithDefaults(preferencesData);
       return await this.saveUserPreferences(userId, mergedPrefs);
     } catch (error) {
-      console.error('Error importing preferences:', error);
+      console.error(String('Error importing preferences:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -272,8 +272,8 @@ class NotificationPreferencesService {
       const prefs = await this.getUserPreferences(userId);
 
       const stats = {
-        enabledCategories: Object.entries(prefs.categories)
-          .filter(([_, config]) => config.enabled).length,
+        enabledCategories: Object.entries(prefs.categories).
+        filter(([_, config]) => config.enabled).length,
         totalCategories: Object.keys(prefs.categories).length,
         soundEnabled: prefs.global.soundEnabled,
         pushEnabled: prefs.global.pushEnabled,
@@ -283,7 +283,7 @@ class NotificationPreferencesService {
 
       return { success: true, stats };
     } catch (error) {
-      console.error('Error getting preference stats:', error);
+      console.error(String('Error getting preference stats:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }

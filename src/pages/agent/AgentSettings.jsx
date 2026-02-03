@@ -59,7 +59,7 @@ const AgentSettings = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching agent settings:', error);
+      console.error(String('Error fetching agent settings:') + " " + String(error));
       toast.error('Failed to load settings');
     } finally {
       setLoading(false);
@@ -68,14 +68,14 @@ const AgentSettings = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       [name]: value
     }));
   };
 
   const handleNotificationChange = (key) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       notifications: {
         ...prev.notifications,
@@ -85,7 +85,7 @@ const AgentSettings = () => {
   };
 
   const handlePreferenceChange = (key, value) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       preferences: {
         ...prev.preferences,
@@ -112,7 +112,7 @@ const AgentSettings = () => {
 
       toast.success('Settings saved successfully!');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error(String('Error saving settings:') + " " + String(error));
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
@@ -125,8 +125,8 @@ const AgentSettings = () => {
         <div className="relative">
           <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -135,8 +135,8 @@ const AgentSettings = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
+        className="flex items-center justify-between">
+        
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
             <span className="p-2 bg-indigo-600/10 rounded-xl border border-indigo-600/20">
@@ -149,13 +149,13 @@ const AgentSettings = () => {
         <button
           onClick={handleSaveSettings}
           disabled={saving}
-          className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? (
-            <LoadingSpinner size="sm" className="mr-2" />
-          ) : (
-            <FiSave className="w-4 h-4 mr-2" />
-          )}
+          className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          
+          {saving ?
+          <LoadingSpinner size="sm" className="mr-2" /> :
+
+          <FiSave className="w-4 h-4 mr-2" />
+          }
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </motion.div>
@@ -175,8 +175,8 @@ const AgentSettings = () => {
                   value={settings.displayName}
                   onChange={handleInputChange}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
-                  placeholder="Agent Name"
-                />
+                  placeholder="Agent Name" />
+                
               </InputGroup>
 
               <InputGroup label="Email Address">
@@ -186,8 +186,8 @@ const AgentSettings = () => {
                     type="email"
                     value={settings.email}
                     disabled
-                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-slate-400 font-mono text-sm cursor-not-allowed"
-                  />
+                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-slate-400 font-mono text-sm cursor-not-allowed" />
+                  
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1.5 ml-1">Contact admin to change email</p>
               </InputGroup>
@@ -201,8 +201,8 @@ const AgentSettings = () => {
                     value={settings.phoneNumber}
                     onChange={handleInputChange}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
-                    placeholder="+1 (555) 000-0000"
-                  />
+                    placeholder="+1 (555) 000-0000" />
+                  
                 </div>
               </InputGroup>
             </div>
@@ -216,8 +216,8 @@ const AgentSettings = () => {
                   <select
                     value={settings.preferences.language}
                     onChange={(e) => handlePreferenceChange('language', e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
-                  >
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer">
+                    
                     <option value="en">English</option>
                     <option value="es">Spanish</option>
                     <option value="fr">French</option>
@@ -231,8 +231,8 @@ const AgentSettings = () => {
                     <select
                       value={settings.preferences.theme}
                       onChange={(e) => handlePreferenceChange('theme', e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
-                    >
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer">
+                      
                       <option value="light">Light</option>
                       <option value="dark">Dark</option>
                       <option value="auto">Auto</option>
@@ -245,8 +245,8 @@ const AgentSettings = () => {
                 <select
                   value={settings.preferences.timezone}
                   onChange={(e) => handlePreferenceChange('timezone', e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
-                >
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer">
+                  
                   <option value="UTC">UTC (Coordinated Universal Time)</option>
                   <option value="America/New_York">Eastern Time (US & Canada)</option>
                   <option value="America/Chicago">Central Time (US & Canada)</option>
@@ -269,26 +269,26 @@ const AgentSettings = () => {
                 label="Email Alerts"
                 desc="Receive critical updates via email"
                 active={settings.notifications.emailNotifications}
-                onClick={() => handleNotificationChange('emailNotifications')}
-              />
+                onClick={() => handleNotificationChange('emailNotifications')} />
+              
               <ToggleItem
                 label="Push Notifications"
                 desc="Browser alerts for real-time events"
                 active={settings.notifications.pushNotifications}
-                onClick={() => handleNotificationChange('pushNotifications')}
-              />
+                onClick={() => handleNotificationChange('pushNotifications')} />
+              
               <ToggleItem
                 label="Assignment Alerts"
                 desc="Notify when tickets are assigned to me"
                 active={settings.notifications.ticketAssignments}
-                onClick={() => handleNotificationChange('ticketAssignments')}
-              />
+                onClick={() => handleNotificationChange('ticketAssignments')} />
+              
               <ToggleItem
                 label="Escalation Protocols"
                 desc="High priority alerts for escalated issues"
                 active={settings.notifications.escalations}
-                onClick={() => handleNotificationChange('escalations')}
-              />
+                onClick={() => handleNotificationChange('escalations')} />
+              
             </div>
           </Section>
 
@@ -307,18 +307,18 @@ const AgentSettings = () => {
           </Section>
         </div>
       </form>
-    </div>
-  );
+    </div>);
+
 };
 
 /* --- Styled Components --- */
 
-const Section = ({ title, icon: Icon, children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-[2rem] p-8"
-  >
+const Section = ({ title, icon: Icon, children }) =>
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-[2rem] p-8">
+  
     <div className="flex items-center gap-3 mb-6">
       <div className="p-2 bg-slate-800/50 rounded-lg text-slate-400">
         <Icon className="w-5 h-5" />
@@ -326,23 +326,23 @@ const Section = ({ title, icon: Icon, children }) => (
       <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
     </div>
     {children}
-  </motion.div>
-);
+  </motion.div>;
 
-const InputGroup = ({ label, children }) => (
-  <div>
+
+const InputGroup = ({ label, children }) =>
+<div>
     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
       {label}
     </label>
     {children}
-  </div>
-);
+  </div>;
 
-const ToggleItem = ({ label, desc, active, onClick }) => (
-  <div
-    onClick={onClick}
-    className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-800/30 transition-colors cursor-pointer group"
-  >
+
+const ToggleItem = ({ label, desc, active, onClick }) =>
+<div
+  onClick={onClick}
+  className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-800/30 transition-colors cursor-pointer group">
+  
     <div className="flex-1">
       <p className="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors">{label}</p>
       <p className="text-xs text-slate-500 font-medium">{desc}</p>
@@ -350,7 +350,7 @@ const ToggleItem = ({ label, desc, active, onClick }) => (
     <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${active ? 'bg-blue-600' : 'bg-slate-700'}`}>
       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${active ? 'left-7' : 'left-1'}`} />
     </div>
-  </div>
-);
+  </div>;
+
 
 export default AgentSettings;

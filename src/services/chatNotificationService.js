@@ -21,7 +21,7 @@ export const sendChatNotification = async (recipientId, senderId, senderName, me
     // Client-side push sending removed. Server should send push notifications.
     return false;
   } catch (error) {
-    console.error('Error sending chat notification:', error);
+    console.error(String('Error sending chat notification:') + " " + String(error));
     return false;
   }
 };
@@ -37,7 +37,7 @@ export const sendOnlineNotification = async (userId, userName, friendIds) => {
     // Client-side push sending removed. Server should send push notifications.
     return;
   } catch (error) {
-    console.error('Error sending online notifications:', error);
+    console.error(String('Error sending online notifications:') + " " + String(error));
   }
 };
 
@@ -52,7 +52,7 @@ export const sendTestNotification = async (token, title = 'Test Notification', b
     // Client-side push sending removed. Server should send push notifications.
     return false;
   } catch (error) {
-    console.error('Error sending test notification:', error);
+    console.error(String('Error sending test notification:') + " " + String(error));
     return false;
   }
 };

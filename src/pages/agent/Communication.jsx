@@ -7,19 +7,19 @@ import {
   createAgentChat,
   subscribeToAgentChats,
   subscribeToChatMessages,
-  sendMessage
-} from '../../services/agentAdminChatService';
+  sendMessage } from
+'../../services/agentAdminChatService';
 import { toast } from 'react-hot-toast';
 
 const ISSUE_TYPES = [
-  'Send Help',
-  'Receive Help',
-  'E-PIN',
-  'Account Related',
-  'Leaderboard',
-  'Upcoming Payment',
-  'Other'
-];
+'Send Help',
+'Receive Help',
+'E-PIN',
+'Account Related',
+'Leaderboard',
+'Upcoming Payment',
+'Other'];
+
 
 const Communication = () => {
   const { currentUser } = useAgentAuth();
@@ -80,7 +80,7 @@ const Communication = () => {
       setShowNewChatModal(false);
       setNewChatForm({ issueType: '', message: '', context: '' });
     } catch (error) {
-      console.error('Error creating chat:', error);
+      console.error(String('Error creating chat:') + " " + String(error));
       toast.error('Failed to create chat');
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ const Communication = () => {
       await sendMessage(selectedChat.id, 'agent', replyText);
       setReplyText('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error(String('Error sending message:') + " " + String(error));
       toast.error('Failed to send message');
     }
   };
@@ -109,8 +109,8 @@ const Communication = () => {
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-lg border ${styles[status]}`}>
         {status.toUpperCase()}
-      </span>
-    );
+      </span>);
+
   };
 
   const formatTimestamp = (timestamp) => {
@@ -129,8 +129,8 @@ const Communication = () => {
           </div>
           <button
             onClick={() => setShowNewChatModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+            
             <FiPlus /> New Chat
           </button>
         </div>
@@ -139,34 +139,34 @@ const Communication = () => {
           <div className="lg:col-span-1 bg-slate-800/50 rounded-xl border border-slate-700/50 p-4">
             <h2 className="text-lg font-semibold text-white mb-4">Your Chats</h2>
             <div className="space-y-2">
-              {chats.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-8">No chats yet</p>
-              ) : (
-                chats.map((chat) => (
-                  <motion.div
-                    key={chat.id}
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => setSelectedChat(chat)}
-                    className={`p-4 rounded-lg cursor-pointer transition-all ${
-                      selectedChat?.id === chat.id
-                        ? 'bg-blue-600/20 border border-blue-500/30'
-                        : 'bg-slate-700/30 hover:bg-slate-700/50 border border-transparent'
-                    }`}
-                  >
+              {chats.length === 0 ?
+              <p className="text-slate-400 text-sm text-center py-8">No chats yet</p> :
+
+              chats.map((chat) =>
+              <motion.div
+                key={chat.id}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSelectedChat(chat)}
+                className={`p-4 rounded-lg cursor-pointer transition-all ${
+                selectedChat?.id === chat.id ?
+                'bg-blue-600/20 border border-blue-500/30' :
+                'bg-slate-700/30 hover:bg-slate-700/50 border border-transparent'}`
+                }>
+                
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-sm font-medium text-white">{chat.issueType}</span>
                       {getStatusBadge(chat.status)}
                     </div>
                     <p className="text-xs text-slate-400">{formatTimestamp(chat.createdAt)}</p>
                   </motion.div>
-                ))
-              )}
+              )
+              }
             </div>
           </div>
 
           <div className="lg:col-span-2 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col h-[600px]">
-            {selectedChat ? (
-              <>
+            {selectedChat ?
+            <>
                 <div className="p-4 border-b border-slate-700/50">
                   <div className="flex items-center justify-between">
                     <div>
@@ -178,18 +178,18 @@ const Communication = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
-                    >
+                  {messages.map((msg) =>
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.sender === 'agent' ? 'justify-end' : 'justify-start'}`}>
+                  
                       <div
-                        className={`max-w-[70%] rounded-lg p-3 ${
-                          msg.sender === 'agent'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-700 text-slate-200'
-                        }`}
-                      >
+                    className={`max-w-[70%] rounded-lg p-3 ${
+                    msg.sender === 'agent' ?
+                    'bg-blue-600 text-white' :
+                    'bg-slate-700 text-slate-200'}`
+                    }>
+                    
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-semibold">
                             {msg.sender === 'agent' ? 'You' : 'Admin'}
@@ -197,62 +197,62 @@ const Communication = () => {
                           <span className="text-xs opacity-70">{formatTimestamp(msg.createdAt)}</span>
                         </div>
                         <p className="text-sm">{msg.text}</p>
-                        {msg.context && (
-                          <p className="text-xs mt-2 opacity-80 border-t border-white/20 pt-2">
+                        {msg.context &&
+                    <p className="text-xs mt-2 opacity-80 border-t border-white/20 pt-2">
                             Context: {msg.context}
                           </p>
-                        )}
+                    }
                       </div>
                     </div>
-                  ))}
+                )}
                 </div>
 
-                {selectedChat.status !== 'closed' && (
-                  <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700/50">
+                {selectedChat.status !== 'closed' &&
+              <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700/50">
                     <div className="flex gap-2">
                       <input
-                        type="text"
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type your message..."
+                    className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  
                       <button
-                        type="submit"
-                        disabled={!replyText.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                      >
+                    type="submit"
+                    disabled={!replyText.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+                    
                         <FiSend /> Send
                       </button>
                     </div>
                   </form>
-                )}
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
+              }
+              </> :
+
+            <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <FiMessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-4" />
                   <p className="text-slate-400">Select a chat to view messages</p>
                 </div>
               </div>
-            )}
+            }
           </div>
         </div>
       </div>
 
-      {showNewChatModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {showNewChatModal &&
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full"
-          >
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full">
+          
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-white">New Chat with Admin</h3>
               <button
-                onClick={() => setShowNewChatModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
+              onClick={() => setShowNewChatModal(false)}
+              className="text-slate-400 hover:text-white">
+              
                 <FiX className="w-6 h-6" />
               </button>
             </div>
@@ -263,17 +263,17 @@ const Communication = () => {
                   Issue Type *
                 </label>
                 <select
-                  value={newChatForm.issueType}
-                  onChange={(e) => setNewChatForm({ ...newChatForm, issueType: e.target.value })}
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
+                value={newChatForm.issueType}
+                onChange={(e) => setNewChatForm({ ...newChatForm, issueType: e.target.value })}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required>
+                
                   <option value="">Select issue type</option>
-                  {ISSUE_TYPES.map((type) => (
-                    <option key={type} value={type}>
+                  {ISSUE_TYPES.map((type) =>
+                <option key={type} value={type}>
                       {type}
                     </option>
-                  ))}
+                )}
                 </select>
               </div>
 
@@ -282,13 +282,13 @@ const Communication = () => {
                   Message *
                 </label>
                 <textarea
-                  value={newChatForm.message}
-                  onChange={(e) => setNewChatForm({ ...newChatForm, message: e.target.value })}
-                  placeholder="Describe your issue..."
-                  rows="4"
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  required
-                />
+                value={newChatForm.message}
+                onChange={(e) => setNewChatForm({ ...newChatForm, message: e.target.value })}
+                placeholder="Describe your issue..."
+                rows="4"
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                required />
+              
               </div>
 
               <div>
@@ -296,36 +296,36 @@ const Communication = () => {
                   Additional Context (Optional)
                 </label>
                 <textarea
-                  value={newChatForm.context}
-                  onChange={(e) => setNewChatForm({ ...newChatForm, context: e.target.value })}
-                  placeholder="Any additional information..."
-                  rows="3"
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
+                value={newChatForm.context}
+                onChange={(e) => setNewChatForm({ ...newChatForm, context: e.target.value })}
+                placeholder="Any additional information..."
+                rows="3"
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              
               </div>
 
               <div className="flex gap-3">
                 <button
-                  type="button"
-                  onClick={() => setShowNewChatModal(false)}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
-                >
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors">
+                
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
-                >
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors">
+                
                   {loading ? 'Creating...' : 'Create Chat'}
                 </button>
               </div>
             </form>
           </motion.div>
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default Communication;

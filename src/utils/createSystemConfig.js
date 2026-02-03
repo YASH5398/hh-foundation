@@ -35,7 +35,7 @@ async function createSystemConfig() {
     }
 
     console.log('🔧 Creating systemConfig/upiSettings document...\n');
-    
+
     // Create the document with all required fields
     await setDoc(doc(db, 'systemConfig', 'upiSettings'), {
       upiQrImageUrl: 'https://firebasestorage.googleapis.com/v0/b/hh-foundation.firebasestorage.app/o/Screenshot_2026-01-06-12-03-30-81_944a2809ea1b4cda6ef12d1db9048ed3_wdcjbj.jpg?alt=media&token=91921fd6-451f-4163-a6f4-30e8716ecea1',
@@ -62,7 +62,7 @@ async function createSystemConfig() {
     console.log('✅ Refresh /dashboard/epins/payment page to see QR code\n');
 
   } catch (error) {
-    console.error('❌ Error creating system configuration:', error.message);
+    console.error(String('❌ Error creating system configuration:') + " " + String(error.message));
     console.log('\nTroubleshooting:');
     console.log('1. Verify you are logged in as an admin');
     console.log('2. Check browser console for detailed error messages');

@@ -17,7 +17,7 @@ export const isCountdownExpired = (assignedAt) => {
   const assignedDate = assignedAt.toDate ? assignedAt.toDate() : new Date(assignedAt);
 
   // Calculate end time (assignedAt + 24 hours)
-  const endTime = new Date(assignedDate.getTime() + (24 * 60 * 60 * 1000));
+  const endTime = new Date(assignedDate.getTime() + 24 * 60 * 60 * 1000);
 
   // Check if current time is past end time
   const now = new Date();
@@ -36,7 +36,7 @@ export const getRemainingTime = (assignedAt) => {
   const assignedDate = assignedAt.toDate ? assignedAt.toDate() : new Date(assignedAt);
 
   // Calculate end time (assignedAt + 24 hours)
-  const endTime = new Date(assignedDate.getTime() + (24 * 60 * 60 * 1000));
+  const endTime = new Date(assignedDate.getTime() + 24 * 60 * 60 * 1000);
 
   // Calculate remaining time
   const now = new Date();
@@ -51,7 +51,7 @@ export const getRemainingTime = (assignedAt) => {
 export const formatTimeLeft = (milliseconds) => {
   const totalSeconds = Math.floor(milliseconds / 1000);
   const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const minutes = Math.floor(totalSeconds % 3600 / 60);
   const seconds = totalSeconds % 60;
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -136,7 +136,7 @@ export const checkAndBlockExpiredAssignments = async (userUid) => {
       reason: 'assignments_expired'
     };
   } catch (error) {
-    console.error('Error checking/blocking expired assignments:', error);
+    console.error(String('Error checking/blocking expired assignments:') + " " + String(error));
     return { blocked: false, reason: 'error', error: error.message };
   }
 };
@@ -169,7 +169,7 @@ export const getCountdownStatus = async (helpId) => {
       status: helpData.status
     };
   } catch (error) {
-    console.error('Error getting countdown status:', error);
+    console.error(String('Error getting countdown status:') + " " + String(error));
     return { isExpired: false, timeLeft: 0, error: error.message };
   }
 };
@@ -187,7 +187,7 @@ export const useCountdownWithAutoBlock = (assignedAt, helpId) => {
       try {
         await autoBlockUser(helpId);
       } catch (error) {
-        console.error('Auto-block failed:', error);
+        console.error(String('Auto-block failed:') + " " + String(error));
       }
     }
   });

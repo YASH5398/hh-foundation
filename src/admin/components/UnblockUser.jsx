@@ -2,92 +2,92 @@ import React, { useState, useEffect } from 'react';
 import { db, collection, query, where, or, onSnapshot, functions } from '../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import {
-    FiUser,
-    FiUnlock,
-    FiAlertCircle,
-    FiCheckCircle,
-    FiLoader,
-    FiSearch,
-    FiFilter,
-    FiRefreshCw
-} from 'react-icons/fi';
+  FiUser,
+  FiUnlock,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiLoader,
+  FiSearch,
+  FiFilter,
+  FiRefreshCw } from
+'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const UnblockUser = () => {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [processingId, setProcessingId] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [processingId, setProcessingId] = useState(null);
 
-    useEffect(() => {
-        // Fetch users who have any blocking flag set to true
-        const q = query(
-            collection(db, 'users'),
-            or(
-                where('isBlocked', '==', true),
-                where('isOnHold', '==', true),
-                where('isReceivingHeld', '==', true)
-            )
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const blockedUsers = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setUsers(blockedUsers);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching blocked users:", error);
-            toast.error("Failed to load blocked users");
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    const handleUnblock = async (targetUid, userId) => {
-        if (processingId) return;
-
-        const confirmUnblock = window.confirm(`Are you sure you want to unblock user ${userId}?`);
-        if (!confirmUnblock) return;
-
-        setProcessingId(targetUid);
-        try {
-            const resumeBlockedReceives = httpsCallable(functions, 'resumeBlockedReceives');
-            const result = await resumeBlockedReceives({ uid: targetUid });
-
-            if (result.data?.ok) {
-                toast.success(`User ${userId} unblocked successfully!`);
-            } else {
-                toast.error(result.data?.error || "Failed to unblock user");
-            }
-        } catch (error) {
-            console.error("Unblock error:", error);
-            toast.error(error.message || "An error occurred while unblocking");
-        } finally {
-            setProcessingId(null);
-        }
-    };
-
-    const filteredUsers = users.filter(u =>
-        u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    // Fetch users who have any blocking flag set to true
+    const q = query(
+      collection(db, 'users'),
+      or(
+        where('isBlocked', '==', true),
+        where('isOnHold', '==', true),
+        where('isReceivingHeld', '==', true)
+      )
     );
 
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const blockedUsers = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUsers(blockedUsers);
+      setLoading(false);
+    }, (error) => {
+      console.error(String("Error fetching blocked users:") + " " + String(error));
+      toast.error("Failed to load blocked users");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleUnblock = async (targetUid, userId) => {
+    if (processingId) return;
+
+    const confirmUnblock = window.confirm(`Are you sure you want to unblock user ${userId}?`);
+    if (!confirmUnblock) return;
+
+    setProcessingId(targetUid);
+    try {
+      const resumeBlockedReceives = httpsCallable(functions, 'resumeBlockedReceives');
+      const result = await resumeBlockedReceives({ uid: targetUid });
+
+      if (result.data?.ok) {
+        toast.success(`User ${userId} unblocked successfully!`);
+      } else {
+        toast.error(result.data?.error || "Failed to unblock user");
+      }
+    } catch (error) {
+      console.error(String("Unblock error:") + " " + String(error));
+      toast.error(error.message || "An error occurred while unblocking");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const filteredUsers = users.filter((u) =>
+  u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 <FiLoader className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
                 <p className="text-slate-400 font-medium">Loading blocked users...</p>
-            </div>
-        );
-    }
+            </div>);
 
-    return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-slate-900 min-h-screen text-slate-200">
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 bg-slate-900 min-h-screen text-slate-200">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -111,27 +111,27 @@ const UnblockUser = () => {
                 <div className="mb-6 relative group">
                     <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
                     <input
-                        type="text"
-                        placeholder="Search by User ID, Name, or Email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all"
-                    />
+            type="text"
+            placeholder="Search by User ID, Name, or Email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all" />
+          
                 </div>
 
                 {/* Users List */}
                 <div className="space-y-2">
                     <AnimatePresence mode='popLayout'>
-                        {filteredUsers.length > 0 ? (
-                            filteredUsers.map((u) => (
-                                <motion.div
-                                    key={u.id}
-                                    layout
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 sm:p-4 hover:border-slate-600/50 transition-all group"
-                                >
+                        {filteredUsers.length > 0 ?
+            filteredUsers.map((u) =>
+            <motion.div
+              key={u.id}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 sm:p-4 hover:border-slate-600/50 transition-all group">
+              
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 flex-1">
                                             {/* Profile Icon */}
@@ -171,44 +171,44 @@ const UnblockUser = () => {
                                         {/* Action */}
                                         <div className="flex sm:justify-end items-center">
                                             <button
-                                                onClick={() => handleUnblock(u.id, u.userId)}
-                                                disabled={processingId === u.id}
-                                                className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${processingId === u.id
-                                                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                                        : 'bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-900/20'
-                                                    }`}
-                                            >
-                                                {processingId === u.id ? (
-                                                    <FiLoader className="w-3.5 h-3.5 animate-spin" />
-                                                ) : (
-                                                    <>
+                    onClick={() => handleUnblock(u.id, u.userId)}
+                    disabled={processingId === u.id}
+                    className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${processingId === u.id ?
+                    'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                    'bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-900/20'}`
+                    }>
+                    
+                                                {processingId === u.id ?
+                    <FiLoader className="w-3.5 h-3.5 animate-spin" /> :
+
+                    <>
                                                         <FiUnlock className="w-3.5 h-3.5" />
                                                         Unblock
                                                     </>
-                                                )}
+                    }
                                             </button>
                                         </div>
                                     </div>
                                 </motion.div>
-                            ))
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="py-16 text-center bg-slate-800/20 border border-slate-700/30 border-dashed rounded-3xl"
-                            >
+            ) :
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="py-16 text-center bg-slate-800/20 border border-slate-700/30 border-dashed rounded-3xl">
+              
                                 <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-800 shadow-inner">
                                     <FiCheckCircle className="w-8 h-8 text-slate-700" />
                                 </div>
                                 <h3 className="text-white font-bold mb-1">All Clear</h3>
                                 <p className="text-slate-500 text-xs">No blocked or held users found.</p>
                             </motion.div>
-                        )}
+            }
                     </AnimatePresence>
                 </div>
             </div>
-        </div>
-    );
+        </div>);
+
 };
 
 export default UnblockUser;

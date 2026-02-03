@@ -37,18 +37,18 @@ const TransferEpin = () => {
     );
 
     const unsubscribe = onSnapshot(q,
-      (snapshot) => {
-        setAvailableCount(snapshot.size);
-        setLoading(false);
-        clearTimeout(timeout);
-        console.log('Available E-PINs loaded:', snapshot.size);
-      },
-      (error) => {
-        console.error('Error fetching E-PINs:', error);
-        setLoading(false);
-        clearTimeout(timeout);
-        setAvailableCount(0);
-      }
+    (snapshot) => {
+      setAvailableCount(snapshot.size);
+      setLoading(false);
+      clearTimeout(timeout);
+      console.log(String('Available E-PINs loaded:') + " " + String(snapshot.size));
+    },
+    (error) => {
+      console.error(String('Error fetching E-PINs:') + " " + String(error));
+      setLoading(false);
+      clearTimeout(timeout);
+      setAvailableCount(0);
+    }
     );
 
     return () => {
@@ -79,7 +79,7 @@ const TransferEpin = () => {
       setTransferCount(1);
       setTimeout(() => setTransferSuccess(false), 3000);
     } catch (error) {
-      console.error('Transfer failed:', error);
+      console.error(String('Transfer failed:') + " " + String(error));
       alert('Transfer failed. Please try again.');
     } finally {
       setIsTransferring(false);
@@ -90,8 +90,8 @@ const TransferEpin = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -100,8 +100,8 @@ const TransferEpin = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
+          className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
+          
           <FaArrowLeft className="text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Back</span>
         </button>
@@ -118,8 +118,8 @@ const TransferEpin = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-xl shadow-lg text-white mb-8"
-        >
+          className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-xl shadow-lg text-white mb-8">
+          
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold mb-1">Available E-PINs</h2>
@@ -137,8 +137,8 @@ const TransferEpin = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white p-6 rounded-xl shadow-md mb-8"
-        >
+          className="bg-white p-6 rounded-xl shadow-md mb-8">
+          
           <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
             <FaExchangeAlt className="text-blue-600" />
             Transfer E-PINs
@@ -156,8 +156,8 @@ const TransferEpin = () => {
                 onChange={(e) => setRecipientUserId(e.target.value)}
                 placeholder="Enter recipient's user ID"
                 // Fixed text color, placeholder, and focus states
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow" />
+              
             </div>
 
             <div>
@@ -172,8 +172,8 @@ const TransferEpin = () => {
                 value={transferCount}
                 onChange={(e) => setTransferCount(parseInt(e.target.value) || 1)}
                 // Fixed text color and background for consistency
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow" />
+              
             </div>
           </div>
 
@@ -192,22 +192,22 @@ const TransferEpin = () => {
             <button
               onClick={handleTransfer}
               disabled={isTransferring || availableCount === 0 || !recipientUserId.trim()}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-[0.98]"
-            >
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-[0.98]">
+              
               {isTransferring ? 'Transferring...' : 'Transfer E-PINs'}
             </button>
           </div>
 
-          {transferSuccess && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 font-medium"
-            >
+          {transferSuccess &&
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 font-medium">
+            
               <FaCheck className="text-green-600" />
               Transfer request submitted successfully!
             </motion.div>
-          )}
+          }
         </motion.div>
 
         {/* Info Cards */}
@@ -216,8 +216,8 @@ const TransferEpin = () => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white p-4 rounded-xl shadow-md border border-gray-100"
-          >
+            className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+            
             <h4 className="font-semibold text-gray-800 mb-2">E-PIN Value</h4>
             <p className="text-2xl font-bold text-green-600">₹{pricePerEpin}</p>
             <p className="text-sm text-gray-500">Per E-PIN</p>
@@ -227,8 +227,8 @@ const TransferEpin = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white p-4 rounded-xl shadow-md border border-gray-100"
-          >
+            className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+            
             <h4 className="font-semibold text-gray-800 mb-2">Total Worth</h4>
             <p className="text-2xl font-bold text-blue-600">
               ₹{(availableCount * pricePerEpin).toLocaleString()}
@@ -237,8 +237,8 @@ const TransferEpin = () => {
           </motion.div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default TransferEpin;

@@ -1,22 +1,22 @@
-import { 
-  db, 
+import {
+  db,
   storage,
-  collection, 
-  doc, 
-  addDoc, 
+  collection,
+  doc,
+  addDoc,
   setDoc,
   updateDoc,
   deleteDoc,
   getDoc,
   getDocs,
-  query, 
+  query,
   where,
-  orderBy, 
+  orderBy,
   limit,
-  onSnapshot, 
+  onSnapshot,
   serverTimestamp,
-  writeBatch
-} from '../config/firebase.js';
+  writeBatch } from
+'../config/firebase.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import fcmService from './fcmService.js';
 
@@ -25,7 +25,7 @@ import fcmService from './fcmService.js';
  * Supports Send Help transactions with full WhatsApp-like features
  */
 export class FirebaseChatService {
-  
+
   /**
    * Create or get chat document ID
    * Format: ${receiverId}_${senderId}
@@ -41,9 +41,9 @@ export class FirebaseChatService {
     try {
       const chatId = this.getChatId(receiverId, senderId);
       const chatRef = doc(db, 'chats', chatId);
-      
+
       const chatDoc = await getDoc(chatRef);
-      
+
       if (!chatDoc.exists()) {
         const chatData = {
           participants: [receiverId, senderId],
@@ -60,14 +60,14 @@ export class FirebaseChatService {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
-        
+
         await setDoc(chatRef, chatData);
-        console.log('✅ Chat initialized:', chatId);
+        console.log(String('✅ Chat initialized:') + " " + String(chatId));
       }
-      
+
       return chatId;
     } catch (error) {
-      console.error('❌ Error initializing chat:', error);
+      console.error(String('❌ Error initializing chat:') + " " + String(error));
       throw error;
     }
   }
@@ -76,10 +76,10 @@ export class FirebaseChatService {
     try {
       // Generate chat ID
       const chatId = this.getChatId(receiverId, senderId);
-      
+
       // Initialize chat if it doesn't exist
       await this.initializeChat(receiverId, senderId, 'Receiver', 'Sender');
-      
+
       const messageData = {
         senderId,
         receiverId,
@@ -101,10 +101,10 @@ export class FirebaseChatService {
       // Send push notification to receiver
       await this.sendPushNotification(receiverId, senderId, message, chatId);
 
-      console.log('✅ Message sent successfully:', docRef.id);
+      console.log(String('✅ Message sent successfully:') + " " + String(docRef.id));
       return { success: true, messageId: docRef.id };
     } catch (error) {
-      console.error('❌ Error sending message:', error);
+      console.error(String('❌ Error sending message:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -122,7 +122,7 @@ export class FirebaseChatService {
         updatedAt: serverTimestamp()
       });
     } catch (error) {
-      console.error('❌ Error updating chat last message:', error);
+      console.error(String('❌ Error updating chat last message:') + " " + String(error));
     }
   }
 
@@ -137,13 +137,13 @@ export class FirebaseChatService {
 
       // Import FCM service dynamically to avoid circular dependencies
       const { fcmService } = await import('./fcmService');
-      
+
       // Send chat notification
       await fcmService.sendChatNotification(receiverId, senderName, messageText, chatId);
-      
-      console.log('✅ Push notification sent to:', receiverId);
+
+      console.log(String('✅ Push notification sent to:') + " " + String(receiverId));
     } catch (error) {
-      console.error('❌ Error sending push notification:', error);
+      console.error(String('❌ Error sending push notification:') + " " + String(error));
     }
   }
 
@@ -155,7 +155,7 @@ export class FirebaseChatService {
       const chatId = this.getChatId(receiverId, senderId);
       const messagesRef = collection(db, 'chats', chatId, 'messages');
       const q = query(messagesRef, orderBy('timestamp', 'asc'));
-      
+
       return onSnapshot(q, (snapshot) => {
         const messages = [];
         snapshot.forEach((doc) => {
@@ -168,11 +168,11 @@ export class FirebaseChatService {
         });
         callback(messages);
       }, (error) => {
-        console.error('❌ Error listening to messages:', error);
+        console.error(String('❌ Error listening to messages:') + " " + String(error));
         callback([]);
       });
     } catch (error) {
-      console.error('❌ Error setting up message subscription:', error);
+      console.error(String('❌ Error setting up message subscription:') + " " + String(error));
       return () => {}; // Return empty unsubscribe function
     }
   }
@@ -184,31 +184,31 @@ export class FirebaseChatService {
     try {
       const chatId = this.getChatId(receiverId, senderId);
       const messagesRef = collection(db, 'chats', chatId, 'messages');
-      
+
       // Get unread messages for this user
       const q = query(
         messagesRef,
         where('receiverId', '==', userId),
         where('status', '!=', 'read')
       );
-      
+
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
-      
+
       snapshot.forEach((doc) => {
         batch.update(doc.ref, { status: 'read' });
       });
-      
+
       // Reset unread count for this user
       const chatRef = doc(db, 'chats', chatId);
       batch.update(chatRef, {
         [`unreadCount.${userId}`]: 0
       });
-      
+
       await batch.commit();
-      
+
     } catch (error) {
-      console.error('❌ Error marking messages as read:', error);
+      console.error(String('❌ Error marking messages as read:') + " " + String(error));
     }
   }
 
@@ -220,15 +220,15 @@ export class FirebaseChatService {
       const chatId = this.getChatId(receiverId, senderId);
       const chatRef = doc(db, 'chats', chatId);
       const chatDoc = await getDoc(chatRef);
-      
+
       if (chatDoc.exists()) {
         const data = chatDoc.data();
         return data.unreadCount?.[userId] || 0;
       }
-      
+
       return 0;
     } catch (error) {
-      console.error('❌ Error getting unread count:', error);
+      console.error(String('❌ Error getting unread count:') + " " + String(error));
       return 0;
     }
   }
@@ -240,7 +240,7 @@ export class FirebaseChatService {
     try {
       const chatId = this.getChatId(receiverId, senderId);
       const chatRef = doc(db, 'chats', chatId);
-      
+
       return onSnapshot(chatRef, (doc) => {
         if (doc.exists()) {
           const data = doc.data();
@@ -250,11 +250,11 @@ export class FirebaseChatService {
           callback(0);
         }
       }, (error) => {
-        console.error('❌ Error listening to unread count:', error);
+        console.error(String('❌ Error listening to unread count:') + " " + String(error));
         callback(0);
       });
     } catch (error) {
-      console.error('❌ Error setting up unread count subscription:', error);
+      console.error(String('❌ Error setting up unread count subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -269,15 +269,15 @@ export class FirebaseChatService {
         const fileName = `chat_images/${chatId}/${timestamp}_${file.name}`;
         const storageRef = ref(storage, fileName);
         const uploadTask = uploadBytesResumable(storageRef, file);
-        
+
         uploadTask.on(
           'state_changed',
           (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const progress = snapshot.bytesTransferred / snapshot.totalBytes * 100;
             // You can emit progress events here if needed
           },
           (error) => {
-            console.error('❌ Error uploading image:', error);
+            console.error(String('❌ Error uploading image:') + " " + String(error));
             reject(error);
           },
           async () => {
@@ -285,13 +285,13 @@ export class FirebaseChatService {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               resolve(downloadURL);
             } catch (error) {
-              console.error('❌ Error getting download URL:', error);
+              console.error(String('❌ Error getting download URL:') + " " + String(error));
               reject(error);
             }
           }
         );
       } catch (error) {
-        console.error('❌ Error creating upload task:', error);
+        console.error(String('❌ Error creating upload task:') + " " + String(error));
         reject(error);
       }
     });
@@ -304,13 +304,13 @@ export class FirebaseChatService {
     try {
       const chatId = this.getChatId(receiverId, senderId);
       const typingRef = doc(db, 'chats', chatId, 'typing', userId);
-      
+
       if (isTyping) {
         await setDoc(typingRef, {
           isTyping: true,
           timestamp: serverTimestamp()
         });
-        
+
         // Auto-clear typing status after 3 seconds
         setTimeout(async () => {
           await deleteDoc(typingRef);
@@ -319,7 +319,7 @@ export class FirebaseChatService {
         await deleteDoc(typingRef);
       }
     } catch (error) {
-      console.error('❌ Error setting typing status:', error);
+      console.error(String('❌ Error setting typing status:') + " " + String(error));
     }
   }
 
@@ -330,7 +330,7 @@ export class FirebaseChatService {
     try {
       const chatId = this.getChatId(receiverId, senderId);
       const typingRef = doc(db, 'chats', chatId, 'typing', otherUserId);
-      
+
       return onSnapshot(typingRef, (doc) => {
         if (doc.exists()) {
           const data = doc.data();
@@ -339,11 +339,11 @@ export class FirebaseChatService {
           callback(false);
         }
       }, (error) => {
-        console.error('❌ Error listening to typing status:', error);
+        console.error(String('❌ Error listening to typing status:') + " " + String(error));
         callback(false);
       });
     } catch (error) {
-      console.error('❌ Error setting up typing status subscription:', error);
+      console.error(String('❌ Error setting up typing status subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -359,20 +359,20 @@ export class FirebaseChatService {
         where('participants', 'array-contains', userId),
         orderBy('updatedAt', 'desc')
       );
-      
+
       const snapshot = await getDocs(q);
       const chats = [];
-      
+
       snapshot.forEach((doc) => {
         chats.push({
           id: doc.id,
           ...doc.data()
         });
       });
-      
+
       return chats;
     } catch (error) {
-      console.error('❌ Error getting user chats:', error);
+      console.error(String('❌ Error getting user chats:') + " " + String(error));
       return [];
     }
   }
@@ -388,7 +388,7 @@ export class FirebaseChatService {
         where('participants', 'array-contains', userId),
         orderBy('updatedAt', 'desc')
       );
-      
+
       return onSnapshot(q, (snapshot) => {
         const chats = [];
         snapshot.forEach((doc) => {
@@ -403,11 +403,11 @@ export class FirebaseChatService {
         });
         callback(chats);
       }, (error) => {
-        console.error('❌ Error listening to user chats:', error);
+        console.error(String('❌ Error listening to user chats:') + " " + String(error));
         callback([]);
       });
     } catch (error) {
-      console.error('❌ Error setting up user chats subscription:', error);
+      console.error(String('❌ Error setting up user chats subscription:') + " " + String(error));
       return () => {};
     }
   }

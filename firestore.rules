@@ -39,7 +39,14 @@ service cloud.firestore {
     /* ================= USERS ================= */
     match /users/{uid} {
       allow create: if isAuth() && request.auth.uid == uid;
-      allow read, list: if isAuth() || isAdmin();
+      allow read: if isAuth() && (
+        // Users can read their own document
+        request.auth.uid == uid
+        // Admin/Agent: Full access
+        || isAdmin() 
+        || isAgent()
+      );
+      allow list: if isAdmin() || isAgent();
       allow update: if isAuth() && (
         // Standard User: Can only update non-sensitive profile fields
         (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys()
@@ -159,11 +166,13 @@ service cloud.firestore {
 
     /* ================= SEND HELP ================= */
     match /sendHelp/{id} {
-      allow read, list: if isAuth()
+      allow read: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid
             || isAdmin()
             || isAgent());
+      
+      allow list: if isAuth() && (isAdmin() || isAgent());
       
       allow update: if isAuth()
         && request.auth.uid == resource.data.receiverUid

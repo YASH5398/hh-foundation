@@ -12,8 +12,8 @@ import {
   runTransaction,
   addDoc,
   setDoc,
-  onSnapshot
-} from 'firebase/firestore';
+  onSnapshot } from
+'firebase/firestore';
 import { createSendHelpAssignment } from './helpService';
 import { checkSenderEligibility, findEligibleReceiver } from './helpService';
 
@@ -23,13 +23,13 @@ export const getAllUsers = async () => {
   try {
     const usersCollectionRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersCollectionRef);
-    const users = querySnapshot.docs.map(doc => ({
+    const users = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, users };
   } catch (error) {
-    console.error('Error getting all users:', error);
+    console.error(String('Error getting all users:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -40,11 +40,11 @@ export const updateUserStatus = async (uid, field, value, currentUser) => {
     await setDoc(userDocRef, {
       [field]: value,
       uid: uid,
-      updatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     }, { merge: true });
     return { success: true, message: `User ${field} updated successfully` };
   } catch (error) {
-    console.error(`Error updating user ${field} for ${uid}:`, error);
+    console.error(String(`Error updating user ${field} for ${uid}:`) + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -55,15 +55,15 @@ export const forceReceiverAssignment = async (userId) => {
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
-    
+
     if (querySnapshot.empty) {
       return { success: false, message: `User with ID ${userId} not found` };
     }
-    
+
     const userDoc = querySnapshot.docs[0];
     const userDocRef = doc(db, 'users', userDoc.id);
     const userData = userDoc.data();
-    
+
     // LAYER A: Basic eligibility flags (Admin controllable)
     const updateData = {
       isActivated: true,
@@ -74,7 +74,7 @@ export const forceReceiverAssignment = async (userId) => {
       forceReceiveOverride: true, // NEW: Allow one-time MLM override
       updatedAt: serverTimestamp()
     };
-    
+
     // Update kycDetails.levelStatus if kycDetails exists
     if (userData.kycDetails) {
       updateData['kycDetails.levelStatus'] = 'active';
@@ -83,19 +83,19 @@ export const forceReceiverAssignment = async (userId) => {
         levelStatus: 'active'
       };
     }
-    
+
     await updateDoc(userDocRef, updateData);
-    
+
     console.log(`Force Receiver Assignment: User ${userId} made eligible for receiving help with MLM override`);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: `User ${userId} has been successfully made eligible for receiving help (with one-time MLM override)`,
       userData: { ...userData, ...updateData },
       note: 'forceReceiveOverride will auto-reset after one successful assignment'
     };
   } catch (error) {
-    console.error('Error in forceReceiverAssignment:', error);
+    console.error(String('Error in forceReceiverAssignment:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -106,15 +106,15 @@ export const checkUserEligibility = async (userId) => {
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
-    
+
     if (querySnapshot.empty) {
       return { success: false, message: `User with ID ${userId} not found` };
     }
-    
+
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
     const uid = userDoc.id;
-    
+
     // LAYER A: Basic eligibility checks
     const basicEligibility = {
       isActivated: userData.isActivated === true,
@@ -124,44 +124,44 @@ export const checkUserEligibility = async (userId) => {
       helpVisibility: userData.helpVisibility !== false,
       kycLevelStatus: userData.kycDetails?.levelStatus === 'active'
     };
-    
+
     const basicPassed = Object.values(basicEligibility).every(Boolean);
-    
+
     // LAYER B: MLM enforcement checks - UNIFIED FLAGS ONLY
     const mlmStatus = {
       isOnHold: userData.isOnHold === true,
       isReceivingHeld: userData.isReceivingHeld === true,
       forceReceiveOverride: userData.forceReceiveOverride === true
     };
-    
+
     // Check receive slot status
     const currentLevel = userData.levelStatus || userData.level || 'Star';
     const receiveLimit = getReceiveLimitForLevel(currentLevel);
     const currentReceiveCount = userData.activeReceiveCount || 0;
-    
+
     const slotStatus = {
       currentLevel,
       receiveLimit,
       currentReceiveCount,
       slotsAvailable: currentReceiveCount < receiveLimit,
-      utilizationPercent: Math.round((currentReceiveCount / receiveLimit) * 100)
+      utilizationPercent: Math.round(currentReceiveCount / receiveLimit * 100)
     };
-    
+
     // Check for active receive help
     const activeReceiveQuery = query(
       collection(db, 'receiveHelp'),
       where('receiverUid', '==', uid),
       where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
     );
-    
+
     const activeReceiveSnap = await getDocs(activeReceiveQuery);
     const hasActiveReceive = !activeReceiveSnap.empty;
-    
+
     // Determine overall eligibility
     const mlmBlocked = mlmStatus.isOnHold || mlmStatus.isReceivingHeld;
     const canReceive = basicPassed && !mlmBlocked && slotStatus.slotsAvailable && !hasActiveReceive;
     const canReceiveWithOverride = basicPassed && slotStatus.slotsAvailable && !hasActiveReceive;
-    
+
     // Generate recommendations
     const recommendations = [];
     if (!basicPassed) {
@@ -176,7 +176,7 @@ export const checkUserEligibility = async (userId) => {
     if (hasActiveReceive) {
       recommendations.push('User already has active receive help - wait for completion');
     }
-    
+
     return {
       success: true,
       userId,
@@ -192,12 +192,12 @@ export const checkUserEligibility = async (userId) => {
         hasActiveReceive
       },
       recommendations,
-      summary: canReceive ? 'User is eligible to receive help' : 
-               canReceiveWithOverride ? 'User needs MLM override to receive help' :
-               'User has blocking issues that prevent receiving help'
+      summary: canReceive ? 'User is eligible to receive help' :
+      canReceiveWithOverride ? 'User needs MLM override to receive help' :
+      'User has blocking issues that prevent receiving help'
     };
   } catch (error) {
-    console.error('Error in checkUserEligibility:', error);
+    console.error(String('Error in checkUserEligibility:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -225,7 +225,7 @@ export const deleteUser = async (uid) => {
     await deleteDoc(userDocRefDelete);
     return { success: true };
   } catch (error) {
-    console.error(`Error deleting user ${uid}:`, error);
+    console.error(String(`Error deleting user ${uid}:`) + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -244,7 +244,7 @@ export const setUserLevel = async (uid, level) => {
     await updateDoc(userDocRefLevel, { level: level });
     return { success: true };
   } catch (error) {
-    console.error(`Error setting level for user ${uid}:`, error);
+    console.error(String(`Error setting level for user ${uid}:`) + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -255,13 +255,13 @@ export const getAllEpinRequests = async () => {
   try {
     const epinRequestsCollectionRef = collection(db, 'epinRequests');
     const querySnapshot = await getDocs(epinRequestsCollectionRef);
-    const requests = querySnapshot.docs.map(doc => ({
+    const requests = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, requests };
   } catch (error) {
-    console.error('Error getting all E-PIN requests:', error);
+    console.error(String('Error getting all E-PIN requests:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -272,18 +272,18 @@ export const subscribeToEpinRequests = (callback) => {
     const epinRequestsCollectionRef = collection(db, 'epinRequests');
     const q = query(epinRequestsCollectionRef, where('status', '!=', null));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({
+      const requests = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
       callback({ success: true, requests });
     }, (error) => {
-      console.error('Error in E-PIN requests subscription:', error);
+      console.error(String('Error in E-PIN requests subscription:') + " " + String(error));
       callback({ success: false, message: error.message });
     });
     return unsubscribe;
   } catch (error) {
-    console.error('Error setting up E-PIN requests subscription:', error);
+    console.error(String('Error setting up E-PIN requests subscription:') + " " + String(error));
     return () => {};
   }
 };
@@ -320,7 +320,7 @@ export const updateEpinRequestStatus = async (requestId, status, userId, epinTyp
 
     return { success: true };
   } catch (error) {
-    console.error(`Error updating E-PIN request ${requestId}:`, error);
+    console.error(String(`Error updating E-PIN request ${requestId}:`) + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -333,12 +333,12 @@ export const getDashboardStats = async () => {
     const epinRequestsCollectionRef = collection(db, 'epinRequests');
 
     const [usersSnapshot, epinRequestsSnapshot] = await Promise.all([
-      getDocs(usersCollectionRef),
-      getDocs(epinRequestsCollectionRef)
-    ]);
+    getDocs(usersCollectionRef),
+    getDocs(epinRequestsCollectionRef)]
+    );
 
     const totalUsers = usersSnapshot.size;
-    const totalActivatedUsers = usersSnapshot.docs.filter(doc => doc.data().isActivated).length;
+    const totalActivatedUsers = usersSnapshot.docs.filter((doc) => doc.data().isActivated).length;
     const totalEpinRequests = epinRequestsSnapshot.size;
 
     // Placeholder for total referrals and total income distributed
@@ -355,11 +355,11 @@ export const getDashboardStats = async () => {
         totalEpinRequests,
         totalReferrals,
         totalIncomeDistributed,
-        totalHelpSentReceived,
+        totalHelpSentReceived
       }
     };
   } catch (error) {
-    console.error('Error getting dashboard stats:', error);
+    console.error(String('Error getting dashboard stats:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -386,7 +386,7 @@ export const generateEpins = async (quantity, type) => {
     }
     return { success: true, generated };
   } catch (error) {
-    console.error('Error generating E-PINs:', error);
+    console.error(String('Error generating E-PINs:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -395,13 +395,13 @@ export const getAllEpins = async () => {
   try {
     const epinsCollectionRef = collection(db, 'epins');
     const querySnapshot = await getDocs(epinsCollectionRef);
-    const epins = querySnapshot.docs.map(doc => ({
+    const epins = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, epins };
   } catch (error) {
-    console.error('Error getting all E-PINs:', error);
+    console.error(String('Error getting all E-PINs:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -420,7 +420,7 @@ export const generateSingleEpin = async () => {
     });
     return { success: true, epin: epinCode };
   } catch (error) {
-    console.error('Error generating single E-PIN:', error);
+    console.error(String('Error generating single E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -450,7 +450,7 @@ export const updateHelpReceivedCountByUserId = async (userId) => {
       return { success: false, message: 'User not found' };
     }
   } catch (error) {
-    console.error('Error updating helpReceived count:', error);
+    console.error(String('Error updating helpReceived count:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -554,7 +554,7 @@ export const adminUnblockUser = async (userUid, adminUid) => {
     });
 
   } catch (error) {
-    console.error('Error in admin unblock user:', error);
+    console.error(String('Error in admin unblock user:') + " " + String(error));
     throw error;
   }
 };
@@ -626,7 +626,7 @@ export const adminUnblockUserWithNewAssignment = async (userUid, adminUid) => {
     };
 
   } catch (error) {
-    console.error('Error in admin unblock with new assignment:', error);
+    console.error(String('Error in admin unblock with new assignment:') + " " + String(error));
     throw error;
   }
 };

@@ -44,7 +44,7 @@ const BlockScreen = () => {
         alert('Failed to submit ticket. Please try again.');
       }
     } catch (error) {
-      console.error('Error creating ticket:', error);
+      console.error(String('Error creating ticket:') + " " + String(error));
       alert('Failed to submit ticket. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -68,8 +68,8 @@ const BlockScreen = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-2xl"
-      >
+        className="w-full max-w-2xl">
+        
         {/* Header Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-red-500 to-red-600 px-8 py-6 text-white">
@@ -117,15 +117,15 @@ const BlockScreen = () => {
                   </div>
                 </div>
 
-                {userProfile?.blockedHelpId && (
-                  <div className="flex items-start gap-3">
+                {userProfile?.blockedHelpId &&
+                <div className="flex items-start gap-3">
                     <ExternalLink className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-500 uppercase tracking-wide font-medium">Related Help ID</p>
                       <p className="text-base text-gray-900 font-mono">{userProfile.blockedHelpId}</p>
                     </div>
                   </div>
-                )}
+                }
               </div>
             </div>
 
@@ -147,26 +147,26 @@ const BlockScreen = () => {
 
             {/* Action Buttons */}
             <div className="space-y-4">
-              {!ticketSubmitted ? (
-                <button
-                  onClick={handleRaiseTicket}
-                  disabled={isSubmitting}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-3"
-                >
+              {!ticketSubmitted ?
+              <button
+                onClick={handleRaiseTicket}
+                disabled={isSubmitting}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-3">
+                
                   <Ticket className="w-6 h-6" />
                   {isSubmitting ? 'Submitting Ticket...' : 'Raise Support Ticket'}
-                </button>
-              ) : (
-                <div className="w-full bg-green-600 text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3">
+                </button> :
+
+              <div className="w-full bg-green-600 text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3">
                   <Ticket className="w-6 h-6" />
                   Ticket Submitted Successfully
                 </div>
-              )}
+              }
 
               <button
                 onClick={handleChatSupport}
-                className="w-full bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-3"
-              >
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors duration-200 flex items-center justify-center gap-3">
+                
                 <MessageCircle className="w-6 h-6" />
                 Chat with Support Agent
               </button>
@@ -192,8 +192,8 @@ const BlockScreen = () => {
           </div>
         </div>
       </motion.div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default BlockScreen;

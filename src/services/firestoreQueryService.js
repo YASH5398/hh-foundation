@@ -13,8 +13,8 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
+  Timestamp } from
+'firebase/firestore';
 import { db, auth } from '../config/firebase';
 
 /**
@@ -88,7 +88,7 @@ class FirestoreQueryService {
       return [];
     }
 
-    return orderByFields.filter(field => {
+    return orderByFields.filter((field) => {
       if (!Array.isArray(field) || field.length < 1) {
         console.warn('Invalid orderBy format, skipping:', field);
         return false;
@@ -104,12 +104,12 @@ class FirestoreQueryService {
    * @param {Object} params - Query parameters
    */
   _logQuery(operation, collectionName, params = {}) {
-    console.log(`Firestore ${operation}:`, {
+    console.log(String(`Firestore ${operation}:`) + " " + String({
       collection: collectionName,
       user: auth.currentUser?.uid,
       timestamp: new Date().toISOString(),
       ...params
-    });
+    }));
   }
 
   /**
@@ -151,21 +151,24 @@ class FirestoreQueryService {
       }
 
       const snapshot = await getDocs(q);
-      const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
       console.log(`Query completed: ${results.length} documents returned`);
       return results;
 
     } catch (error) {
-      console.error('Firestore query error:', {
+      // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+      const safeMessage = typeof error?.message === "string" ? error.message : "";
+
+      console.error(String('Firestore query error:') + " " + String({
         collection: collectionName,
         conditions,
         orderBy: orderByFields,
         limit: limitCount,
-        error: error.message,
+        error: safeMessage,
         code: error.code,
         user: auth.currentUser?.uid
-      });
+      }));
 
       // Provide user-friendly error messages
       if (error.code === 'failed-precondition') {
@@ -219,24 +222,27 @@ class FirestoreQueryService {
         q = query(q, limit(limitCount));
       }
 
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          const documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          console.log(`Listener update: ${documents.length} documents`);
-          callback(documents);
-        },
-        (error) => {
-          console.error('Firestore listener error:', {
-            collection: collectionName,
-            conditions: validatedConditions,
-            error: error.message,
-            code: error.code,
-            user: auth.currentUser?.uid
-          });
-          
-          // Call callback with empty array and error info
-          callback([], error);
-        }
+      const unsubscribe = onSnapshot(q,
+      (snapshot) => {
+        const documents = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        console.log(`Listener update: ${documents.length} documents`);
+        callback(documents);
+      },
+      (error) => {
+        // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+        const safeMessage = typeof error?.message === "string" ? error.message : "";
+
+        console.error(String('Firestore listener error:') + " " + String({
+          collection: collectionName,
+          conditions: validatedConditions,
+          error: safeMessage,
+          code: error.code,
+          user: auth.currentUser?.uid
+        }));
+
+        // Call callback with empty array and error info
+        callback([], error);
+      }
       );
 
       // Track listener for cleanup
@@ -244,12 +250,12 @@ class FirestoreQueryService {
       return unsubscribe;
 
     } catch (error) {
-      console.error('Error setting up Firestore listener:', {
+      console.error(String('Error setting up Firestore listener:') + " " + String({
         collection: collectionName,
         conditions,
         error: error.message
-      });
-      
+      }));
+
       // Return no-op function
       return () => {};
     }
@@ -273,7 +279,7 @@ class FirestoreQueryService {
 
       const docRef = doc(db, collectionName, docId);
       const snapshot = await getDoc(docRef);
-      
+
       if (snapshot.exists()) {
         return { id: snapshot.id, ...snapshot.data() };
       } else {
@@ -282,13 +288,13 @@ class FirestoreQueryService {
       }
 
     } catch (error) {
-      console.error('Error getting document:', {
+      console.error(String('Error getting document:') + " " + String({
         collection: collectionName,
         docId,
         error: error.message,
         code: error.code,
         user: auth.currentUser?.uid
-      });
+      }));
 
       if (error.code === 'permission-denied') {
         throw new Error('You do not have permission to access this document.');
@@ -325,26 +331,26 @@ class FirestoreQueryService {
         // Update existing document
         const docRef = doc(db, collectionName, docId);
         await setDoc(docRef, documentData, { merge });
-        
+
         this._logQuery('setDoc', collectionName, { docId, merge });
         return docId;
       } else {
         // Create new document with auto-generated ID
         documentData.createdAt = timestamp;
         const docRef = await addDoc(collection(db, collectionName), documentData);
-        
+
         this._logQuery('addDoc', collectionName, { docId: docRef.id });
         return docRef.id;
       }
 
     } catch (error) {
-      console.error('Error setting document:', {
+      console.error(String('Error setting document:') + " " + String({
         collection: collectionName,
         docId,
         error: error.message,
         code: error.code,
         user: auth.currentUser?.uid
-      });
+      }));
 
       if (error.code === 'permission-denied') {
         throw new Error('You do not have permission to modify this document.');
@@ -382,14 +388,14 @@ class FirestoreQueryService {
       this._logQuery('updateDoc', collectionName, { docId, updates: Object.keys(updates) });
 
     } catch (error) {
-      console.error('Error updating document:', {
+      console.error(String('Error updating document:') + " " + String({
         collection: collectionName,
         docId,
         updates: Object.keys(updates),
         error: error.message,
         code: error.code,
         user: auth.currentUser?.uid
-      });
+      }));
 
       if (error.code === 'permission-denied') {
         throw new Error('You do not have permission to modify this document.');
@@ -416,15 +422,15 @@ class FirestoreQueryService {
    */
   cleanupAllListeners() {
     console.log(`Cleaning up ${this._activeListeners.size} Firestore listeners`);
-    
+
     for (const unsubscribe of this._activeListeners) {
       try {
         unsubscribe();
       } catch (error) {
-        console.error('Error cleaning up listener:', error);
+        console.error(String('Error cleaning up listener:') + " " + String(error));
       }
     }
-    
+
     this._activeListeners.clear();
   }
 
@@ -442,7 +448,7 @@ class FirestoreQueryService {
       if (param === undefined || param === null) {
         return false;
       }
-      
+
       if (Array.isArray(param) && param.length === 0) {
         return false;
       }

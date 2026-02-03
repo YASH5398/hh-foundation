@@ -8,7 +8,7 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
     name: '',
     email: '',
     level: '',
-    blocked: false,
+    blocked: false
   });
 
   useEffect(() => {
@@ -17,7 +17,7 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
         name: user.fullName || user.name || '',
         email: user.email || '',
         level: user.level || '',
-        blocked: user.blocked || false,
+        blocked: user.blocked || false
       });
     }
   }, [user]);
@@ -26,7 +26,7 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
     const { name, value, type, checked } = e.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -34,17 +34,17 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
     e.preventDefault();
     try {
       const result = await updateUser(user.id, formData);
-      
+
       if (result.success) {
         showToast(result.message || 'User updated successfully!', 'success');
-      onUpdate(); // Trigger a refresh of user list
-      onClose();
+        onUpdate(); // Trigger a refresh of user list
+        onClose();
       } else {
         showToast(result.message || 'Failed to update user.', 'error');
       }
     } catch (error) {
       showToast('Failed to update user.', 'error');
-      console.error('Error updating user:', error);
+      console.error(String('Error updating user:') + " " + String(error));
     }
   };
 
@@ -63,8 +63,8 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
               id="name"
               value={formData.name}
               onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            />
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            
           </div>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">Email</label>
@@ -86,8 +86,8 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
               id="level"
               value={formData.level}
               onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            />
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            
           </div>
           <div className="mb-4 flex items-center">
             <input
@@ -96,40 +96,40 @@ const UserEditModal = ({ user, isOpen, onClose, onUpdate }) => {
               id="blocked"
               checked={formData.blocked}
               onChange={handleChange}
-              className="mr-2 leading-tight"
-            />
+              className="mr-2 leading-tight" />
+            
             <label className="text-sm text-gray-700" htmlFor="blocked">Blocked</label>
           </div>
           <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
-            >
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
+              
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+              
               Save Changes
             </button>
           </div>
         </form>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 UserEditModal.defaultProps = {
-  onUpdate: () => {},
+  onUpdate: () => {}
 };
 
 UserEditModal.propTypes = {
   user: PropTypes.object,
   isOpen: PropTypes.bool,
   onClose: PropTypes.func,
-  onUpdate: PropTypes.func,
+  onUpdate: PropTypes.func
 };
 
 export default UserEditModal;

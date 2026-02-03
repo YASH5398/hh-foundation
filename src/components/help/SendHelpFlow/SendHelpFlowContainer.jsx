@@ -32,12 +32,12 @@ const FLOW_STEPS = {
  * - Create receiveHelp document with status = "Pending", confirmedByReceiver = false
  * - Upload payment screenshot to Firebase Storage
  */
-const SendHelpFlowContainer = ({ 
-  receiver, 
+const SendHelpFlowContainer = ({
+  receiver,
   helpId,
   sender,
-  onFlowComplete, 
-  onFlowCancel 
+  onFlowComplete,
+  onFlowCancel
 }) => {
   const { user: currentUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(FLOW_STEPS.RECEIVER_DETAILS);
@@ -70,9 +70,9 @@ const SendHelpFlowContainer = ({
           formData.screenshot,
           `payment-proofs/${currentUser.uid}`,
           (progress) => {
+
             // Could show progress here if needed
-          }
-        );
+          });
         screenshotUrl = uploadRes.downloadURL;
         screenshotPath = `payment-proofs/${currentUser.uid}`;
       }
@@ -92,12 +92,12 @@ const SendHelpFlowContainer = ({
 
       // Update both sendHelp and receiveHelp documents with payment proof
       await Promise.all([
-        updateDoc(doc(db, 'sendHelp', helpId), paymentUpdateData),
-        updateDoc(doc(db, 'receiveHelp', helpId), paymentUpdateData)
-      ]);
+      updateDoc(doc(db, 'sendHelp', helpId), paymentUpdateData),
+      updateDoc(doc(db, 'receiveHelp', helpId), paymentUpdateData)]
+      );
 
       toast.success('Payment proof submitted! Waiting for receiver confirmation...');
-      
+
       // Store help data for Step 4
       setCreatedHelpData({
         id: helpId,
@@ -115,7 +115,7 @@ const SendHelpFlowContainer = ({
       // Move to waiting confirmation step
       setCurrentStep(FLOW_STEPS.WAITING_CONFIRMATION);
     } catch (error) {
-      console.error('Error submitting payment proof:', error);
+      console.error(String('Error submitting payment proof:') + " " + String(error));
       toast.error(error.message || 'Failed to submit payment proof. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -152,66 +152,66 @@ const SendHelpFlowContainer = ({
   return (
     <>
       <AnimatePresence mode="wait">
-        {currentStep === FLOW_STEPS.RECEIVER_DETAILS && (
-          <ReceiverDetailsPage
-            key="receiver-details"
-            receiver={receiver}
-            amount={300}
-            onProceed={handleReceiverDetailsProceed}
-            onBack={handleBackClick}
-            isProceding={isSubmitting}
-          />
-        )}
+        {currentStep === FLOW_STEPS.RECEIVER_DETAILS &&
+        <ReceiverDetailsPage
+          key="receiver-details"
+          receiver={receiver}
+          amount={300}
+          onProceed={handleReceiverDetailsProceed}
+          onBack={handleBackClick}
+          isProceding={isSubmitting} />
 
-        {currentStep === FLOW_STEPS.PAYMENT_DETAILS && (
-          <PaymentDetailsPage
-            key="payment-details"
-            receiver={receiver}
-            amount={300}
-            onConfirm={handlePaymentDetailsConfirm}
-            onBack={handleBackClick}
-            isConfirming={isSubmitting}
-          />
-        )}
+        }
 
-        {currentStep === FLOW_STEPS.SUBMIT_PROOF && (
-          <SubmitProofPage
-            key="submit-proof"
-            receiver={receiver}
-            amount={300}
-            onSubmit={handleSubmitProofSubmit}
-            onBack={handleBackClick}
-            isSubmitting={isSubmitting}
-          />
-        )}
+        {currentStep === FLOW_STEPS.PAYMENT_DETAILS &&
+        <PaymentDetailsPage
+          key="payment-details"
+          receiver={receiver}
+          amount={300}
+          onConfirm={handlePaymentDetailsConfirm}
+          onBack={handleBackClick}
+          isConfirming={isSubmitting} />
 
-        {currentStep === FLOW_STEPS.WAITING_CONFIRMATION && (
-          <WaitingForConfirmationPage
-            key="waiting-confirmation"
-            transactionId={createdHelpData?.id}
-            receiver={receiver}
-            helpData={createdHelpData}
-            onConfirmed={handleFlowConfirmed}
-            setShowChat={setShowChat}
-          />
-        )}
+        }
+
+        {currentStep === FLOW_STEPS.SUBMIT_PROOF &&
+        <SubmitProofPage
+          key="submit-proof"
+          receiver={receiver}
+          amount={300}
+          onSubmit={handleSubmitProofSubmit}
+          onBack={handleBackClick}
+          isSubmitting={isSubmitting} />
+
+        }
+
+        {currentStep === FLOW_STEPS.WAITING_CONFIRMATION &&
+        <WaitingForConfirmationPage
+          key="waiting-confirmation"
+          transactionId={createdHelpData?.id}
+          receiver={receiver}
+          helpData={createdHelpData}
+          onConfirmed={handleFlowConfirmed}
+          setShowChat={setShowChat} />
+
+        }
       </AnimatePresence>
 
       {/* Chat Modal */}
-      {createdHelpData?.id && (
-        <TransactionChat
-          transactionType="sendHelp"
-          transactionId={createdHelpData.id}
-          otherUser={{
-            name: receiver.fullName || receiver.name,
-            profileImage: receiver.profileImage
-          }}
-          isOpen={showChat}
-          onClose={() => setShowChat(false)}
-        />
-      )}
-    </>
-  );
+      {createdHelpData?.id &&
+      <TransactionChat
+        transactionType="sendHelp"
+        transactionId={createdHelpData.id}
+        otherUser={{
+          name: receiver.fullName || receiver.name,
+          profileImage: receiver.profileImage
+        }}
+        isOpen={showChat}
+        onClose={() => setShowChat(false)} />
+
+      }
+    </>);
+
 };
 
 export default SendHelpFlowContainer;

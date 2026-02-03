@@ -21,8 +21,8 @@ import {
   onSnapshot,
   serverTimestamp,
   runTransaction,
-  Timestamp
-} from '../config/firebase';
+  Timestamp } from
+'../config/firebase';
 
 import { httpsCallable } from 'firebase/functions';
 import { waitForAuthReady } from './authReady';
@@ -39,7 +39,7 @@ import { sendPaymentRequestNotification } from './notificationService';
  * Maps Firebase errors to user-friendly messages
  */
 const mapFirebaseError = (error) => {
-  console.error('Firebase error:', error);
+  console.error(String('Firebase error:') + " " + String(error));
 
   // Firebase Functions errors
   if (error.code) {
@@ -61,7 +61,7 @@ const mapFirebaseError = (error) => {
       case 'functions/unimplemented':
         return 'This feature is not yet implemented';
       case 'functions/internal':
-        console.error('Internal Firebase error:', error);
+        console.error(String('Internal Firebase error:') + " " + String(error));
         return error?.details?.message || error.message || 'An internal error occurred. Please try again later.';
       case 'functions/unavailable':
         return 'Service is temporarily unavailable. Please try again.';
@@ -73,7 +73,9 @@ const mapFirebaseError = (error) => {
   }
 
   // Network errors
-  if (error.name === 'NetworkError' || error.message?.includes('network')) {
+  // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+  const safeMessage = typeof error?.message === "string" ? error.message : "";
+  if (error.name === 'NetworkError' || safeMessage.includes('network')) {
     return 'Network connection error. Please check your internet connection.';
   }
 
@@ -149,7 +151,7 @@ export async function checkSenderEligibility(currentUser) {
     return { eligible: true, userData };
 
   } catch (error) {
-    console.error('Error checking sender eligibility:', error);
+    console.error(String('Error checking sender eligibility:') + " " + String(error));
     return { eligible: false, reason: 'Error checking eligibility' };
   }
 }
@@ -199,7 +201,7 @@ export async function checkReceiverEligibility(userData) {
     return { eligible: true };
 
   } catch (error) {
-    console.error('Error checking receiver eligibility:', error);
+    console.error(String('Error checking receiver eligibility:') + " " + String(error));
     return { eligible: false, reason: 'Error checking eligibility' };
   }
 }
@@ -252,20 +254,20 @@ export async function createSendHelpAssignment(senderUser) {
 
   const idempotencyKey = `${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
   try {
-    console.log('[startHelpAssignment] Authentication check:', {
+    console.log(String('[startHelpAssignment] Authentication check:') + " " + String({
       authCurrentUserUid: auth.currentUser.uid,
       senderUid: senderUser.uid,
       hasAuth: !!auth.currentUser
-    });
+    }));
 
-    console.log('[startHelpAssignment] request', {
+    console.log(String('[startHelpAssignment] request') + " " + String({
       senderUid: senderUser.uid,
       senderId,
       idempotencyKey
-    });
+    }));
 
     // Required logging before callable function call
-    console.log("Calling startHelpAssignment as callable with uid:", auth.currentUser.uid);
+    console.log(String("Calling startHelpAssignment as callable with uid:") + " " + String(auth.currentUser.uid));
 
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const startHelpAssignment = httpsCallable(functions, "startHelpAssignment");
@@ -274,8 +276,8 @@ export async function createSendHelpAssignment(senderUser) {
     return { success: true, helpId: res.data.data.helpId, alreadyExists: res.data.data.alreadyExists };
   } catch (error) {
     // Handle specific "no eligible receiver" case - this is a BUSINESS CASE, not an error
-    if (error?.code === 'functions/failed-precondition' &&
-      (error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
+    if (error?.code === 'functions/failed-precondition' && (
+    error?.message === 'NO_ELIGIBLE_RECEIVER' || error?.message?.includes('NO_ELIGIBLE_RECEIVER'))) {
       const err = new Error('No eligible receivers available right now.');
       err.code = error.code;
       err.isNoReceiver = true;
@@ -285,9 +287,9 @@ export async function createSendHelpAssignment(senderUser) {
 
     // Handle other "no receiver" cases for backward compatibility
     const isNoReceiver =
-      error?.code === 'functions/failed-precondition' ||
-      error?.message?.includes('No eligible receivers') ||
-      error?.message?.includes('no eligible receivers');
+    error?.code === 'functions/failed-precondition' ||
+    error?.message?.includes('No eligible receivers') ||
+    error?.message?.includes('no eligible receivers');
 
     if (isNoReceiver) {
       const err = new Error('No eligible receivers available right now.');
@@ -298,11 +300,11 @@ export async function createSendHelpAssignment(senderUser) {
     }
 
     // Log real errors only
-    console.error('createSendHelpAssignment callable error:', {
+    console.error(String('createSendHelpAssignment callable error:') + " " + String({
       code: error?.code,
       message: error?.message,
       details: error?.details
-    });
+    }));
 
     const message = error?.details?.message || error?.message || mapFirebaseError(error);
     const err = new Error(message);
@@ -311,11 +313,11 @@ export async function createSendHelpAssignment(senderUser) {
     err.isNoReceiver = false;
     err.isBusinessCase = false;
 
-    console.error('createSendHelpAssignment failed:', {
+    console.error(String('createSendHelpAssignment failed:') + " " + String({
       code: err.code,
       message: err.message,
       details: err.details
-    });
+    }));
     throw err;
   }
 }
@@ -448,21 +450,21 @@ export async function getUserHelpStatus(userUid) {
     );
 
     const [sendHelpSnap, receiveHelpSnap] = await Promise.all([
-      getDocs(sendHelpQuery),
-      getDocs(receiveHelpQuery)
-    ]);
+    getDocs(sendHelpQuery),
+    getDocs(receiveHelpQuery)]
+    );
 
     const hasActiveSendHelp = !sendHelpSnap.empty;
     const hasActiveReceiveHelp = !receiveHelpSnap.empty;
 
     return {
       hasActiveHelp: hasActiveSendHelp || hasActiveReceiveHelp,
-      activeSendHelp: hasActiveSendHelp ? ({ id: sendHelpSnap.docs[0].id, ...sendHelpSnap.docs[0].data() }) : null,
-      activeReceiveHelp: hasActiveReceiveHelp ? ({ id: receiveHelpSnap.docs[0].id, ...receiveHelpSnap.docs[0].data() }) : null
+      activeSendHelp: hasActiveSendHelp ? { id: sendHelpSnap.docs[0].id, ...sendHelpSnap.docs[0].data() } : null,
+      activeReceiveHelp: hasActiveReceiveHelp ? { id: receiveHelpSnap.docs[0].id, ...receiveHelpSnap.docs[0].data() } : null
     };
 
   } catch (error) {
-    console.error('Error getting user help status:', error);
+    console.error(String('Error getting user help status:') + " " + String(error));
     return { hasActiveHelp: false, error: error.message };
   }
 }
@@ -472,7 +474,7 @@ export async function getUserHelpStatus(userUid) {
  * Real-time listener with proper cleanup
  */
 export function listenToHelpStatus(helpId, callback) {
-  if (!helpId) return () => { };
+  if (!helpId) return () => {};
 
   const helpRef = doc(db, 'sendHelp', helpId);
 
@@ -488,7 +490,7 @@ export function listenToHelpStatus(helpId, callback) {
       callback(null);
     }
   }, (error) => {
-    console.error('Error listening to help status:', error);
+    console.error(String('Error listening to help status:') + " " + String(error));
     callback(null);
   });
 }
@@ -501,7 +503,7 @@ export function listenToHelpStatus(helpId, callback) {
 export function listenToReceiveHelps(userUid, callback) {
   if (!userUid) {
     callback([]);
-    return () => { };
+    return () => {};
   }
 
   const receiveHelpQuery = query(
@@ -510,7 +512,7 @@ export function listenToReceiveHelps(userUid, callback) {
   );
 
   return onSnapshot(receiveHelpQuery, (snapshot) => {
-    const allReceiveHelps = snapshot.docs.map(doc => ({
+    const allReceiveHelps = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       status: doc.data().status || HELP_STATUS.ASSIGNED
@@ -518,7 +520,7 @@ export function listenToReceiveHelps(userUid, callback) {
 
     // Filter to show helps that should appear in filters
     const activeStatuses = [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE, HELP_STATUS.CONFIRMED, HELP_STATUS.DISPUTED, HELP_STATUS.TIMEOUT];
-    const receiveHelps = allReceiveHelps.filter(help => activeStatuses.includes(help.status));
+    const receiveHelps = allReceiveHelps.filter((help) => activeStatuses.includes(help.status));
 
     // Sort by creation time (newest first)
     receiveHelps.sort((a, b) => {
@@ -529,7 +531,7 @@ export function listenToReceiveHelps(userUid, callback) {
 
     callback(receiveHelps);
   }, (error) => {
-    console.error('Error listening to receive helps:', error);
+    console.error(String('Error listening to receive helps:') + " " + String(error));
     callback([]);
   });
 }
@@ -574,7 +576,7 @@ export async function checkUserBlockedStatus(userUid) {
     };
 
   } catch (error) {
-    console.error('Error checking user blocked status:', error);
+    console.error(String('Error checking user blocked status:') + " " + String(error));
     return { isBlocked: false, error: error.message };
   }
 }
@@ -638,5 +640,4 @@ export async function rejectPayment(helpId, rejectReason = 'Payment proof reject
   }
 }
 
-// markHelpAsExpired REMOVED - handled by processHelpTimeouts Cloud Function 
-
+// markHelpAsExpired REMOVED - handled by processHelpTimeouts Cloud Function

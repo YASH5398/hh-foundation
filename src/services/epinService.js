@@ -17,8 +17,8 @@ export const approveEpinRequest = async (requestId, adminInfo) => {
       approvedBy: {
         uid: adminInfo.uid,
         fullName: adminInfo.fullName,
-        email: adminInfo.email,
-      },
+        email: adminInfo.email
+      }
     };
 
     // Update Firestore
@@ -27,7 +27,7 @@ export const approveEpinRequest = async (requestId, adminInfo) => {
 
     toast.success("✅ E-PIN request approved successfully!");
   } catch (err) {
-    console.error("🔥 Firestore update failed", err);
+    console.error(String("🔥 Firestore update failed") + " " + String(err));
     toast.error("❌ Failed to approve E-PIN request. Check console.");
   }
-}; 
+};

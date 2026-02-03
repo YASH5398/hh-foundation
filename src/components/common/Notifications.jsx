@@ -60,11 +60,11 @@ const Notifications = () => {
           limit(10)
         );
         unsub = onSnapshot(q, (snap) => {
-          setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          setNotifications(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
           setLoading(false);
         });
       } catch (error) {
-        console.error('Failed to setup notifications listener:', error);
+        console.error(String('Failed to setup notifications listener:') + " " + String(error));
         setLoading(false);
       }
     };
@@ -76,8 +76,8 @@ const Notifications = () => {
 
   // Mark all as read when dropdown opens
   useEffect(() => {
-    if (open && notifications.some(n => !n.isRead)) {
-      const ids = notifications.filter(n => !n.isRead).map(n => n.id);
+    if (open && notifications.some((n) => !n.isRead)) {
+      const ids = notifications.filter((n) => !n.isRead).map((n) => n.id);
       bulkMarkNotificationsRead(ids).catch(() => {});
     }
   }, [open, notifications]);
@@ -91,47 +91,47 @@ const Notifications = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div className="relative" ref={bellRef}>
       <button
         className="relative p-2 rounded-full hover:bg-gray-100 transition"
-        onClick={() => setOpen(v => !v)}
-        aria-label="Notifications"
-      >
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifications">
+        
         <Bell className="w-6 h-6 text-gray-700" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+        {unreadCount > 0 &&
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
             {unreadCount}
           </span>
-        )}
+        }
       </button>
       <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-80 max-w-xs bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
-          >
+        {open &&
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute right-0 mt-2 w-80 max-w-xs bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+          
             <div className="p-4 border-b font-semibold text-gray-700 flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-500" /> Notifications
             </div>
             <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
-              {loading ? (
-                <div className="p-6 flex justify-center"><LoadingSpinner /></div>
-              ) : notifications.length === 0 ? (
-                <div className="p-6 text-center text-gray-400">No notifications</div>
-              ) : notifications.map(n => (
-                <button
-                  key={n.id}
-                  className={`w-full text-left flex items-start gap-3 px-4 py-3 transition hover:bg-gray-50 ${!n.isRead ? 'font-bold' : ''}`}
-                  onClick={async () => {
-                    if (!n.isRead) await setNotificationRead(n.id, true);
-                  }}
-                >
+              {loading ?
+            <div className="p-6 flex justify-center"><LoadingSpinner /></div> :
+            notifications.length === 0 ?
+            <div className="p-6 text-center text-gray-400">No notifications</div> :
+            notifications.map((n) =>
+            <button
+              key={n.id}
+              className={`w-full text-left flex items-start gap-3 px-4 py-3 transition hover:bg-gray-50 ${!n.isRead ? 'font-bold' : ''}`}
+              onClick={async () => {
+                if (!n.isRead) await setNotificationRead(n.id, true);
+              }}>
+              
                   <div className="pt-1">
                     {!n.isRead ? <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mr-2" /> : null}
                     {typeIcon(n.type)}
@@ -144,13 +144,13 @@ const Notifications = () => {
                     </div>
                   </div>
                 </button>
-              ))}
+            )}
             </div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
-export default Notifications; 
+export default Notifications;

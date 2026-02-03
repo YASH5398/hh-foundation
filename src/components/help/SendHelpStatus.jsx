@@ -30,7 +30,7 @@ const SendHelpStatus = () => {
           setTransactionId(docId);
         }
       } catch (error) {
-        console.error("Error fetching Send Help data:", error);
+        console.error(String("Error fetching Send Help data:") + " " + String(error));
       }
     };
 
@@ -62,31 +62,31 @@ const SendHelpStatus = () => {
           </p>
         </div>
         {/* Chat Button */}
-        {transactionId && (
-          <button
-            onClick={openChat}
-            className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl mt-4"
-            type="button"
-          >
+        {transactionId &&
+        <button
+          onClick={openChat}
+          className="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm border border-blue-600 shadow-lg hover:shadow-xl mt-4"
+          type="button">
+          
             <FiMessageCircle className="w-4 h-4 flex-shrink-0" />
           </button>
-        )}
+        }
       </div>
       {/* Chat Modal */}
-      {transactionId && (
-        <TransactionChat
-          transactionType="sendHelp"
-          transactionId={transactionId}
-          otherUser={{
-            name: sendHelpData?.receiverName,
-            profileImage: sendHelpData?.receiverProfileImage
-          }}
-          isOpen={chatOpen}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
-    </>
-  );
+      {transactionId &&
+      <TransactionChat
+        transactionType="sendHelp"
+        transactionId={transactionId}
+        otherUser={{
+          name: sendHelpData?.receiverName,
+          profileImage: sendHelpData?.receiverProfileImage
+        }}
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)} />
+
+      }
+    </>);
+
 };
 
 export default SendHelpStatus;

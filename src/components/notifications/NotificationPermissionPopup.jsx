@@ -21,17 +21,17 @@ const NotificationPermissionPopup = () => {
     const checkPermissionStatus = () => {
       const status = fcmService.getPermissionStatus();
       setPermissionStatus(status);
-      
+
       // Show popup only if permission is default (not asked yet) or denied
       // and user hasn't dismissed it in this session
       const hasSeenPopup = sessionStorage.getItem('fcm-permission-popup-seen');
-      
+
       if (status === 'default' && !hasSeenPopup) {
         // Delay showing popup by 2 seconds to not overwhelm user immediately
         const timer = setTimeout(() => {
           setShowPopup(true);
         }, 2000);
-        
+
         return () => clearTimeout(timer);
       }
     };
@@ -41,10 +41,10 @@ const NotificationPermissionPopup = () => {
 
   const handleAllowNotifications = async () => {
     setIsRequesting(true);
-    
+
     try {
       const permission = await fcmService.requestPermission();
-      
+
       if (permission === 'granted') {
         // Get and save the FCM token
         const token = await fcmService.getRegistrationToken();
@@ -57,11 +57,11 @@ const NotificationPermissionPopup = () => {
         toast.error('Notification permission denied. You can enable it later in your browser settings.');
         setShowPopup(false);
       }
-      
+
       setPermissionStatus(permission);
       sessionStorage.setItem('fcm-permission-popup-seen', 'true');
     } catch (error) {
-      console.error('Error requesting notification permission:', error);
+      console.error(String('Error requesting notification permission:') + " " + String(error));
       toast.error('Failed to enable notifications. Please try again.');
     } finally {
       setIsRequesting(false);
@@ -97,20 +97,20 @@ const NotificationPermissionPopup = () => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        onClick={(e) => e.target === e.currentTarget && handleDismiss()}
-      >
+        onClick={(e) => e.target === e.currentTarget && handleDismiss()}>
+        
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
-        >
+          className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+          
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white relative">
             <button
               onClick={handleDismiss}
-              className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
-            >
+              className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors">
+              
               <FiX className="w-5 h-5" />
             </button>
             
@@ -180,32 +180,32 @@ const NotificationPermissionPopup = () => {
             <button
               onClick={handleAllowNotifications}
               disabled={isRequesting}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              {isRequesting ? (
-                <>
+              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
+              
+              {isRequesting ?
+              <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Enabling...</span>
-                </>
-              ) : (
-                <>
+                </> :
+
+              <>
                   <FiBell className="w-4 h-4" />
                   <span>Allow Notifications</span>
                 </>
-              )}
+              }
             </button>
             
             <button
               onClick={handleNotNow}
-              className="flex-1 sm:flex-none bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-            >
+              className="flex-1 sm:flex-none bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+              
               Not Now
             </button>
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
-  );
+    </AnimatePresence>);
+
 };
 
 export default NotificationPermissionPopup;

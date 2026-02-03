@@ -69,7 +69,7 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
       onClose();
       navigate(`/agent-dashboard/agent-chat?chatId=${request.id}`);
     } catch (error) {
-      console.error('Error:', error);
+      console.error(String('Error:') + " " + String(error));
       toast.error('Sync failed');
     } finally {
       setIsAccepting(false);
@@ -85,22 +85,22 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-6"
-        onClick={onClose}
-      >
+        onClick={onClose}>
+        
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           className="bg-slate-900 border border-slate-800/80 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
+          onClick={(e) => e.stopPropagation()}>
+          
           {/* Header */}
           <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white relative">
             <div className="absolute top-0 right-0 p-4">
               <button
                 onClick={onClose}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
-              >
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+                
                 <FiX className="w-5 h-5" />
               </button>
             </div>
@@ -136,25 +136,25 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
               whileTap={{ scale: 0.98 }}
               onClick={handleAccept}
               disabled={isAccepting}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-900/40 transition-all"
-            >
-              {isAccepting ? (
-                <>
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-900/40 transition-all">
+              
+              {isAccepting ?
+              <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   <span>Syncing...</span>
-                </>
-              ) : (
-                <>
+                </> :
+
+              <>
                   <FiCheck className="w-5 h-5" />
                   <span>Accept Channel</span>
                 </>
-              )}
+              }
             </motion.button>
 
             <button
               onClick={onClose}
-              className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white py-4 px-6 rounded-2xl font-bold text-sm transition-all border border-slate-700/50"
-            >
+              className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white py-4 px-6 rounded-2xl font-bold text-sm transition-all border border-slate-700/50">
+              
               Close Dossier
             </button>
 
@@ -172,8 +172,8 @@ const AgentChatRequestPopup = ({ request, onClose, currentAgent }) => {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
-  );
+    </AnimatePresence>);
+
 };
 
 export default AgentChatRequestPopup;

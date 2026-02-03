@@ -12,13 +12,13 @@ import { createAgentNotification, AGENT_NOTIF_TYPES, AGENT_NOTIF_PRIORITIES } fr
 const LiveChat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'system',
-      message: 'Please wait 5–10 minutes, an agent will connect with you.',
-      timestamp: new Date()
-    }
-  ]);
+  {
+    id: 1,
+    type: 'system',
+    message: 'Please wait 5–10 minutes, an agent will connect with you.',
+    timestamp: new Date()
+  }]
+  );
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [chatRequestId, setChatRequestId] = useState(null);
@@ -74,7 +74,7 @@ const LiveChat = () => {
             message: `Connected to ${data.assignedAgentName || 'Agent'}. You can now chat in real-time.`,
             timestamp: new Date()
           };
-          setMessages(prev => [...prev, systemMessage]);
+          setMessages((prev) => [...prev, systemMessage]);
           startChatRoomListener(chatRequestId);
         }
       }
@@ -88,16 +88,16 @@ const LiveChat = () => {
     const q = query(chatRoomRef, orderBy('timestamp', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map(doc => ({
+      const chatMessages = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate() || new Date()
       }));
 
-      const agentMessages = chatMessages.filter(msg => msg.senderType === 'agent');
+      const agentMessages = chatMessages.filter((msg) => msg.senderType === 'agent');
 
-      setMessages(prev => {
-        const userMessages = prev.filter(msg => msg.senderType !== 'agent');
+      setMessages((prev) => {
+        const userMessages = prev.filter((msg) => msg.senderType !== 'agent');
         return [...userMessages, ...agentMessages].sort((a, b) => a.timestamp - b.timestamp);
       });
     });
@@ -133,7 +133,7 @@ const LiveChat = () => {
       await handleSendMessage(null, imageUrl);
 
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error(String('Error uploading image:') + " " + String(error));
       toast.error('Failed to upload image');
     } finally {
       setIsUploading(false);
@@ -143,12 +143,12 @@ const LiveChat = () => {
   };
 
   const handleEmojiClick = (emojiObject) => {
-    setNewMessage(prev => prev + emojiObject.emoji);
+    setNewMessage((prev) => prev + emojiObject.emoji);
   };
 
   const handleSendMessage = async (e, imageUrl = null) => {
     if (e) e.preventDefault();
-    if ((!newMessage.trim() && !imageUrl) || !user?.uid) return;
+    if (!newMessage.trim() && !imageUrl || !user?.uid) return;
 
     const messageText = newMessage.trim();
     if (!imageUrl) setNewMessage(''); // Only clear text input if it was a text message
@@ -156,7 +156,7 @@ const LiveChat = () => {
 
     // Spam Detection: Check if more than 5 messages in 10 seconds
     const now = Date.now();
-    const newTimestamps = [...messageTimestamps, now].filter(t => now - t < 10000);
+    const newTimestamps = [...messageTimestamps, now].filter((t) => now - t < 10000);
     setMessageTimestamps(newTimestamps);
 
     if (newTimestamps.length > 5) {
@@ -232,7 +232,7 @@ const LiveChat = () => {
         message: firstMessage,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
       const connectingMessage = {
         id: Date.now() + 1,
@@ -240,10 +240,10 @@ const LiveChat = () => {
         message: 'Connecting you to a live agent...',
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, connectingMessage]);
+      setMessages((prev) => [...prev, connectingMessage]);
 
     } catch (error) {
-      console.error('Error creating chat request:', error);
+      console.error(String('Error creating chat request:') + " " + String(error));
       toast.error('Failed to connect to agent. Please try again.');
     }
   };
@@ -271,10 +271,10 @@ const LiveChat = () => {
         imageUrl: imageUrl,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error(String('Error sending message:') + " " + String(error));
       toast.error('Failed to send message');
     }
   };
@@ -308,12 +308,12 @@ const LiveChat = () => {
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 min-h-0">
         <div className="max-w-4xl mx-auto space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center py-12">
+          {messages.length === 0 &&
+          <div className="text-center py-12">
               {/* Welcome UI */}
               <h3 className="text-xl font-bold text-gray-800 mb-2">Welcome to Live Support!</h3>
             </div>
-          )}
+          }
 
           <AnimatePresence mode="popLayout">
             {messages.map((message, index) => {
@@ -327,13 +327,13 @@ const LiveChat = () => {
                     key={message.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-center"
-                  >
+                    className="flex justify-center">
+                    
                     <div className="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm max-w-md text-center">
                       {message.message}
                     </div>
-                  </motion.div>
-                );
+                  </motion.div>);
+
               }
 
               return (
@@ -342,72 +342,72 @@ const LiveChat = () => {
                   layout
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!isUser && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden">
-                      {isAgent && (assignedAgent?.photo || message.senderPhoto) ? (
-                        <img
-                          src={message.senderPhoto || assignedAgent?.photo}
-                          alt="Agent"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : isAgent ? (
-                        <User className="w-4 h-4 text-white" />
-                      ) : (
-                        <Bot className="w-4 h-4 text-white" />
-                      )}
-                    </div>
-                  )}
+                  className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  
+                  {!isUser &&
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden">
+                      {isAgent && (assignedAgent?.photo || message.senderPhoto) ?
+                    <img
+                      src={message.senderPhoto || assignedAgent?.photo}
+                      alt="Agent"
+                      className="w-full h-full object-cover" /> :
 
-                  <div className={`max-w-[75%] sm:max-w-[60%] px-4 py-3 rounded-2xl shadow-sm ${isUser
-                    ? 'bg-blue-500 text-white rounded-br-md'
-                    : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'
-                    }`}>
+                    isAgent ?
+                    <User className="w-4 h-4 text-white" /> :
+
+                    <Bot className="w-4 h-4 text-white" />
+                    }
+                    </div>
+                  }
+
+                  <div className={`max-w-[75%] sm:max-w-[60%] px-4 py-3 rounded-2xl shadow-sm ${isUser ?
+                  'bg-blue-500 text-white rounded-br-md' :
+                  'bg-white text-gray-800 rounded-bl-md border border-gray-100'}`
+                  }>
 
                     {/* Image Render */}
-                    {message.imageUrl && (
-                      <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
+                    {message.imageUrl &&
+                    <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
                         <img
-                          src={message.imageUrl}
-                          alt="Shared attachment"
-                          className="max-w-full h-auto object-cover max-h-64"
-                          loading="lazy"
-                        />
+                        src={message.imageUrl}
+                        alt="Shared attachment"
+                        className="max-w-full h-auto object-cover max-h-64"
+                        loading="lazy" />
+                      
                       </div>
-                    )}
+                    }
 
                     {/* Text Render */}
-                    {(message.message || message.text) && (
-                      <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                    {(message.message || message.text) &&
+                    <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
                         {message.message || message.text}
                       </p>
-                    )}
+                    }
 
-                    <p className={`text-xs mt-2 ${isUser ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
+                    <p className={`text-xs mt-2 ${isUser ? 'text-blue-100' : 'text-gray-500'}`
+                    }>
                       {formatTime(message.timestamp)}
                     </p>
                   </div>
 
-                  {isUser && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  {isUser &&
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                       <User className="w-4 h-4 text-white" />
                     </div>
-                  )}
-                </motion.div>
-              );
+                  }
+                </motion.div>);
+
             })}
           </AnimatePresence>
 
           {/* Uploading Indicator */}
-          {isUploading && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-end pr-12">
+          {isUploading &&
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-end pr-12">
               <div className="bg-gray-100 px-4 py-2 rounded-2xl rounded-br-sm text-xs text-gray-500 flex items-center gap-2">
                 <Loader className="w-3 h-3 animate-spin" /> Uploading image...
               </div>
             </motion.div>
-          )}
+          }
 
           <div ref={messagesEndRef} />
         </div>
@@ -419,22 +419,22 @@ const LiveChat = () => {
 
           {/* Emoji Picker Popover */}
           <AnimatePresence>
-            {showEmojiPicker && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                className="absolute bottom-full left-0 mb-4 z-50 shadow-2xl rounded-xl"
-                ref={emojiPickerRef}
-              >
+            {showEmojiPicker &&
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              className="absolute bottom-full left-0 mb-4 z-50 shadow-2xl rounded-xl"
+              ref={emojiPickerRef}>
+              
                 <EmojiPicker
-                  onEmojiClick={handleEmojiClick}
-                  width={300}
-                  height={400}
-                  searchDisabled={false}
-                />
+                onEmojiClick={handleEmojiClick}
+                width={300}
+                height={400}
+                searchDisabled={false} />
+              
               </motion.div>
-            )}
+            }
           </AnimatePresence>
 
           <div className="flex items-end gap-3">
@@ -446,21 +446,21 @@ const LiveChat = () => {
                 onChange={handleImageSelect}
                 accept="image/*"
                 className="hidden"
-                disabled={chatStatus !== 'connected' || isUploading}
-              />
+                disabled={chatStatus !== 'connected' || isUploading} />
+              
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={chatStatus !== 'connected' || isUploading}
                 className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all disabled:opacity-50"
-                title="Upload Image"
-              >
+                title="Upload Image">
+                
                 <ImageIcon className="w-6 h-6" />
               </button>
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 className={`p-2 rounded-full transition-all ${showEmojiPicker ? 'text-blue-500 bg-blue-50' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
-                title="Insert Emoji"
-              >
+                title="Insert Emoji">
+                
                 <Smile className="w-6 h-6" />
               </button>
             </div>
@@ -477,24 +477,24 @@ const LiveChat = () => {
                     e.preventDefault();
                     handleSendMessage(e);
                   }
-                }}
-              />
+                }} />
+              
             </div>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => handleSendMessage(e)}
-              disabled={(!newMessage.trim() && !isUploading)}
-              className="w-12 h-12 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0"
-            >
+              disabled={!newMessage.trim() && !isUploading}
+              className="w-12 h-12 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0">
+              
               {isUploading ? <Loader className="w-5 h-5 text-white animate-spin" /> : <Send className="w-5 h-5 text-white" />}
             </motion.button>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default LiveChat;

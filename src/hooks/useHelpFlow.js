@@ -16,8 +16,8 @@ import {
   getUserHelpStatus,
   listenToHelpStatus,
   listenToReceiveHelps,
-  disputePayment
-} from '../services/helpService';
+  disputePayment } from
+'../services/helpService';
 import { HELP_STATUS, canSubmitPayment, canConfirmPayment } from '../config/helpStatus';
 import { getAmountByLevel } from '../utils/amountUtils';
 import { toast } from 'react-hot-toast';
@@ -85,31 +85,31 @@ export const useHelpFlow = () => {
             phone: helpStatus.activeSendHelp.receiverPhone
           });
 
-        // Set up real-time listener for status updates
-        helpStatusUnsubscribeRef.current = listenToHelpStatus(
-          helpStatus.activeSendHelp.id,
-          (updatedHelp) => {
-            try {
-              if (updatedHelp) {
-                if (isTerminalHelp(updatedHelp.status)) {
-                  setActiveHelp(null);
-                  setReceiver(null);
-                  return;
+          // Set up real-time listener for status updates
+          helpStatusUnsubscribeRef.current = listenToHelpStatus(
+            helpStatus.activeSendHelp.id,
+            (updatedHelp) => {
+              try {
+                if (updatedHelp) {
+                  if (isTerminalHelp(updatedHelp.status)) {
+                    setActiveHelp(null);
+                    setReceiver(null);
+                    return;
+                  }
+                  setActiveHelp(updatedHelp);
+                  setReceiver({
+                    uid: updatedHelp.receiverUid,
+                    id: updatedHelp.receiverUid,
+                    userId: updatedHelp.receiverId,
+                    name: updatedHelp.receiverName,
+                    phone: updatedHelp.receiverPhone
+                  });
                 }
-                setActiveHelp(updatedHelp);
-                setReceiver({
-                  uid: updatedHelp.receiverUid,
-                  id: updatedHelp.receiverUid,
-                  userId: updatedHelp.receiverId,
-                  name: updatedHelp.receiverName,
-                  phone: updatedHelp.receiverPhone
-                });
+              } catch (error) {
+                console.error(String('Error handling help status update:') + " " + String(error));
               }
-            } catch (error) {
-              console.error('Error handling help status update:', error);
             }
-          }
-        );
+          );
         }
       } else {
         // Check sender eligibility
@@ -143,7 +143,7 @@ export const useHelpFlow = () => {
         }
       }
     } catch (err) {
-      console.error('Error initializing send flow:', err);
+      console.error(String('Error initializing send flow:') + " " + String(err));
       setError('Failed to initialize help flow. Please try again.');
     } finally {
       setLoading(false);
@@ -173,13 +173,14 @@ export const useHelpFlow = () => {
         // Status will update via real-time listener
       }
     } catch (err) {
-      console.error('Error submitting payment:', err);
+      console.error(String('Error submitting payment:') + " " + String(err));
 
       // Handle specific Firestore permission errors with user-friendly messages
       let userMessage = 'Failed to submit payment proof. Please try again.';
-      if (err.message?.includes('permission-denied') ||
-          err.message?.includes('You can only update your own') ||
-          err.code === 'permission-denied') {
+      const safeErrMsg = typeof err?.message === 'string' ? err.message : '';
+      if (safeErrMsg.includes('permission-denied') ||
+      safeErrMsg.includes('You can only update your own') ||
+      err.code === 'permission-denied') {
         userMessage = 'Unable to submit payment at this time. Please contact support if this issue persists.';
         console.error('Permission error during payment submission - check Firestore rules');
       }
@@ -214,7 +215,7 @@ export const useHelpFlow = () => {
           await initializeSendFlow();
         }
       } catch (err) {
-        console.error('Error initializing send flow:', err);
+        console.error(String('Error initializing send flow:') + " " + String(err));
         setError('Failed to initialize help flow. Please refresh the page.');
       }
     };
@@ -238,9 +239,9 @@ export const useHelpFlow = () => {
     clearError: () => setError(null),
 
     // Computed values
-    canSubmitPayment: activeHelp ? (canSubmitPayment(activeHelp.status) && !isTerminalHelp(activeHelp.status)) : false,
-    canConfirmPayment: activeHelp ? (canConfirmPayment(activeHelp.status) && !isTerminalHelp(activeHelp.status)) : false,
-    isActiveHelp: activeHelp ? (!isTerminalHelp(activeHelp.status) && [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE].includes(activeHelp.status)) : false,
+    canSubmitPayment: activeHelp ? canSubmitPayment(activeHelp.status) && !isTerminalHelp(activeHelp.status) : false,
+    canConfirmPayment: activeHelp ? canConfirmPayment(activeHelp.status) && !isTerminalHelp(activeHelp.status) : false,
+    isActiveHelp: activeHelp ? !isTerminalHelp(activeHelp.status) && [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE].includes(activeHelp.status) : false,
     amount: currentUser ? getAmountByLevel(currentUser.levelStatus || 'Star') : 300
   };
 };
@@ -276,13 +277,14 @@ export const useReceiveHelpFlow = () => {
         // Note: User stats updates and sendHelp updates are handled by Cloud Functions
       }
     } catch (err) {
-      console.error('Error confirming payment:', err);
+      console.error(String('Error confirming payment:') + " " + String(err));
 
       // Handle specific Firestore permission errors with user-friendly messages
       let userMessage = 'Failed to confirm payment. Please try again.';
-      if (err.message?.includes('permission-denied') ||
-          err.message?.includes('You can only update your own') ||
-          err.code === 'permission-denied') {
+      const safeErrMsg = typeof err?.message === 'string' ? err.message : '';
+      if (safeErrMsg.includes('permission-denied') ||
+      safeErrMsg.includes('You can only update your own') ||
+      err.code === 'permission-denied') {
         userMessage = 'Unable to confirm payment at this time. Please contact support if this issue persists.';
         console.error('Permission error during payment confirmation - check Firestore rules');
       }
@@ -304,7 +306,7 @@ export const useReceiveHelpFlow = () => {
       // Success handled by UI component for instant feedback
       return result;
     } catch (err) {
-      console.error('Error requesting payment:', err);
+      console.error(String('Error requesting payment:') + " " + String(err));
       setError(err.message || 'Failed to request payment. Please try again.');
       toast.error('Failed to request payment. Please try again.');
       throw err;
@@ -320,7 +322,7 @@ export const useReceiveHelpFlow = () => {
         toast.success('Payment disputed. Support will review.');
       }
     } catch (err) {
-      console.error('Error disputing payment:', err);
+      console.error(String('Error disputing payment:') + " " + String(err));
       toast.error('Failed to dispute payment.');
     }
   }, []);

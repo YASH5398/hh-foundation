@@ -14,8 +14,8 @@ const ChatPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  console.log('💬 ChatPage rendered with helpId:', helpId);
-  console.log('💬 Current user:', currentUser?.uid);
+  console.log(String('💬 ChatPage rendered with helpId:') + " " + String(helpId));
+  console.log(String('💬 Current user:') + " " + String(currentUser?.uid));
 
   useEffect(() => {
     const fetchHelpData = async () => {
@@ -26,14 +26,14 @@ const ChatPage = () => {
       }
 
       try {
-        console.log('💬 Fetching help data for helpId:', helpId);
-        
+        console.log(String('💬 Fetching help data for helpId:') + " " + String(helpId));
+
         // Try to get from receiveHelp collection first
         const receiveHelpDoc = await getDoc(doc(db, 'receiveHelp', helpId));
-        
+
         if (receiveHelpDoc.exists()) {
           const data = receiveHelpDoc.data();
-          console.log('💬 Found receiveHelp data:', data);
+          console.log(String('💬 Found receiveHelp data:') + " " + String(data));
           setHelpData({
             ...data,
             id: helpId,
@@ -42,10 +42,10 @@ const ChatPage = () => {
         } else {
           // Try sendHelp collection
           const sendHelpDoc = await getDoc(doc(db, 'sendHelp', helpId));
-          
+
           if (sendHelpDoc.exists()) {
             const data = sendHelpDoc.data();
-            console.log('💬 Found sendHelp data:', data);
+            console.log(String('💬 Found sendHelp data:') + " " + String(data));
             setHelpData({
               ...data,
               id: helpId,
@@ -57,7 +57,7 @@ const ChatPage = () => {
           }
         }
       } catch (err) {
-        console.error('💬 Error fetching help data:', err);
+        console.error(String('💬 Error fetching help data:') + " " + String(err));
         setError('Failed to load chat');
         toast.error('Failed to load chat');
       } finally {
@@ -75,8 +75,8 @@ const ChatPage = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading chat...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (error || !helpData) {
@@ -88,22 +88,22 @@ const ChatPage = () => {
             <p className="text-gray-600 mb-6">{error || 'This chat could not be found.'}</p>
             <button
               onClick={() => navigate('/dashboard/receive-help')}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-            >
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+              
               Back to Receive Help
             </button>
           </div>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Determine sender and receiver based on current user and help data
   const isReceiver = currentUser?.uid === helpData.receiverUid;
   const isReceiveHelpCollection = helpData.collection === 'receiveHelp';
-  
+
   let receiverId, senderId, receiverName, senderName;
-  
+
   if (isReceiveHelpCollection) {
     // In receiveHelp collection, current user is the receiver
     receiverId = helpData.receiverUid || currentUser?.uid;
@@ -118,16 +118,16 @@ const ChatPage = () => {
     receiverName = helpData.receiverName;
   }
 
-  console.log('💬 Chat participants:', {
+  console.log(String('💬 Chat participants:') + " " + String({
     receiverId,
     senderId,
     receiverName,
     senderName,
     isReceiver,
     isReceiveHelpCollection
-  });
+  }));
 
-  console.log('💬 ChatWindow props:', {
+  console.log(String('💬 ChatWindow props:') + " " + String({
     isOpen: true,
     receiverId,
     senderId,
@@ -135,7 +135,7 @@ const ChatPage = () => {
     senderName,
     receiverPhone: helpData.senderPhone || helpData.receiverPhone,
     receiverWhatsapp: helpData.senderWhatsapp || helpData.receiverWhatsapp
-  });
+  }));
 
   return (
     <div className="h-screen w-full flex flex-col bg-white">
@@ -146,8 +146,8 @@ const ChatPage = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/dashboard/receive-help')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-              >
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200">
+                
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
@@ -164,19 +164,19 @@ const ChatPage = () => {
       {/* Chat Window - Takes remaining vertical space */}
       <div className="flex-grow overflow-hidden">
         <ChatWindow
-              isOpen={true}
-              onClose={() => navigate('/dashboard/receive-help')}
-              receiverId={receiverId}
-              senderId={senderId}
-              receiverName={receiverName}
-              senderName={senderName}
-              receiverAvatar={null}
-              receiverPhone={helpData.senderPhone || helpData.receiverPhone}
-              receiverWhatsapp={helpData.senderWhatsapp || helpData.receiverWhatsapp}
-          />
+          isOpen={true}
+          onClose={() => navigate('/dashboard/receive-help')}
+          receiverId={receiverId}
+          senderId={senderId}
+          receiverName={receiverName}
+          senderName={senderName}
+          receiverAvatar={null}
+          receiverPhone={helpData.senderPhone || helpData.receiverPhone}
+          receiverWhatsapp={helpData.senderWhatsapp || helpData.receiverWhatsapp} />
+        
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default ChatPage;

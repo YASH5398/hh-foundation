@@ -18,14 +18,14 @@ class AuthGuardService {
   _setupAuthListener() {
     onAuthStateChanged(auth, (user) => {
       this._authState = user;
-      console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user');
-      
+      console.log(String('Auth state changed:') + " " + String(user ? `User: ${user.uid}` : 'No user'));
+
       // Notify all listeners
       for (const listener of this._authListeners) {
         try {
           listener(user);
         } catch (error) {
-          console.error('Error in auth state listener:', error);
+          console.error(String('Error in auth state listener:') + " " + String(error));
         }
       }
     });
@@ -64,11 +64,11 @@ class AuthGuardService {
       return await operation();
     } catch (error) {
       // Log the operation error with auth context
-      console.error('Authenticated operation failed:', {
+      console.error(String('Authenticated operation failed:') + " " + String({
         user: this._authState?.uid,
         error: error.message,
         code: error.code
-      });
+      }));
       throw error;
     }
   }
@@ -83,12 +83,12 @@ class AuthGuardService {
     try {
       return await this.requireAuth(operation);
     } catch (error) {
-      console.error(`${operationName} failed:`, {
+      console.error(String(`${operationName} failed:`) + " " + String({
         authenticated: this.isAuthenticated(),
         user: this._authState?.uid,
         error: error.message,
         code: error.code
-      });
+      }));
 
       // Return structured error info instead of throwing
       return {
@@ -107,7 +107,7 @@ class AuthGuardService {
    */
   handleUnauthenticated(context = 'this operation') {
     const message = `Please log in to access ${context}.`;
-    
+
     console.warn('Unauthenticated access attempt:', {
       context,
       currentUser: this._authState?.uid || 'none',
@@ -129,12 +129,12 @@ class AuthGuardService {
    */
   addAuthListener(listener) {
     this._authListeners.add(listener);
-    
+
     // Immediately call with current state
     try {
       listener(this._authState);
     } catch (error) {
-      console.error('Error in auth listener:', error);
+      console.error(String('Error in auth listener:') + " " + String(error));
     }
 
     // Return unsubscribe function
@@ -190,7 +190,7 @@ class AuthGuardService {
     const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
     const userRoles = user.customClaims?.roles || [];
 
-    return roles.some(role => userRoles.includes(role));
+    return roles.some((role) => userRoles.includes(role));
   }
 
   /**
@@ -199,7 +199,7 @@ class AuthGuardService {
    */
   getAuthStatus() {
     const user = this.getCurrentUser();
-    
+
     return {
       isAuthenticated: this.isAuthenticated(),
       user: user ? {

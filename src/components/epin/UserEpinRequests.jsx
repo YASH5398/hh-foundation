@@ -26,7 +26,7 @@ const UserEpinRequests = () => {
       return;
     }
 
-    console.log("Setting up E-PIN requests listener for user:", currentUser.uid);
+    console.log(String("Setting up E-PIN requests listener for user:") + " " + String(currentUser.uid));
 
     // Use safe query service with proper validation
     const unsubscribe = firestoreQueryService.setupSafeListener(
@@ -35,7 +35,7 @@ const UserEpinRequests = () => {
       [['createdAt', 'desc']],
       (fetchedRequests, error) => {
         if (error) {
-          console.error('Error fetching user E-PIN requests:', error);
+          console.error(String('Error fetching user E-PIN requests:') + " " + String(error));
           toast.error('Error fetching your requests.');
           setRequests([]);
         } else {
@@ -54,11 +54,11 @@ const UserEpinRequests = () => {
   }, [currentUser]);
 
   const handleImageError = (requestId) => {
-    setImageLoadErrors(prev => new Set([...prev, requestId]));
+    setImageLoadErrors((prev) => new Set([...prev, requestId]));
   };
 
   const handleImageLoad = (requestId) => {
-    setImageLoadErrors(prev => {
+    setImageLoadErrors((prev) => {
       const newSet = new Set(prev);
       newSet.delete(requestId);
       return newSet;
@@ -70,8 +70,8 @@ const UserEpinRequests = () => {
       return (
         <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-lg border border-gray-200">
           <span className="text-xs text-gray-500">No Image</span>
-        </div>
-      );
+        </div>);
+
     }
 
     const hasError = imageLoadErrors.has(request.id);
@@ -84,18 +84,18 @@ const UserEpinRequests = () => {
           </div>
           <button
             onClick={() => {
-              setImageLoadErrors(prev => {
+              setImageLoadErrors((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(request.id);
                 return newSet;
               });
             }}
-            className="text-blue-500 hover:underline text-xs"
-          >
+            className="text-blue-500 hover:underline text-xs">
+            
             Retry
           </button>
-        </div>
-      );
+        </div>);
+
     }
 
     return (
@@ -108,8 +108,8 @@ const UserEpinRequests = () => {
             onClick={() => window.open(request.paymentScreenshotUrl, '_blank')}
             onError={() => handleImageError(request.id)}
             onLoad={() => handleImageLoad(request.id)}
-            loading="lazy"
-          />
+            loading="lazy" />
+          
           {/* Loading overlay */}
           <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center opacity-0 transition-opacity">
             <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -119,12 +119,12 @@ const UserEpinRequests = () => {
           href={request.paymentScreenshotUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-500 hover:underline text-xs"
-        >
+          className="text-blue-500 hover:underline text-xs">
+          
           View Full
         </a>
-      </div>
-    );
+      </div>);
+
   };
 
   if (loading) {
@@ -135,8 +135,8 @@ const UserEpinRequests = () => {
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <span className="ml-2 text-gray-600">Loading your requests...</span>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!authGuardService.isAuthenticated()) {
@@ -146,19 +146,19 @@ const UserEpinRequests = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <p className="text-yellow-800">Please log in to view your E-PIN requests.</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
     <div className="container mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">Your E-PIN Request Status</h2>
-      {requests.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+      {requests.length === 0 ?
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
           <p className="text-gray-600">You have not made any E-PIN requests yet.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
+        </div> :
+
+      <div className="overflow-x-auto">
           <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -174,8 +174,8 @@ const UserEpinRequests = () => {
               </tr>
             </thead>
             <tbody>
-              {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50">
+              {requests.map((request) =>
+            <tr key={request.id} className="hover:bg-gray-50">
                   <td className="py-3 px-4 border-b text-sm text-gray-900">{request.id.slice(-8)}</td>
                   <td className="py-3 px-4 border-b text-sm text-gray-900">{request.quantityRequested}</td>
                   <td className="py-3 px-4 border-b text-sm text-gray-900">{request.quantityBonus || 0}</td>
@@ -187,10 +187,10 @@ const UserEpinRequests = () => {
                   </td>
                   <td className="py-3 px-4 border-b text-sm">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      request.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                'bg-yellow-100 text-yellow-800'}`
+                }>
                       {request.status || 'pending'}
                     </span>
                   </td>
@@ -198,13 +198,13 @@ const UserEpinRequests = () => {
                     {request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString() : 'N/A'}
                   </td>
                 </tr>
-              ))}
+            )}
             </tbody>
           </table>
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default UserEpinRequests;

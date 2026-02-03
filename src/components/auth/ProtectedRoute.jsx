@@ -6,12 +6,12 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading, userProfile } = useAuth();
   const location = useLocation();
 
-  console.log("🔍 PROTECTED ROUTE:", {
+  console.log(String("🔍 PROTECTED ROUTE:") + " " + String({
     path: location.pathname,
     user: !!user,
     loading: loading,
     userProfile: !!userProfile
-  });
+  }));
 
   if (loading) {
     console.log("🔍 PROTECTED ROUTE: Still loading, showing spinner");
@@ -20,8 +20,8 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+      </div>);
+
   }
 
   // If auth finished but user exists, ensure userProfile has resolved
@@ -31,12 +31,12 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!user) {
-    console.log("🔍 PROTECTED ROUTE: No user, redirecting to login from:", location.pathname);
+    console.log(String("🔍 PROTECTED ROUTE: No user, redirecting to login from:") + " " + String(location.pathname));
     // If the user is not authenticated, redirect them to the login page.
     // We save the current location so we can redirect them back after login.
     return <Navigate to="/login" state={{ from: location }} replace />;

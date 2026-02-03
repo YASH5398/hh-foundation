@@ -26,7 +26,7 @@ const EpinRequestForm = () => {
     10: 1,
     15: 2,
     25: 4,
-    50: 10,
+    50: 10
   };
 
   // Fetch admin/system UPI QR image URL from Firestore
@@ -35,12 +35,12 @@ const EpinRequestForm = () => {
       try {
         setQrImageLoading(true);
         const configDoc = await getDoc(doc(db, 'systemConfig', 'upiSettings'));
-        
+
         if (configDoc.exists()) {
           const configData = configDoc.data();
           if (configData.upiQrImageUrl) {
             setUpiQrImageUrl(configData.upiQrImageUrl);
-            console.log("UPI QR URL:", configData.upiQrImageUrl);
+            console.log(String("UPI QR URL:") + " " + String(configData.upiQrImageUrl));
           } else {
             console.warn('UPI QR image URL not found in system configuration');
             setUpiQrImageUrl(null);
@@ -50,7 +50,7 @@ const EpinRequestForm = () => {
           setUpiQrImageUrl(null);
         }
       } catch (error) {
-        console.error('Error fetching system configuration:', error);
+        console.error(String('Error fetching system configuration:') + " " + String(error));
       } finally {
         setQrImageLoading(false);
       }
@@ -99,7 +99,7 @@ const EpinRequestForm = () => {
       }
 
       let paymentScreenshotUrl = '';
-      
+
       if (paymentScreenshot) {
         try {
           // Validate file before upload
@@ -110,9 +110,9 @@ const EpinRequestForm = () => {
 
           // Upload using new storage service with proper path structure
           paymentScreenshotUrl = await firebaseStorageService.uploadEPinScreenshot(paymentScreenshot, user.uid);
-          console.log('E-PIN screenshot uploaded successfully:', paymentScreenshotUrl);
+          console.log(String('E-PIN screenshot uploaded successfully:') + " " + String(paymentScreenshotUrl));
         } catch (uploadError) {
-          console.error('Error uploading screenshot:', uploadError);
+          console.error(String('Error uploading screenshot:') + " " + String(uploadError));
           toast.error(`Screenshot upload failed: ${uploadError.message}`);
           return;
         }
@@ -129,7 +129,7 @@ const EpinRequestForm = () => {
         utrNumber: utrNumber,
         paymentScreenshotUrl: paymentScreenshotUrl, // This is now a proper Firebase Storage download URL
         status: 'pending',
-        createdAt: serverTimestamp(),
+        createdAt: serverTimestamp()
       });
 
       // Send notification to admins about new EPIN request
@@ -144,7 +144,7 @@ const EpinRequestForm = () => {
           targetRole: 'admin'
         });
       } catch (notificationError) {
-        console.error('Error sending admin notification:', notificationError);
+        console.error(String('Error sending admin notification:') + " " + String(notificationError));
       }
 
       toast.success('E-PIN request submitted successfully!');
@@ -156,7 +156,7 @@ const EpinRequestForm = () => {
       setUtrNumber('');
       setPaymentScreenshot(null);
     } catch (error) {
-      console.error('Error submitting E-PIN request:', error);
+      console.error(String('Error submitting E-PIN request:') + " " + String(error));
       toast.error('Failed to submit E-PIN request. Please try again.');
     } finally {
       setLoading(false);
@@ -180,109 +180,114 @@ const EpinRequestForm = () => {
             value={quantity}
             onChange={handleQuantityChange}
             min="1"
-            required
-          />
-          {bonus > 0 && (
-            <p className="text-sm text-green-600 mt-1">You get {bonus} bonus E-PIN(s)!</p>
-          )}
-          {quantity > 0 && (
-            <p className="text-sm text-gray-600 mt-1">Total E-PINs: {quantity + bonus}</p>
-          )}
+            required />
+          
+          {bonus > 0 &&
+          <p className="text-sm text-green-600 mt-1">You get {bonus} bonus E-PIN(s)!</p>
+          }
+          {quantity > 0 &&
+          <p className="text-sm text-gray-600 mt-1">Total E-PINs: {quantity + bonus}</p>
+          }
         </div>
 
         {/* Step 2: Payment Section */}
-        {quantity > 0 && (
-          <div className="mb-4 p-4 border rounded-md bg-gray-50">
+        {quantity > 0 &&
+        <div className="mb-4 p-4 border rounded-md bg-gray-50">
             <h3 className="text-lg font-semibold mb-2">Payment Details</h3>
             <p className="text-gray-700">UPI ID: <span className="font-medium">helpingpin@axl</span></p>
             <div className="my-4 flex justify-center">
-              {qrImageLoading ? (
-                <div className="w-48 h-48 flex items-center justify-center bg-gray-100 border border-gray-300 rounded">
+              {qrImageLoading ?
+            <div className="w-48 h-48 flex items-center justify-center bg-gray-100 border border-gray-300 rounded">
                   <span className="text-gray-500">Loading QR Code...</span>
-                </div>
-              ) : upiQrImageUrl ? (
-                <img 
-                  src={upiQrImageUrl} 
-                  alt="UPI QR Code" 
-                  className="w-48 h-48 object-contain" 
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-              ) : (
-                <div className="w-48 h-48 flex items-center justify-center bg-gray-100 border border-gray-300 rounded text-gray-500 text-center">
+                </div> :
+            upiQrImageUrl ?
+            <img
+              src={upiQrImageUrl}
+              alt="UPI QR Code"
+              className="w-48 h-48 object-contain"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }} /> :
+
+
+            <div className="w-48 h-48 flex items-center justify-center bg-gray-100 border border-gray-300 rounded text-gray-500 text-center">
                   QR Code not available
                 </div>
-              )}
+            }
             </div>
             <p className="text-gray-700">Total Amount to Pay: <span className="font-medium">₹{(quantity + bonus) * epinPrice}</span></p>
             <input
-              type="number"
-              id="amountPaid"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mt-2"
-              placeholder="Amount Paid (e.g., 1000)"
-              value={amountPaid}
-              onChange={(e) => setAmountPaid(e.target.value)}
-              required
-            />
+            type="number"
+            id="amountPaid"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mt-2"
+            placeholder="Amount Paid (e.g., 1000)"
+            value={amountPaid}
+            onChange={(e) => setAmountPaid(e.target.value)}
+            required />
+          
           </div>
-        )}
+        }
 
         {/* Step 3: Payment Details (UTR & Screenshot) */}
-        {quantity > 0 && (
-          <div className="mb-4">
+        {quantity > 0 &&
+        <div className="mb-4">
             <label htmlFor="utrNumber" className="block text-gray-700 text-sm font-bold mb-2">
               UTR Number:
             </label>
             <input
-              type="text"
-              id="utrNumber"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Enter UTR Number"
-              value={utrNumber}
-              onChange={(e) => setUtrNumber(e.target.value)}
-              required
-            />
+            type="text"
+            id="utrNumber"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            placeholder="Enter UTR Number"
+            value={utrNumber}
+            onChange={(e) => setUtrNumber(e.target.value)}
+            required />
+          
           </div>
-        )}
+        }
 
-        {quantity > 0 && (
-          <div className="mb-6">
+        {quantity > 0 &&
+        <div className="mb-6">
             <label htmlFor="paymentScreenshot" className="block text-gray-700 text-sm font-bold mb-2">
               Payment Screenshot:
             </label>
             <input
-              type="file"
-              id="paymentScreenshot"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500
+            type="file"
+            id="paymentScreenshot"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-md file:border-0
                 file:text-sm file:font-semibold
                 file:bg-blue-50 file:text-blue-700
                 hover:file:bg-blue-100"
-              required
-            />
-            {paymentScreenshot && (
-              <p className="text-sm text-gray-600 mt-1">Selected file: {paymentScreenshot.name}</p>
-            )}
+
+
+
+
+
+            required />
+          
+            {paymentScreenshot &&
+          <p className="text-sm text-gray-600 mt-1">Selected file: {paymentScreenshot.name}</p>
+          }
           </div>
-        )}
+        }
 
         {/* Step 4: Submit */}
         <button
           type="submit"
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-          disabled={loading}
-        >
+          disabled={loading}>
+          
           {loading ? 'Submitting...' : 'Submit E-PIN Request'}
         </button>
       </form>
-    </div>
-  );
+    </div>);
+
 };
 
 export default EpinRequestForm;

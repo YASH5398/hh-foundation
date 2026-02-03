@@ -14,8 +14,8 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  Timestamp
-} from '../config/firebase.js';
+  Timestamp } from
+'../config/firebase.js';
 
 /**
  * Unified Chat Service - Consolidated from firebaseService.js, firebaseChat.js, and old chatService.js
@@ -46,7 +46,7 @@ export class ChatService {
       await addDoc(chatRef, messageData);
       return { success: true };
     } catch (error) {
-      console.error('Error sending transaction message:', error);
+      console.error(String('Error sending transaction message:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -70,7 +70,7 @@ export class ChatService {
         await setDoc(chatRef, {
           senderUid,
           receiverUid,
-          createdAt: serverTimestamp(),
+          createdAt: serverTimestamp()
         });
       }
 
@@ -84,7 +84,7 @@ export class ChatService {
 
       return { success: true };
     } catch (error) {
-      console.error("Error sending help chat message:", error);
+      console.error(String("Error sending help chat message:") + " " + String(error));
       throw error;
     }
   }
@@ -108,7 +108,7 @@ export class ChatService {
         await setDoc(chatRef, {
           senderUid,
           receiverUid,
-          createdAt: serverTimestamp(),
+          createdAt: serverTimestamp()
         });
       }
 
@@ -120,12 +120,12 @@ export class ChatService {
         isRead: false,
         type: "text",
         timestamp: serverTimestamp(),
-        senderProfileImage: senderProfileImage || '',
+        senderProfileImage: senderProfileImage || ''
       });
 
       return { success: true };
     } catch (error) {
-      console.error("Error sending direct message:", error);
+      console.error(String("Error sending direct message:") + " " + String(error));
       throw error;
     }
   }
@@ -143,17 +143,17 @@ export class ChatService {
       const q = query(chatRef, orderBy('timestamp', 'asc'));
 
       return onSnapshot(q, (snapshot) => {
-        const messages = snapshot.docs.map(doc => ({
+        const messages = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data()
         }));
         callback(messages);
       }, (error) => {
-        console.error('Error listening to transaction messages:', error);
+        console.error(String('Error listening to transaction messages:') + " " + String(error));
         callback([]);
       });
     } catch (error) {
-      console.error('Error setting up transaction message subscription:', error);
+      console.error(String('Error setting up transaction message subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -175,14 +175,14 @@ export class ChatService {
       const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
       return onSnapshot(q, (snapshot) => {
-        const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const messages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         callback(messages);
       }, (error) => {
-        console.error('Error subscribing to direct messages:', error);
+        console.error(String('Error subscribing to direct messages:') + " " + String(error));
         callback([]);
       });
     } catch (error) {
-      console.error('Error setting up direct message subscription:', error);
+      console.error(String('Error setting up direct message subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -206,7 +206,7 @@ export class ChatService {
 
       await Promise.all(batch);
     } catch (error) {
-      console.error('Error marking transaction messages as read:', error);
+      console.error(String('Error marking transaction messages as read:') + " " + String(error));
     }
   }
 
@@ -225,7 +225,7 @@ export class ChatService {
         await updateDoc(docSnap.ref, { isRead: true });
       }
     } catch (error) {
-      console.error('Error marking direct messages as read:', error);
+      console.error(String('Error marking direct messages as read:') + " " + String(error));
     }
   }
 
@@ -280,7 +280,7 @@ export class ChatService {
 
       return chatId;
     } catch (error) {
-      console.error('Error initializing direct chat:', error);
+      console.error(String('Error initializing direct chat:') + " " + String(error));
       throw error;
     }
   }

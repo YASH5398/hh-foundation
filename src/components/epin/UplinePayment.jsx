@@ -34,7 +34,7 @@ const UplinePayment = () => {
       setPendingUplinePayments(payments);
       setLoading(false);
     }, (err) => {
-      console.error('Error fetching upline payments:', err);
+      console.error('Error fetching upline payments: ' + String(err));
       setError('Failed to load pending upline payments.');
       setLoading(false);
     });
@@ -57,7 +57,7 @@ const UplinePayment = () => {
       toast.success('Upline payment confirmed successfully!');
       setLoading(false);
     } catch (err) {
-      console.error('Error confirming upline payment:', err);
+      console.error('Error confirming upline payment: ' + String(err));
       setError('Failed to confirm upline payment. ' + err.message);
       setLoading(false);
     }

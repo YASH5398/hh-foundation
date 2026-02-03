@@ -8,7 +8,7 @@ const defaultAvatar = '/default-avatar.png';
 const formatTime = (ts) => ts?.toDate?.() ? ts.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
 export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUser, collectionType = 'chats' }) {
-  console.log("✅ chatUser inside ChatModal:", chatUser);
+  console.log(String("✅ chatUser inside ChatModal:") + " " + String(chatUser));
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -22,7 +22,7 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
     if (!isOpen || !currentUser?.userId || !chatUser?.userId) return;
     const sortedChatId = getChatId(currentUser.userId, chatUser.userId);
     if (!sortedChatId || typeof sortedChatId !== 'string' || !sortedChatId.trim()) {
-      console.error('❌ chatId is undefined or invalid:', sortedChatId);
+      console.error(String('❌ chatId is undefined or invalid:') + " " + String(sortedChatId));
       return;
     }
     let unsub;
@@ -30,7 +30,7 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
       const messagesRef = collection(db, 'helpChats', sortedChatId, 'messages');
       const q = query(messagesRef, orderBy('timestamp', 'asc'));
       unsub = onSnapshot(q, (snapshot) => {
-        setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setMessages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
       });
     } else {
       unsub = subscribeToMessages(sortedChatId, (msgs) => {
@@ -51,34 +51,34 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
   // Send message handler
   const handleSend = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    console.log("🧪 currentUser:", currentUser);
-    console.log("🧪 chatUser:", chatUser);
+    console.log(String("🧪 currentUser:") + " " + String(currentUser));
+    console.log(String("🧪 chatUser:") + " " + String(chatUser));
     if (
-      !chatUser || !chatUser.uid || !chatUser.userId ||
-      !currentUser || !currentUser.uid || !currentUser.userId
-    ) {
-      console.error("❌ Required user fields missing", { chatUser, currentUser });
+    !chatUser || !chatUser.uid || !chatUser.userId ||
+    !currentUser || !currentUser.uid || !currentUser.userId)
+    {
+      console.error(String("❌ Required user fields missing") + " " + String({ chatUser, currentUser }));
       return;
     }
     // Safety check for message and required user fields
     if (!message.trim() || !chatUser?.userId || !currentUser?.userId) {
-      console.error("❌ Missing required data", { message, chatUser, currentUser });
+      console.error(String("❌ Missing required data") + " " + String({ message, chatUser, currentUser }));
       return;
     }
     // Defensive checks for required data
     if (!currentUser || !currentUser.userId || !currentUser.uid) {
-      console.error("❌ currentUser, userId, or uid is undefined", currentUser);
+      console.error(String("❌ currentUser, userId, or uid is undefined") + " " + String(currentUser));
       return;
     }
     if (!chatUser || !chatUser.userId || !chatUser.uid) {
-      console.error("❌ chatUser, userId, or uid is undefined", chatUser);
+      console.error(String("❌ chatUser, userId, or uid is undefined") + " " + String(chatUser));
       return;
     }
     // Reminder: When opening ChatModal, always pass complete user data for chatUser and currentUser
     const sortedChatId = getChatId(currentUser.userId, chatUser.userId);
-    console.log("🧪 chatId:", sortedChatId);
+    console.log(String("🧪 chatId:") + " " + String(sortedChatId));
     if (!sortedChatId || typeof sortedChatId !== 'string' || !sortedChatId.trim()) {
-      console.error('❌ chatId is undefined or invalid:', sortedChatId);
+      console.error(String('❌ chatId is undefined or invalid:') + " " + String(sortedChatId));
       return;
     }
     const trimmedMessage = message.trim();
@@ -91,12 +91,12 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
       if (collectionType === 'helpChats') {
         const messagesRef = collection(db, `helpChats/${sortedChatId}/messages`);
         const newMessage = trimmedMessage;
-        console.log("✅ Final message data before sending:", {
+        console.log(String("✅ Final message data before sending:") + " " + String({
           senderUid: currentUser?.uid,
           receiverUid: chatUser?.uid,
           message: newMessage,
-          timestamp: serverTimestamp(),
-        });
+          timestamp: serverTimestamp()
+        }));
         await addDoc(messagesRef, {
           senderUid: currentUser.uid,
           receiverUid: chatUser.uid,
@@ -113,14 +113,14 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
           receiverUid: chatUser.uid,
           message: trimmedMessage,
           type: 'text',
-          senderProfileImage: currentUser.profileImage || currentUser.photoURL || '',
+          senderProfileImage: currentUser.profileImage || currentUser.photoURL || ''
         });
         setMessage("");
         setSending(false);
       }
     } catch (error) {
       setSending(false);
-      console.error("❌ Error sending message:", error);
+      console.error(String("❌ Error sending message:") + " " + String(error));
     }
   };
 
@@ -137,59 +137,59 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {messages.length === 0 && <div className="text-gray-400 text-center mt-10">No messages yet.</div>}
         {messages.map((msg, idx) => {
-          console.log("Rendering message:", msg);
+          console.log(String("Rendering message:") + " " + String(msg));
           const isSender = msg.senderUid === currentUser.uid;
           // Avatar logic
-          const getInitial = (name, fallback) => (name && name[0]) ? name[0].toUpperCase() : (fallback && fallback[0]) ? fallback[0].toUpperCase() : 'U';
+          const getInitial = (name, fallback) => name && name[0] ? name[0].toUpperCase() : fallback && fallback[0] ? fallback[0].toUpperCase() : 'U';
           const senderName = isSender ? currentUser.fullName || currentUser.userId : chatUser.fullName || chatUser.userId;
-          const senderProfileImage = isSender ? (currentUser.profileImage || '') : (chatUser.profileImage || '');
+          const senderProfileImage = isSender ? currentUser.profileImage || '' : chatUser.profileImage || '';
           return (
             <div key={msg.id || idx} className={`flex items-end mb-3 gap-2 ${isSender ? 'justify-end' : 'justify-start'}`}>
               {!isSender && (
-                senderProfileImage ? (
-                  <img
-                    src={senderProfileImage}
-                    className="w-8 h-8 rounded-full bg-white border border-gray-300 object-cover"
-                    alt="avatar"
-                    onError={e => { e.target.src = defaultAvatar; }}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-base border border-gray-300">
+              senderProfileImage ?
+              <img
+                src={senderProfileImage}
+                className="w-8 h-8 rounded-full bg-white border border-gray-300 object-cover"
+                alt="avatar"
+                onError={(e) => {e.target.src = defaultAvatar;}} /> :
+
+
+              <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-base border border-gray-300">
                     {getInitial(senderName)}
-                  </div>
-                )
-              )}
+                  </div>)
+
+              }
               <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm ${isSender ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}
-                style={{ wordBreak: 'break-word' }}
-              >
+              style={{ wordBreak: 'break-word' }}>
+                
                 {/* Always show message if present, else fallback to text, title, or screenshot */}
-                {msg.message ? (
-                  <span>{msg.message}</span>
-                ) : msg.text ? (
-                  <span>{msg.text}</span>
-                ) : msg.title ? (
-                  <span className="italic text-gray-500">{msg.title}</span>
-                ) : msg.screenshotUrl ? (
-                  <img src={msg.screenshotUrl} alt="screenshot" className="max-h-32 rounded" />
-                ) : null}
+                {msg.message ?
+                <span>{msg.message}</span> :
+                msg.text ?
+                <span>{msg.text}</span> :
+                msg.title ?
+                <span className="italic text-gray-500">{msg.title}</span> :
+                msg.screenshotUrl ?
+                <img src={msg.screenshotUrl} alt="screenshot" className="max-h-32 rounded" /> :
+                null}
                 <div className="text-[10px] mt-1 text-right text-gray-400">{formatTime(msg.timestamp)}</div>
               </div>
               {isSender && (
-                senderProfileImage ? (
-                  <img
-                    src={senderProfileImage}
-                    className="w-8 h-8 rounded-full bg-white border border-gray-300 object-cover"
-                    alt="avatar"
-                    onError={e => { e.target.src = defaultAvatar; }}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-base border border-gray-300">
+              senderProfileImage ?
+              <img
+                src={senderProfileImage}
+                className="w-8 h-8 rounded-full bg-white border border-gray-300 object-cover"
+                alt="avatar"
+                onError={(e) => {e.target.src = defaultAvatar;}} /> :
+
+
+              <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-base border border-gray-300">
                     {getInitial(senderName)}
-                  </div>
-                )
-              )}
-            </div>
-          );
+                  </div>)
+
+              }
+            </div>);
+
         })}
         <div ref={messagesEndRef} />
       </div>
@@ -199,23 +199,23 @@ export default function ChatModal({ isOpen, onClose, chatId, currentUser, chatUs
           <input
             type="text"
             value={message}
-            onChange={e => setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value)}
             placeholder="Type a message..."
             className="flex-1 px-4 py-2 border rounded-full focus:outline-none text-black"
             disabled={sending}
-            maxLength={500}
-          />
-          {chatUser?.userId && currentUser?.userId ? (
+            maxLength={500} />
+          
+          {chatUser?.userId && currentUser?.userId ?
           <button
-              onClick={handleSend}
+            onClick={handleSend}
             className="bg-indigo-600 text-white px-4 py-2 rounded-full font-semibold disabled:opacity-60"
-            disabled={sending || !message.trim()}
-          >
+            disabled={sending || !message.trim()}>
+            
             Send
-          </button>
-          ) : null}
+          </button> :
+          null}
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }

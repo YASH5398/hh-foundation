@@ -9,8 +9,8 @@ import {
   updateDoc,
   getDoc,
   orderBy,
-  limit
-} from 'firebase/firestore';
+  limit } from
+'firebase/firestore';
 import { db } from '../../config/firebase';
 import { unblockUser } from '../../services/helpService';
 import { listenToAllSupportTickets } from '../../services/supportService';
@@ -29,8 +29,8 @@ import {
   Search,
   Filter,
   Eye,
-  Unlock
-} from 'lucide-react';
+  Unlock } from
+'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const BlockedUsersManager = () => {
@@ -54,14 +54,14 @@ const BlockedUsersManager = () => {
       );
 
       const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
-        const users = snapshot.docs.map(doc => ({
+        const users = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data()
         }));
         setBlockedUsers(users || []);
         setLoading(false);
       }, (error) => {
-        console.error('Error listening to blocked users:', error);
+        console.error(String('Error listening to blocked users:') + " " + String(error));
         setBlockedUsers([]); // Fallback to empty array on error
         setLoading(false);
         toast.error('Failed to load blocked users. Check permissions.');
@@ -69,7 +69,7 @@ const BlockedUsersManager = () => {
 
       return unsubscribeUsers;
     } catch (err) {
-      console.error('Critical error in BlockedUsersManager:', err);
+      console.error(String('Critical error in BlockedUsersManager:') + " " + String(err));
       setBlockedUsers([]);
       setLoading(false);
     }
@@ -78,11 +78,11 @@ const BlockedUsersManager = () => {
   // Listen to support tickets
   useEffect(() => {
     const unsubscribeTickets = listenToAllSupportTickets((tickets) => {
-      setSupportTickets((tickets || []).filter(ticket =>
-        ticket && (
-          ticket.category === 'block_resolution' ||
-          String(ticket.reason || "").toLowerCase().includes('blocked')
-        )
+      setSupportTickets((tickets || []).filter((ticket) =>
+      ticket && (
+      ticket.category === 'block_resolution' ||
+      String(ticket.reason || "").toLowerCase().includes('blocked'))
+
       ));
     });
 
@@ -109,7 +109,7 @@ const BlockedUsersManager = () => {
         setUnblockReason('');
       }
     } catch (error) {
-      console.error('Error unblocking user:', error);
+      console.error(String('Error unblocking user:') + " " + String(error));
       toast.error('Failed to unblock user');
     } finally {
       setUnblocking(false);
@@ -125,13 +125,13 @@ const BlockedUsersManager = () => {
   };
 
   const getUserSupportTickets = (userId) => {
-    return supportTickets.filter(ticket => ticket.userUid === userId);
+    return supportTickets.filter((ticket) => ticket.userUid === userId);
   };
 
   const safeUsers = Array.isArray(blockedUsers) ? blockedUsers : [];
   const q = (searchTerm || "").toLowerCase();
 
-  const filteredUsers = safeUsers.filter(user => {
+  const filteredUsers = safeUsers.filter((user) => {
     if (!user) return false;
 
     // 1. Search filter
@@ -153,8 +153,8 @@ const BlockedUsersManager = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -188,29 +188,29 @@ const BlockedUsersManager = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-              >
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'all' ?
+                'bg-blue-600 text-white' :
+                'bg-slate-700 text-slate-300 hover:bg-slate-600'}`
+                }>
+                
                 All ({blockedUsers.length})
               </button>
               <button
                 onClick={() => setFilter('system_blocked')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'system_blocked'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-              >
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'system_blocked' ?
+                'bg-red-600 text-white' :
+                'bg-slate-700 text-slate-300 hover:bg-slate-600'}`
+                }>
+                
                 System
               </button>
               <button
                 onClick={() => setFilter('manual_blocked')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'manual_blocked'
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-              >
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'manual_blocked' ?
+                'bg-orange-600 text-white' :
+                'bg-slate-700 text-slate-300 hover:bg-slate-600'}`
+                }>
+                
                 Manual
               </button>
             </div>
@@ -224,8 +224,8 @@ const BlockedUsersManager = () => {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-slate-400 w-full md:w-64"
-            />
+              className="pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-slate-400 w-full md:w-64" />
+            
           </div>
         </div>
       </div>
@@ -237,23 +237,23 @@ const BlockedUsersManager = () => {
         </div>
 
         <div className="divide-y divide-slate-700">
-          {filteredUsers.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">
+          {filteredUsers.length === 0 ?
+          <div className="p-8 text-center text-slate-500">
               <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No blocked users found</p>
-            </div>
-          ) : (
-            filteredUsers.map((user) => {
-              const blockType = getBlockType(user);
-              const userTickets = getUserSupportTickets(user.id);
+            </div> :
 
-              return (
-                <motion.div
-                  key={user.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-6 hover:bg-slate-700/30 transition-colors"
-                >
+          filteredUsers.map((user) => {
+            const blockType = getBlockType(user);
+            const userTickets = getUserSupportTickets(user.id);
+
+            return (
+              <motion.div
+                key={user.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 hover:bg-slate-700/30 transition-colors">
+                
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center">
@@ -263,8 +263,8 @@ const BlockedUsersManager = () => {
                         <h4 className="font-semibold text-white">{user.fullName || user.displayName}</h4>
                         <p className="text-sm text-slate-400">{user.userId} • {user.email}</p>
                         <div className="flex items-center gap-4 mt-1">
-                          <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${blockType.type === 'system' ? 'bg-red-900/30 text-red-400 border border-red-500/30' : 'bg-orange-900/30 text-orange-400 border border-orange-500/30'
-                            }`}>
+                          <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${blockType.type === 'system' ? 'bg-red-900/30 text-red-400 border border-red-500/30' : 'bg-orange-900/30 text-orange-400 border border-orange-500/30'}`
+                        }>
                             <Shield className="w-3 h-3" />
                             {blockType.label}
                           </span>
@@ -285,19 +285,19 @@ const BlockedUsersManager = () => {
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setSelectedUser(user)}
-                          className="px-3 py-2 bg-blue-900/30 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-900/50 transition-colors flex items-center gap-2"
-                        >
+                        onClick={() => setSelectedUser(user)}
+                        className="px-3 py-2 bg-blue-900/30 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-900/50 transition-colors flex items-center gap-2">
+                        
                           <Eye className="w-4 h-4" />
                           View
                         </button>
                         <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowUnblockModal(true);
-                          }}
-                          className="px-3 py-2 bg-green-900/30 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-900/50 transition-colors flex items-center gap-2"
-                        >
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowUnblockModal(true);
+                        }}
+                        className="px-3 py-2 bg-green-900/30 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-900/50 transition-colors flex items-center gap-2">
+                        
                           <Unlock className="w-4 h-4" />
                           Unblock
                         </button>
@@ -306,44 +306,44 @@ const BlockedUsersManager = () => {
                   </div>
 
                   {/* Block Reason */}
-                  {user.blockReason && (
-                    <div className="mt-3 p-3 bg-red-900/10 border border-red-500/20 rounded-lg">
+                  {user.blockReason &&
+                <div className="mt-3 p-3 bg-red-900/10 border border-red-500/20 rounded-lg">
                       <p className="text-sm text-red-300">
                         <strong>Block Reason:</strong> {user.blockReason}
                       </p>
                     </div>
-                  )}
-                </motion.div>
-              );
-            })
-          )}
+                }
+                </motion.div>);
+
+          })
+          }
         </div>
       </div>
 
       {/* User Details Modal */}
       <AnimatePresence>
-        {selectedUser && !showUnblockModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedUser(null)}
-          >
+        {selectedUser && !showUnblockModal &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedUser(null)}>
+          
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            
               <div className="p-6 border-b border-slate-700">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold text-white">User Details</h3>
                   <button
-                    onClick={() => setSelectedUser(null)}
-                    className="text-slate-400 hover:text-white"
-                  >
+                  onClick={() => setSelectedUser(null)}
+                  className="text-slate-400 hover:text-white">
+                  
                     <XCircle className="w-6 h-6" />
                   </button>
                 </div>
@@ -377,27 +377,27 @@ const BlockedUsersManager = () => {
                     <p><strong>Block Reason:</strong> {selectedUser.blockReason}</p>
                     <p><strong>Blocked At:</strong> {formatDate(selectedUser.blockedAt)}</p>
                     <p><strong>Block Type:</strong> {selectedUser.blockedBySystem ? 'System Auto-Block' : 'Manual Block'}</p>
-                    {selectedUser.blockedHelpId && (
-                      <p><strong>Related Help ID:</strong> {selectedUser.blockedHelpId}</p>
-                    )}
+                    {selectedUser.blockedHelpId &&
+                  <p><strong>Related Help ID:</strong> {selectedUser.blockedHelpId}</p>
+                  }
                   </div>
                 </div>
 
                 {/* Support Tickets */}
                 <div>
                   <h4 className="font-semibold text-white mb-3">Support Tickets</h4>
-                  {getUserSupportTickets(selectedUser.id).length === 0 ? (
-                    <p className="text-slate-500">No support tickets found</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {getUserSupportTickets(selectedUser.id).map((ticket) => (
-                        <div key={ticket.id} className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                  {getUserSupportTickets(selectedUser.id).length === 0 ?
+                <p className="text-slate-500">No support tickets found</p> :
+
+                <div className="space-y-2">
+                      {getUserSupportTickets(selectedUser.id).map((ticket) =>
+                  <div key={ticket.id} className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-white">{ticket.reason}</span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${ticket.status === 'open' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
-                              ticket.status === 'resolved' ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
-                                'bg-blue-900/30 text-blue-400 border border-blue-500/30'
-                              }`}>
+                      ticket.status === 'resolved' ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
+                      'bg-blue-900/30 text-blue-400 border border-blue-500/30'}`
+                      }>
                               {ticket.status}
                             </span>
                           </div>
@@ -406,33 +406,33 @@ const BlockedUsersManager = () => {
                             Created: {formatDate(ticket.createdAt)}
                           </p>
                         </div>
-                      ))}
-                    </div>
                   )}
+                    </div>
+                }
                 </div>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
 
       {/* Unblock Modal */}
       <AnimatePresence>
-        {showUnblockModal && selectedUser && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowUnblockModal(false)}
-          >
+        {showUnblockModal && selectedUser &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUnblockModal(false)}>
+          
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}>
+            
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 bg-green-900/20 rounded-full flex items-center justify-center">
@@ -454,47 +454,47 @@ const BlockedUsersManager = () => {
                       Reason for unblocking *
                     </label>
                     <textarea
-                      value={unblockReason}
-                      onChange={(e) => setUnblockReason(e.target.value)}
-                      placeholder="Explain why this user should be unblocked..."
-                      rows={3}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
-                    />
+                    value={unblockReason}
+                    onChange={(e) => setUnblockReason(e.target.value)}
+                    placeholder="Explain why this user should be unblocked..."
+                    rows={3}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500" />
+                  
                   </div>
                 </div>
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowUnblockModal(false)}
-                    className="flex-1 px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-                  >
+                  onClick={() => setShowUnblockModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors">
+                  
                     Cancel
                   </button>
                   <button
-                    onClick={handleUnblockUser}
-                    disabled={unblocking || !unblockReason.trim()}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 transition-colors flex items-center justify-center gap-2"
-                  >
-                    {unblocking ? (
-                      <>
+                  onClick={handleUnblockUser}
+                  disabled={unblocking || !unblockReason.trim()}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 transition-colors flex items-center justify-center gap-2">
+                  
+                    {unblocking ?
+                  <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         Unblocking...
-                      </>
-                    ) : (
-                      <>
+                      </> :
+
+                  <>
                         <Unlock className="w-4 h-4" />
                         Unblock User
                       </>
-                    )}
+                  }
                   </button>
                 </div>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
 export default BlockedUsersManager;

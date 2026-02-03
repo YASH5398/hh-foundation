@@ -9,8 +9,8 @@ import {
   where,
   updateDoc,
   orderBy,
-  limit,
-} from "firebase/firestore";
+  limit } from
+"firebase/firestore";
 
 function generateDocId(receiverId, senderId, timestamp) {
   return `${receiverId}_${senderId}_${timestamp}`;
@@ -18,41 +18,41 @@ function generateDocId(receiverId, senderId, timestamp) {
 
 function getRequiredReceiverCount(level) {
   switch (level) {
-    case "Star": return 3;
-    case "Silver": return 9;
-    case "Gold": return 27;
-    case "Platinum": return 81;
-    case "Diamond": return 243;
-    default: return 3;
+    case "Star":return 3;
+    case "Silver":return 9;
+    case "Gold":return 27;
+    case "Platinum":return 81;
+    case "Diamond":return 243;
+    default:return 3;
   }
 }
 
 function getAmountByLevel(level) {
   switch (level) {
-    case "Star": return 300;
-    case "Silver": return 600;
-    case "Gold": return 2000;
-    case "Platinum": return 20000;
-    case "Diamond": return 200000;
-    default: return 300;
+    case "Star":return 300;
+    case "Silver":return 600;
+    case "Gold":return 2000;
+    case "Platinum":return 20000;
+    case "Diamond":return 200000;
+    default:return 300;
   }
 }
 
 export async function assignHelpForEligibleUsers() {
   const usersRef = collection(db, "users");
   const activeUsersSnap = await getDocs(query(usersRef, where("isActivated", "==", true)));
-  const activeUsers = activeUsersSnap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }));
+  const activeUsers = activeUsersSnap.docs.map((docSnap) => ({ uid: docSnap.id, ...docSnap.data() }));
 
   // Debug: List all users
   console.log("All users:");
-  activeUsers.forEach(u => {
-    console.log(u.uid, u.userId, u.referralCount, u.isSystemAccount, u.isActivated, u.isOnHold, u.isReceivingHeld);
+  activeUsers.forEach((u) => {
+    console.log(String(u.uid) + " " + String(u.userId) + " " + String(u.referralCount) + " " + String(u.isSystemAccount) + " " + String(u.isActivated) + " " + String(u.isOnHold) + " " + String(u.isReceivingHeld));
   });
 
   for (const sender of activeUsers) {
     if (
-      sender.isBlocked || sender.isOnHold || sender.isReceivingHeld || !sender.uid
-    ) continue;
+    sender.isBlocked || sender.isOnHold || sender.isReceivingHeld || !sender.uid)
+    continue;
 
     const senderLevel = sender.levelStatus || "Star";
     const requiredReceivers = getRequiredReceiverCount(senderLevel);
@@ -65,47 +65,47 @@ export async function assignHelpForEligibleUsers() {
     const receiversSnap = await getDocs(
       query(usersRef, where("isActivated", "==", true))
     );
-    const receivers = receiversSnap.docs
-      .map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }));
+    const receivers = receiversSnap.docs.
+    map((docSnap) => ({ uid: docSnap.id, ...docSnap.data() }));
 
     // Debug: List all active receivers
-    console.log("All active users:", receivers.length);
+    console.log(String("All active users:") + " " + String(receivers.length));
     // Check and hold users that have received required helps
     for (const receiver of receivers) {
       if ((receiver.helpReceived || 0) >= 3 && (!receiver.isReceivingHeld || !receiver.isOnHold)) {
         await updateDoc(doc(db, "users", receiver.uid), { helpReceived: 3, isReceivingHeld: true, isOnHold: true });
       }
     }
-    const eligibleReceivers = receivers.filter(user =>
-      user.isActivated === true &&
-      user.isOnHold !== true &&
-      user.isReceivingHeld !== true &&
-      user.isSystemAccount !== true &&
-      (user.helpReceived === undefined || user.helpReceived < 3) &&
-      user.uid !== sender.uid &&
-      user.levelStatus === senderLevel &&
-      user.helpVisibility !== false
+    const eligibleReceivers = receivers.filter((user) =>
+    user.isActivated === true &&
+    user.isOnHold !== true &&
+    user.isReceivingHeld !== true &&
+    user.isSystemAccount !== true && (
+    user.helpReceived === undefined || user.helpReceived < 3) &&
+    user.uid !== sender.uid &&
+    user.levelStatus === senderLevel &&
+    user.helpVisibility !== false
     ).sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
     // Only assign to users with >0 referrals if available
     const bestReferralCount = eligibleReceivers.length > 0 ? eligibleReceivers[0].referralCount : 0;
-    const filteredReceivers = eligibleReceivers.filter(u => u.referralCount === bestReferralCount && bestReferralCount > 0);
+    const filteredReceivers = eligibleReceivers.filter((u) => u.referralCount === bestReferralCount && bestReferralCount > 0);
     const finalReceivers = filteredReceivers.length > 0 ? filteredReceivers : eligibleReceivers;
 
     // Log eligible receivers
-    console.log("Filtered Eligible Receivers:", finalReceivers.map(u => u.userId));
+    console.log(String("Filtered Eligible Receivers:") + " " + String(finalReceivers.map((u) => u.userId)));
     if (finalReceivers.length === 0) {
       console.warn("No eligible receiver found. Check flags and system account status.");
     }
 
     // Debug: List eligible receivers
-    console.log("Eligible receivers:", finalReceivers.map(u => ({
+    console.log(String("Eligible receivers:") + " " + String(finalReceivers.map((u) => ({
       userId: u.userId,
       referralCount: u.referralCount,
       isSystemAccount: u.isSystemAccount,
       isActivated: u.isActivated,
       isOnHold: u.isOnHold,
       isReceivingHeld: u.isReceivingHeld
-    })));
+    }))));
 
     let count = 0;
     for (const receiver of finalReceivers) {
@@ -124,7 +124,7 @@ export async function assignHelpForEligibleUsers() {
 
       // Skip receivers with no valid payment method
       if (!receiver.paymentMethod?.upi?.upi && !receiver.paymentMethod?.bank?.accountNumber) {
-        console.log('❌ No payment method found for', receiver.userId);
+        console.log(String('❌ No payment method found for') + " " + String(receiver.userId));
         continue;
       }
 
@@ -206,7 +206,7 @@ export async function assignReceiverToNewUser(newUserId) {
   }
   const newUser = { uid: newUserSnap.id, ...newUserSnap.data() };
   if (newUser.isActivated !== false) {
-    console.log("User is already activated or not a new user:", newUserId);
+    console.log(String("User is already activated or not a new user:") + " " + String(newUserId));
     return;
   }
   // Find eligible receivers
@@ -222,12 +222,12 @@ export async function assignReceiverToNewUser(newUserId) {
     limit(20)
   );
   const receiversSnap = await getDocs(receiversQuery);
-  let receivers = receiversSnap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }));
+  let receivers = receiversSnap.docs.map((docSnap) => ({ uid: docSnap.id, ...docSnap.data() }));
   // Exclude self, system accounts, and those without payment method
-  receivers = receivers.filter(user =>
-    user.uid !== newUserId &&
-    user.isSystemAccount !== true &&
-    (user.paymentMethod?.upi?.upi || user.paymentMethod?.bank?.accountNumber)
+  receivers = receivers.filter((user) =>
+  user.uid !== newUserId &&
+  user.isSystemAccount !== true && (
+  user.paymentMethod?.upi?.upi || user.paymentMethod?.bank?.accountNumber)
   );
 
   // Filter out receivers who already have 3 or more confirmed receiveHelps
@@ -327,7 +327,7 @@ export async function holdSystemAccountIfLimitReached(user) {
     await updateDoc(doc(db, "users", user.uid), {
       helpReceived: 3,
       isReceivingHeld: true,
-      isOnHold: true,
+      isOnHold: true
     });
   }
-} 
+}

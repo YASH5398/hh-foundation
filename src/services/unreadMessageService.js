@@ -37,7 +37,7 @@ export class UnreadMessageService {
       await Promise.all(updatePromises);
       return { success: true };
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      console.error(String('Error marking messages as read:') + " " + String(error));
       if (error.code === 'permission-denied') {
         return { success: false, error: 'Permission denied' };
       }
@@ -55,7 +55,7 @@ export class UnreadMessageService {
     try {
       return await FirebaseChatService.markMessagesAsRead(receiverId, senderId, userId);
     } catch (error) {
-      console.error('Error marking direct chat messages as read:', error);
+      console.error(String('Error marking direct chat messages as read:') + " " + String(error));
       return { success: false, error: error.message };
     }
   }
@@ -77,15 +77,15 @@ export class UnreadMessageService {
         where('read', '==', false),
         orderBy('timestamp', 'desc')
       );
-      
+
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.size);
       }, (error) => {
-        console.error('Error listening to unread count:', error);
+        console.error(String('Error listening to unread count:') + " " + String(error));
         callback(0);
       });
     } catch (error) {
-      console.error('Error setting up unread count subscription:', error);
+      console.error(String('Error setting up unread count subscription:') + " " + String(error));
       return () => {}; // Return empty unsubscribe function
     }
   }
@@ -102,7 +102,7 @@ export class UnreadMessageService {
     try {
       return FirebaseChatService.subscribeToUnreadCount(receiverId, senderId, userId, callback);
     } catch (error) {
-      console.error('Error setting up direct chat unread count subscription:', error);
+      console.error(String('Error setting up direct chat unread count subscription:') + " " + String(error));
       return () => {}; // Return empty unsubscribe function
     }
   }
@@ -117,7 +117,7 @@ export class UnreadMessageService {
     const unsubscribeFunctions = [];
     let transactionUnread = 0;
     let directChatUnread = 0;
-    
+
     const updateTotal = () => {
       callback(transactionUnread + directChatUnread);
     };
@@ -125,18 +125,18 @@ export class UnreadMessageService {
     try {
       // Subscribe to transaction chat unread counts
       const transactionTypes = ['sendHelp', 'receiveHelp'];
-      
-      transactionTypes.forEach(transactionType => {
+
+      transactionTypes.forEach((transactionType) => {
         const transactionRef = collection(db, transactionType);
         const q = query(
           transactionRef,
           where('participants', 'array-contains', userId)
         );
-        
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
           let typeUnreadCount = 0;
           const chatUnsubscribes = [];
-          
+
           snapshot.forEach((transactionDoc) => {
             const chatRef = collection(db, transactionType, transactionDoc.id, 'chat');
             const chatQuery = query(
@@ -144,23 +144,23 @@ export class UnreadMessageService {
               where('senderId', '!=', userId),
               where('read', '==', false)
             );
-            
+
             const chatUnsubscribe = onSnapshot(chatQuery, (chatSnapshot) => {
               typeUnreadCount += chatSnapshot.size;
               transactionUnread = typeUnreadCount;
               updateTotal();
             });
-            
+
             chatUnsubscribes.push(chatUnsubscribe);
           });
-          
+
           // Clean up previous chat subscriptions
-          unsubscribeFunctions.forEach(unsub => {
+          unsubscribeFunctions.forEach((unsub) => {
             if (typeof unsub === 'function') unsub();
           });
           unsubscribeFunctions.push(...chatUnsubscribes);
         });
-        
+
         unsubscribeFunctions.push(unsubscribe);
       });
 
@@ -170,9 +170,9 @@ export class UnreadMessageService {
         (userChats) => {
           let totalDirectUnread = 0;
           const directUnsubscribes = [];
-          
-          userChats.forEach(chat => {
-            const otherUserId = chat.participants.find(p => p !== userId);
+
+          userChats.forEach((chat) => {
+            const otherUserId = chat.participants.find((p) => p !== userId);
             const unreadUnsubscribe = FirebaseChatService.subscribeToUnreadCount(
               otherUserId,
               userId,
@@ -185,22 +185,22 @@ export class UnreadMessageService {
             );
             directUnsubscribes.push(unreadUnsubscribe);
           });
-          
+
           unsubscribeFunctions.push(...directUnsubscribes);
         }
       );
-      
+
       unsubscribeFunctions.push(directChatUnsubscribe);
-      
+
       return () => {
-        unsubscribeFunctions.forEach(unsubscribe => {
+        unsubscribeFunctions.forEach((unsubscribe) => {
           if (typeof unsubscribe === 'function') {
             unsubscribe();
           }
         });
       };
     } catch (error) {
-      console.error('Error setting up total unread count subscription:', error);
+      console.error(String('Error setting up total unread count subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -219,9 +219,9 @@ export class UnreadMessageService {
         (userChats) => {
           let totalUnread = 0;
           const unsubscribes = [];
-          
-          userChats.forEach(chat => {
-            const otherUserId = chat.participants.find(p => p !== userId);
+
+          userChats.forEach((chat) => {
+            const otherUserId = chat.participants.find((p) => p !== userId);
             const unreadUnsubscribe = FirebaseChatService.subscribeToUnreadCount(
               otherUserId,
               userId,
@@ -232,12 +232,12 @@ export class UnreadMessageService {
             );
             unsubscribes.push(unreadUnsubscribe);
           });
-          
+
           callback(totalUnread);
-          
+
           // Return cleanup function
           return () => {
-            unsubscribes.forEach(unsubscribe => {
+            unsubscribes.forEach((unsubscribe) => {
               if (typeof unsubscribe === 'function') {
                 unsubscribe();
               }
@@ -246,7 +246,7 @@ export class UnreadMessageService {
         }
       );
     } catch (error) {
-      console.error('Error setting up Send Help unread count subscription:', error);
+      console.error(String('Error setting up Send Help unread count subscription:') + " " + String(error));
       return () => {};
     }
   }
@@ -264,7 +264,7 @@ export class UnreadMessageService {
         text: ''
       };
     }
-    
+
     return {
       show: true,
       count: count,

@@ -12,14 +12,14 @@ const UserDetails = () => {
   const [loadTimeout, setLoadTimeout] = useState(false);
 
   useEffect(() => {
-    console.log("🔍 USER DETAILS:", {
+    console.log(String("🔍 USER DETAILS:") + " " + String({
       user: !!user,
       userProfile: !!userProfile,
       authLoading: authLoading,
       loading: loading,
       userUid: user?.uid,
       profileUid: userProfile?.uid
-    });
+    }));
 
     // If no user, redirect to login
     if (!user && !authLoading) {
@@ -42,10 +42,10 @@ const UserDetails = () => {
 
     // If user and profile both exist, or user exists and timeout reached
     if (user && (userProfile || loadTimeout)) {
-      console.log("🔍 USER DETAILS: Ready to show form", {
+      console.log(String("🔍 USER DETAILS: Ready to show form") + " " + String({
         hasProfile: !!userProfile,
         timeoutReached: loadTimeout
-      });
+      }));
       setLoading(false);
     }
   }, [user, userProfile, authLoading, navigate, loadTimeout]);
@@ -71,8 +71,8 @@ const UserDetails = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading your account details...</h2>
           <p className="text-gray-600">Please wait</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // If still loading but user exists, show a different loading state
@@ -84,13 +84,13 @@ const UserDetails = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading your profile data...</h2>
           <p className="text-gray-600">Almost ready</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // At this point, user exists, so we can show the form
   // userProfile may still be loading, but we show defaults
-  
+
   // Fallback values for when userProfile hasn't loaded yet
   const displayName = userProfile?.fullName || 'Welcome!';
   const displayInitial = userProfile?.fullName?.charAt(0)?.toUpperCase() || 'U';
@@ -251,29 +251,29 @@ const UserDetails = () => {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={handleEditProfile}
-            className="flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-          >
+            className="flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
+            
             <Edit className="w-5 h-5" />
             <span>Edit Profile</span>
           </button>
           <button
             onClick={handleContactSupport}
-            className="flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
+            className="flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+            
             <Headphones className="w-5 h-5" />
             <span>Support</span>
           </button>
         </div>
         <button
           onClick={handleGoToDashboard}
-          className="w-full mt-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-colors shadow-md flex items-center justify-center"
-        >
+          className="w-full mt-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-colors shadow-md flex items-center justify-center">
+          
           Continue to Dashboard
           <ArrowRight className="w-5 h-5 ml-2" />
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default UserDetails;

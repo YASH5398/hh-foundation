@@ -1,7 +1,7 @@
 import {
   createUserWithEmailAndPassword,
-  deleteUser
-} from "firebase/auth";
+  deleteUser } from
+"firebase/auth";
 import {
   doc,
   setDoc,
@@ -11,8 +11,8 @@ import {
   query,
   where,
   getDocs,
-  serverTimestamp
-} from "firebase/firestore";
+  serverTimestamp } from
+"firebase/firestore";
 import { auth, db } from "../config/firebase";
 
 /**
@@ -114,7 +114,7 @@ export async function runSignupDeepTest() {
       }
     };
 
-    console.log("🔍 STEP 1B: User data payload:", userData);
+    console.log(String("🔍 STEP 1B: User data payload:") + " " + String(userData));
 
     await setDoc(doc(db, "users", testUid), userData);
     console.log("✅ STEP 1B: User document created successfully");
@@ -196,7 +196,7 @@ export async function runSignupDeepTest() {
       await setDoc(doc(db, "users", testUid), userData, { merge: false });
       console.log("✅ STEP 3A: Clean user document recreated");
     } catch (error) {
-      console.log("⚠️ STEP 3A: Could not recreate user document:", error.message);
+      console.log(String("⚠️ STEP 3A: Could not recreate user document:") + " " + String(error.message));
     }
 
     // Test E-PIN flow again if available
@@ -268,24 +268,26 @@ export async function runSignupDeepTest() {
       stack: error.stack
     });
 
-    console.error("Error Code:", error.code);
-    console.error("Error Message:", error.message);
-    console.error("Error Stack:", error.stack);
+    console.error(String("Error Code:") + " " + String(error.code));
+    console.error(String("Error Message:") + " " + String(error.message));
+    console.error(String("Error Stack:") + " " + String(error.stack));
 
     // Determine which step failed
     let failedStep = "unknown";
     let layer = "unknown";
+    // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+    const safeMessage = typeof error?.message === "string" ? error.message : "";
 
-    if (error.message.includes("auth/")) {
+    if (safeMessage.includes("auth/")) {
       failedStep = "Firebase Auth";
       layer = "Firebase Auth";
-    } else if (error.message.includes("permission-denied")) {
+    } else if (safeMessage.includes("permission-denied")) {
       failedStep = "Firestore Permission";
       layer = "Firestore Rules";
-    } else if (error.message.includes("epin") || error.message.includes("E-PIN")) {
+    } else if (safeMessage.includes("epin") || safeMessage.includes("E-PIN")) {
       failedStep = "E-PIN Logic";
       layer = "E-PIN Flow";
-    } else if (error.message.includes("users/")) {
+    } else if (safeMessage.includes("users/")) {
       failedStep = "User Document";
       layer = "Firestore Rules";
     } else if (error.code === "unavailable") {
@@ -305,7 +307,7 @@ export async function runSignupDeepTest() {
           // Note: Can't delete user doc if rules don't allow it, but that's expected
           console.log("   Skipping user document cleanup (rules may prevent deletion)");
         } catch (docError) {
-          console.log("   User document cleanup failed (expected):", docError.message);
+          console.log(String("   User document cleanup failed (expected):") + " " + String(docError.message));
         }
 
         // Delete Auth user
@@ -313,7 +315,7 @@ export async function runSignupDeepTest() {
         console.log("   ✅ Auth user deleted");
       }
     } catch (cleanupError) {
-      console.error("   ❌ Cleanup failed:", cleanupError.message);
+      console.error(String("   ❌ Cleanup failed:") + " " + String(cleanupError.message));
     }
 
     console.error("\n📊 PARTIAL TEST RESULTS:");
@@ -343,4 +345,3 @@ export async function runSignupDeepTest() {
 
 // Export for use in components
 export default runSignupDeepTest;
-

@@ -16,8 +16,8 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  arrayUnion
-} from '../config/firebase';
+  arrayUnion } from
+'../config/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { createAgentNotification, AGENT_NOTIF_TYPES, AGENT_NOTIF_PRIORITIES } from './agentNotificationService';
 
@@ -76,7 +76,7 @@ export async function createSupportTicket(user, ticketData) {
     };
 
   } catch (error) {
-    console.error('Error creating support ticket:', error);
+    console.error(String('Error creating support ticket:') + " " + String(error));
     throw error;
   }
 }
@@ -105,33 +105,33 @@ export async function uploadTicketAttachment(file, ticketId) {
 
     return new Promise((resolve, reject) => {
       uploadTask.on('state_changed',
-        (snapshot) => {
-          // Progress tracking if needed
-        },
-        (error) => {
-          console.error('Upload failed:', error);
-          reject(error);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      (snapshot) => {
 
-            resolve({
-              url: downloadURL,
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              uploadedAt: serverTimestamp()
-            });
-          } catch (error) {
-            reject(error);
-          }
+        // Progress tracking if needed
+      }, (error) => {
+        console.error(String('Upload failed:') + " " + String(error));
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+          resolve({
+            url: downloadURL,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            uploadedAt: serverTimestamp()
+          });
+        } catch (error) {
+          reject(error);
         }
+      }
       );
     });
 
   } catch (error) {
-    console.error('Error uploading attachment:', error);
+    console.error(String('Error uploading attachment:') + " " + String(error));
     throw error;
   }
 }
@@ -150,13 +150,13 @@ export async function getUserSupportTickets(userUid) {
     );
 
     const snapshot = await getDocs(ticketsQuery);
-    return snapshot.docs.map(doc => ({
+    return snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
 
   } catch (error) {
-    console.error('Error getting user support tickets:', error);
+    console.error(String('Error getting user support tickets:') + " " + String(error));
     throw error;
   }
 }
@@ -182,7 +182,7 @@ export async function getSupportTicket(ticketId) {
     };
 
   } catch (error) {
-    console.error('Error getting support ticket:', error);
+    console.error(String('Error getting support ticket:') + " " + String(error));
     throw error;
   }
 }
@@ -193,7 +193,7 @@ export async function getSupportTicket(ticketId) {
 export function listenToUserSupportTickets(userUid, callback) {
   if (!userUid) {
     callback([]);
-    return () => { };
+    return () => {};
   }
 
   const ticketsQuery = query(
@@ -203,13 +203,13 @@ export function listenToUserSupportTickets(userUid, callback) {
   );
 
   return onSnapshot(ticketsQuery, (snapshot) => {
-    const tickets = snapshot.docs.map(doc => ({
+    const tickets = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     callback(tickets);
   }, (error) => {
-    console.error('Error listening to support tickets:', error);
+    console.error(String('Error listening to support tickets:') + " " + String(error));
     callback([]);
   });
 }
@@ -224,13 +224,13 @@ export function listenToAllSupportTickets(callback) {
   );
 
   return onSnapshot(ticketsQuery, (snapshot) => {
-    const tickets = snapshot.docs.map(doc => ({
+    const tickets = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     callback(tickets);
   }, (error) => {
-    console.error('Error listening to all support tickets:', error);
+    console.error(String('Error listening to all support tickets:') + " " + String(error));
     callback([]);
   });
 }
@@ -259,7 +259,7 @@ export async function updateSupportTicket(ticketId, updates) {
     return { success: true };
 
   } catch (error) {
-    console.error('Error updating support ticket:', error);
+    console.error(String('Error updating support ticket:') + " " + String(error));
     throw error;
   }
 }
@@ -287,7 +287,7 @@ export async function addAdminNote(ticketId, note, adminUid) {
     return { success: true };
 
   } catch (error) {
-    console.error('Error adding admin note:', error);
+    console.error(String('Error adding admin note:') + " " + String(error));
     throw error;
   }
 }
@@ -311,7 +311,7 @@ export async function assignSupportTicket(ticketId, adminUid, adminName) {
     return { success: true };
 
   } catch (error) {
-    console.error('Error assigning support ticket:', error);
+    console.error(String('Error assigning support ticket:') + " " + String(error));
     throw error;
   }
 }

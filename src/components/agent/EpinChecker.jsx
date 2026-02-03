@@ -29,11 +29,11 @@ const EpinChecker = () => {
       );
 
       const epinSnapshot = await getDocs(epinQuery);
-      
+
       if (!epinSnapshot.empty) {
         const epinDoc = epinSnapshot.docs[0];
         const data = { id: epinDoc.id, ...epinDoc.data() };
-        
+
         // If E-PIN is assigned to a user, get user details
         if (data.assignedTo) {
           const userQuery = query(
@@ -41,7 +41,7 @@ const EpinChecker = () => {
             where('userId', '==', data.assignedTo)
           );
           const userSnapshot = await getDocs(userQuery);
-          
+
           if (!userSnapshot.empty) {
             const userData = userSnapshot.docs[0].data();
             data.userDetails = {
@@ -51,14 +51,14 @@ const EpinChecker = () => {
             };
           }
         }
-        
+
         setEpinData(data);
       } else {
         setEpinData(null);
         toast.error('E-PIN not found');
       }
     } catch (error) {
-      console.error('Error searching E-PIN:', error);
+      console.error(String('Error searching E-PIN:') + " " + String(error));
       toast.error('Failed to search E-PIN');
     } finally {
       setLoading(false);
@@ -107,18 +107,18 @@ const EpinChecker = () => {
               onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
               placeholder="Enter E-PIN code (e.g., HHF12345)"
               className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={loading}
-            />
+              disabled={loading} />
+            
             <button
               type="submit"
               disabled={loading || !searchCode.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-              ) : (
-                <FiSearch />
-              )}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2">
+              
+              {loading ?
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> :
+
+              <FiSearch />
+              }
               <span>{loading ? 'Searching...' : 'Search'}</span>
             </button>
           </div>
@@ -126,10 +126,10 @@ const EpinChecker = () => {
       </form>
 
       {/* Search Results */}
-      {searched && (
-        <div className="border border-gray-200 rounded-lg">
-          {epinData ? (
-            <div className="p-6">
+      {searched &&
+      <div className="border border-gray-200 rounded-lg">
+          {epinData ?
+        <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">E-PIN Details</h3>
                 <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(epinData.status)}`}>
@@ -161,12 +161,12 @@ const EpinChecker = () => {
                       </p>
                     </div>
                     
-                    {epinData.type && (
-                      <div>
+                    {epinData.type &&
+                <div>
                         <label className="text-sm font-medium text-gray-500">Type</label>
                         <p className="text-gray-900">{epinData.type}</p>
                       </div>
-                    )}
+                }
                   </div>
                 </div>
 
@@ -175,8 +175,8 @@ const EpinChecker = () => {
                   <h4 className="font-medium text-gray-900 border-b border-gray-200 pb-2">Usage Information</h4>
                   
                   <div className="space-y-3">
-                    {epinData.assignedTo ? (
-                      <>
+                    {epinData.assignedTo ?
+                <>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Assigned To</label>
                           <div className="flex items-center space-x-2 mt-1">
@@ -188,35 +188,35 @@ const EpinChecker = () => {
                               <p className="text-sm text-gray-500">
                                 ID: {epinData.assignedTo}
                               </p>
-                              {epinData.userDetails?.email && (
-                                <p className="text-sm text-gray-500">
+                              {epinData.userDetails?.email &&
+                        <p className="text-sm text-gray-500">
                                   {epinData.userDetails.email}
                                 </p>
-                              )}
+                        }
                             </div>
                           </div>
                         </div>
                         
-                        {epinData.assignedAt && (
-                          <div>
+                        {epinData.assignedAt &&
+                  <div>
                             <label className="text-sm font-medium text-gray-500">Assigned At</label>
                             <p className="text-gray-900">
                               {epinData.assignedAt?.toDate?.()?.toLocaleString() || 'N/A'}
                             </p>
                           </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-center py-4">
+                  }
+                      </> :
+
+                <div className="text-center py-4">
                         <FiAlertCircle className="mx-auto text-gray-400 text-3xl mb-2" />
                         <p className="text-gray-500">Not assigned to any user</p>
                       </div>
-                    )}
+                }
                     
-                    {epinData.status === 'used' && (
-                      <>
-                        {epinData.usedAt && (
-                          <div>
+                    {epinData.status === 'used' &&
+                <>
+                        {epinData.usedAt &&
+                  <div>
                             <label className="text-sm font-medium text-gray-500">Used At</label>
                             <div className="flex items-center space-x-2 mt-1">
                               <FiClock className="text-gray-400" />
@@ -225,38 +225,38 @@ const EpinChecker = () => {
                               </p>
                             </div>
                           </div>
-                        )}
+                  }
                         
-                        {epinData.transactionId && (
-                          <div>
+                        {epinData.transactionId &&
+                  <div>
                             <label className="text-sm font-medium text-gray-500">Transaction ID</label>
                             <p className="font-mono text-gray-900">{epinData.transactionId}</p>
                           </div>
-                        )}
+                  }
                       </>
-                    )}
+                }
                     
-                    {epinData.transferredTo && (
-                      <div>
+                    {epinData.transferredTo &&
+                <div>
                         <label className="text-sm font-medium text-gray-500">Transferred To</label>
                         <p className="font-mono text-gray-900">{epinData.transferredTo}</p>
                       </div>
-                    )}
+                }
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="p-8 text-center">
+            </div> :
+
+        <div className="p-8 text-center">
               <FiSearch className="mx-auto text-gray-400 text-6xl mb-4" />
               <h3 className="text-lg font-medium text-gray-800 mb-2">E-PIN Not Found</h3>
               <p className="text-gray-600">The E-PIN code you searched for does not exist in our system.</p>
             </div>
-          )}
+        }
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default EpinChecker;

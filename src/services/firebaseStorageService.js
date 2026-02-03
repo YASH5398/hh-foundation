@@ -40,42 +40,42 @@ class FirebaseStorageService {
 
     const user = this._requireAuth();
     const targetUserId = userId || user.uid;
-    
+
     try {
       // Create proper path: epin-screenshots/{userId}/{filename}
       const sanitizedFilename = this._sanitizeFilename(file.name);
       const timestamp = Date.now();
       const filename = `${timestamp}_${sanitizedFilename}`;
       const storagePath = `epin-screenshots/${targetUserId}/${filename}`;
-      
-      console.log('Uploading E-PIN screenshot:', {
+
+      console.log(String('Uploading E-PIN screenshot:') + " " + String({
         path: storagePath,
         fileSize: file.size,
         fileType: file.type,
         userId: targetUserId
-      });
+      }));
 
       // Create storage reference
       const storageRef = ref(storage, storagePath);
-      
+
       // Upload file using uploadBytes
       const uploadResult = await uploadBytes(storageRef, file);
-      console.log('Upload completed:', uploadResult.metadata.fullPath);
-      
+      console.log(String('Upload completed:') + " " + String(uploadResult.metadata.fullPath));
+
       // Get download URL
       const downloadURL = await getDownloadURL(uploadResult.ref);
-      console.log('Download URL generated:', downloadURL);
-      
+      console.log(String('Download URL generated:') + " " + String(downloadURL));
+
       return downloadURL;
     } catch (error) {
-      console.error('Error uploading E-PIN screenshot:', {
+      console.error(String('Error uploading E-PIN screenshot:') + " " + String({
         error: error.message,
         code: error.code,
         userId: targetUserId,
         fileName: file.name,
         fileSize: file.size
-      });
-      
+      }));
+
       // Provide user-friendly error messages
       if (error.code === 'storage/unauthorized') {
         throw new Error('You do not have permission to upload files. Please check your authentication.');
@@ -101,24 +101,24 @@ class FirebaseStorageService {
     }
 
     this._requireAuth();
-    
+
     try {
       const storageRef = ref(storage, path);
       const uploadResult = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(uploadResult.ref);
-      
-      console.log('File uploaded successfully:', {
+
+      console.log(String('File uploaded successfully:') + " " + String({
         path: uploadResult.metadata.fullPath,
         downloadURL
-      });
-      
+      }));
+
       return downloadURL;
     } catch (error) {
-      console.error('Error uploading file:', {
+      console.error(String('Error uploading file:') + " " + String({
         error: error.message,
         code: error.code,
         path
-      });
+      }));
       throw new Error(`Upload failed: ${error.message}`);
     }
   }
@@ -130,17 +130,17 @@ class FirebaseStorageService {
    */
   async getDownloadURL(path) {
     this._requireAuth();
-    
+
     try {
       const storageRef = ref(storage, path);
       const downloadURL = await getDownloadURL(storageRef);
       return downloadURL;
     } catch (error) {
-      console.error('Error getting download URL:', {
+      console.error(String('Error getting download URL:') + " " + String({
         error: error.message,
         code: error.code,
         path
-      });
+      }));
       throw new Error(`Failed to get download URL: ${error.message}`);
     }
   }
@@ -152,17 +152,17 @@ class FirebaseStorageService {
    */
   async deleteFile(path) {
     this._requireAuth();
-    
+
     try {
       const storageRef = ref(storage, path);
       await deleteObject(storageRef);
-      console.log('File deleted successfully:', path);
+      console.log(String('File deleted successfully:') + " " + String(path));
     } catch (error) {
-      console.error('Error deleting file:', {
+      console.error(String('Error deleting file:') + " " + String({
         error: error.message,
         code: error.code,
         path
-      });
+      }));
       throw new Error(`Delete failed: ${error.message}`);
     }
   }

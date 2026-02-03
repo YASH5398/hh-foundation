@@ -1,15 +1,15 @@
-import { 
-  doc, 
-  getDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
+import {
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
   serverTimestamp,
-  updateDoc 
-} from 'firebase/firestore';
+  updateDoc } from
+'firebase/firestore';
 import { db } from '../config/firebase';
 
 /**
@@ -25,16 +25,16 @@ class AgentService {
     try {
       const agentDocRef = doc(db, 'users', agentId);
       const agentDoc = await getDoc(agentDocRef);
-      
+
       if (agentDoc.exists()) {
         const agentData = agentDoc.data();
-        
+
         // Get total tickets handled count
         const ticketsHandled = await this.getTicketsHandledCount(agentId);
-        
+
         // Get pending agent requests count
         const pendingRequests = await this.getPendingRequestsCount(agentId);
-        
+
         return {
           id: agentDoc.id,
           ...agentData,
@@ -42,10 +42,10 @@ class AgentService {
           pendingRequests: pendingRequests
         };
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Error fetching agent profile:', error);
+      console.error(String('Error fetching agent profile:') + " " + String(error));
       throw new Error('Failed to fetch agent profile');
     }
   }
@@ -64,11 +64,11 @@ class AgentService {
         where('assignedAgent', '==', agentId),
         where('status', '==', 'resolved')
       );
-      
+
       const ticketsSnapshot = await getDocs(ticketsQuery);
       return ticketsSnapshot.size;
     } catch (error) {
-      console.error('Error fetching tickets count:', error);
+      console.error(String('Error fetching tickets count:') + " " + String(error));
       return 0;
     }
   }
@@ -85,11 +85,11 @@ class AgentService {
         where('agentId', '==', agentId),
         where('status', '==', 'pending')
       );
-      
+
       const requestsSnapshot = await getDocs(requestsQuery);
       return requestsSnapshot.size;
     } catch (error) {
-      console.error('Error fetching pending requests count:', error);
+      console.error(String('Error fetching pending requests count:') + " " + String(error));
       return 0;
     }
   }
@@ -106,12 +106,12 @@ class AgentService {
   async createEscalationRequest(escalationData) {
     try {
       const { agentId, userId, userEmail, issue } = escalationData;
-      
+
       // Validate required fields
       if (!agentId || !userId || !userEmail || !issue) {
         throw new Error('All fields are required for escalation request');
       }
-      
+
       const requestData = {
         agentId,
         userId,
@@ -121,13 +121,13 @@ class AgentService {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
-      
+
       // Add document to collection
       const docRef = await addDoc(collection(db, 'agentRequests'), requestData);
-      
+
       return docRef.id;
     } catch (error) {
-      console.error('Error creating escalation request:', error);
+      console.error(String('Error creating escalation request:') + " " + String(error));
       throw new Error('Failed to create escalation request');
     }
   }
@@ -146,20 +146,20 @@ class AgentService {
         orderBy('createdAt', 'desc'),
         limit(limit)
       );
-      
+
       const requestsSnapshot = await getDocs(requestsQuery);
       const requests = [];
-      
+
       requestsSnapshot.forEach((doc) => {
         requests.push({
           id: doc.id,
           ...doc.data()
         });
       });
-      
+
       return requests;
     } catch (error) {
-      console.error('Error fetching escalation history:', error);
+      console.error(String('Error fetching escalation history:') + " " + String(error));
       return [];
     }
   }
@@ -178,7 +178,7 @@ class AgentService {
         updatedAt: serverTimestamp()
       });
     } catch (error) {
-      console.error('Error updating escalation status:', error);
+      console.error(String('Error updating escalation status:') + " " + String(error));
       throw new Error('Failed to update escalation status');
     }
   }

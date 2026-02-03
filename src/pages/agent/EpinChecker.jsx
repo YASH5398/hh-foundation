@@ -35,7 +35,7 @@ const EpinChecker = () => {
         setSearchResult({ found: true, data: epinData });
       }
     } catch (error) {
-      console.error('Error searching E-PIN:', error);
+      console.error(String('Error searching E-PIN:') + " " + String(error));
       toast.error('Search Integrity Failed');
     } finally {
       setLoading(false);
@@ -58,26 +58,26 @@ const EpinChecker = () => {
         return (
           <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border bg-emerald-500/10 border-emerald-500/20 text-emerald-500">
             <FiCheckCircle /> Active / Unused
-          </div>
-        );
+          </div>);
+
       case 'used':
         return (
           <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border bg-blue-500/10 border-blue-500/20 text-blue-500">
             <FiCheckCircle /> Redeemed
-          </div>
-        );
+          </div>);
+
       case 'expired':
         return (
           <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border bg-red-500/10 border-red-500/20 text-red-500">
             <FiXCircle /> Expired
-          </div>
-        );
+          </div>);
+
       default:
         return (
           <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border bg-slate-500/10 border-slate-500/20 text-slate-500">
             <FiAlertOctagon /> Unknown
-          </div>
-        );
+          </div>);
+
     }
   };
 
@@ -88,8 +88,8 @@ const EpinChecker = () => {
       <motion.section
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative py-12 px-8 rounded-[3rem] overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl"
-      >
+        className="relative py-12 px-8 rounded-[3rem] overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
+        
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
           <FiCreditCard className="w-64 h-64" />
         </div>
@@ -108,14 +108,14 @@ const EpinChecker = () => {
                   placeholder="Enter 16-Digit E-PIN Code"
                   value={epinCode}
                   onChange={(e) => setEpinCode(e.target.value)}
-                  className="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-600 font-mono tracking-wider uppercase"
-                />
+                  className="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-600 font-mono tracking-wider uppercase" />
+                
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/40 disabled:opacity-50"
-              >
+                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/40 disabled:opacity-50">
+                
                 {loading ? <FiRefreshCw className="animate-spin" /> : <FiSearch />}
                 Scan
               </button>
@@ -126,31 +126,31 @@ const EpinChecker = () => {
 
       {/* Results Deck */}
       <AnimatePresence mode="wait">
-        {!hasSearched ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20 opacity-30"
-          >
+        {!hasSearched ?
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20 opacity-30">
+          
             <FiHash className="w-24 h-24 mx-auto mb-6" />
             <p className="text-xl font-bold text-white uppercase tracking-widest">Awaiting Code Input</p>
-          </motion.div>
-        ) : loading ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center py-20 gap-6"
-          >
+          </motion.div> :
+        loading ?
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center py-20 gap-6">
+          
             <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
             <p className="text-emerald-400 font-black animate-pulse uppercase tracking-[0.3em]">Validating Hash...</p>
-          </motion.div>
-        ) : searchResult?.found ? (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-          >
+          </motion.div> :
+        searchResult?.found ?
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
             {/* Main Card: Status & Code */}
             <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
@@ -204,59 +204,59 @@ const EpinChecker = () => {
                   <FiUser className="text-purple-500" /> Usage History
                 </h3>
                 <div className="space-y-4">
-                  {searchResult.data.purchasedBy ? (
-                    <>
+                  {searchResult.data.purchasedBy ?
+                <>
                       <InfoRow label="Purchased By" value={searchResult.data.purchasedByName || searchResult.data.purchasedBy} />
                       <InfoRow label="Purchase Date" value={formatDate(searchResult.data.purchasedAt)} />
-                    </>
-                  ) : (
-                    <div className="py-2 text-center text-slate-500 text-xs italic">No purchase record found</div>
-                  )}
+                    </> :
+
+                <div className="py-2 text-center text-slate-500 text-xs italic">No purchase record found</div>
+                }
 
                   <div className="h-px bg-slate-800 my-2"></div>
 
-                  {searchResult.data.status === 'used' ? (
-                    <>
+                  {searchResult.data.status === 'used' ?
+                <>
                       <InfoRow label="Used By" value={searchResult.data.usedByName || searchResult.data.usedBy} highlight />
                       <InfoRow label="Used Date" value={formatDate(searchResult.data.usedAt)} />
-                    </>
-                  ) : (
-                    <div className="py-2 text-center text-emerald-500/60 text-xs font-bold uppercase tracking-widest">TOKEN IS CURRENTLY UNUSED</div>
-                  )}
+                    </> :
+
+                <div className="py-2 text-center text-emerald-500/60 text-xs font-bold uppercase tracking-widest">TOKEN IS CURRENTLY UNUSED</div>
+                }
                 </div>
               </div>
             </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20 text-red-400 opacity-60"
-          >
+          </motion.div> :
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20 text-red-400 opacity-60">
+          
             <FiAlertOctagon className="w-16 h-16 mx-auto mb-4" />
             <p className="font-bold uppercase tracking-widest">Invalid Hash</p>
             <p className="text-sm opacity-60">Authentication failed. Code does not exist.</p>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
 /* Micro Components */
-const InfoRow = ({ label, value, copy, highlight }) => (
-  <div className="flex justify-between items-center group min-h-[1.5rem]">
+const InfoRow = ({ label, value, copy, highlight }) =>
+<div className="flex justify-between items-center group min-h-[1.5rem]">
     <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{label}</span>
     <div className="flex items-center gap-2">
       <span className={`font-mono text-sm truncate max-w-[200px] text-right ${highlight ? 'text-white font-bold' : 'text-slate-300'}`}>{value || '-'}</span>
-      {copy && value && (
-        <FiRefreshCw
-          className="opacity-0 group-hover:opacity-100 text-slate-500 cursor-pointer w-3 h-3 hover:text-white transition-opacity"
-          onClick={() => { navigator.clipboard.writeText(value); toast.success('Copied to clipboard'); }}
-        />
-      )}
+      {copy && value &&
+    <FiRefreshCw
+      className="opacity-0 group-hover:opacity-100 text-slate-500 cursor-pointer w-3 h-3 hover:text-white transition-opacity"
+      onClick={() => {navigator.clipboard.writeText(value);toast.success('Copied to clipboard');}} />
+
+    }
     </div>
-  </div>
-);
+  </div>;
+
 
 export default EpinChecker;

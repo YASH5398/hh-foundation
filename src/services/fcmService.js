@@ -74,17 +74,17 @@ class FCMService {
 
       // SAFE GUARD: Check notification permission - don't block if not granted
       const currentPermission = this.getPermissionStatus();
-      
+
       if (currentPermission !== 'granted') {
-        console.log('FCM skipped: notification permission not granted (status:', currentPermission, ')');
+        console.log(String('FCM skipped: notification permission not granted (status:') + " " + String(currentPermission) + " " + String(')'));
         return false;
       }
 
-      console.log('FCM: Initializing for user:', userId);
+      console.log(String('FCM: Initializing for user:') + " " + String(userId));
 
       // Get token safely - this will return null on any error
       const token = await this.getRegistrationToken();
-      
+
       if (token) {
         // Save token to Firestore (also wrapped in try/catch internally)
         await this.saveTokenToFirestore(userId, token);
@@ -96,7 +96,7 @@ class FCMService {
       }
     } catch (error) {
       // SAFE GUARD: Catch ALL errors - FCM should NEVER block app functionality
-      console.log('FCM initialization skipped due to error:', error?.message || error);
+      console.log(String('FCM initialization skipped due to error:') + " " + String(error?.message || error));
       return false;
     }
   }
@@ -111,12 +111,12 @@ class FCMService {
 
       // Check current permission status
       const currentPermission = Notification.permission;
-      
+
       if (currentPermission === 'granted') {
         console.log('✅ Notification permission already granted');
         return currentPermission;
       }
-      
+
       if (currentPermission === 'denied') {
         console.log('🚫 Notification permission previously denied');
         return currentPermission;
@@ -125,16 +125,16 @@ class FCMService {
       // Only request permission if it's 'default' (not asked yet)
       console.log('🔄 Requesting notification permission...');
       const permission = await Notification.requestPermission();
-      
+
       if (permission === 'granted') {
         console.log('✅ Notification permission granted');
       } else {
         console.log('🚫 Notification permission denied');
       }
-      
+
       return permission;
     } catch (error) {
-      console.error('❌ Error requesting notification permission:', error);
+      console.error(String('❌ Error requesting notification permission:') + " " + String(error));
       return 'denied';
     }
   }
@@ -175,9 +175,9 @@ class FCMService {
       if ('serviceWorker' in navigator) {
         try {
           await Promise.race([
-            navigator.serviceWorker.ready,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker timeout')), 5000))
-          ]);
+          navigator.serviceWorker.ready,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker timeout')), 5000))]
+          );
         } catch (swError) {
           console.log('FCM skipped: Service worker not ready');
           return null;
@@ -185,7 +185,7 @@ class FCMService {
       }
 
       console.log('Attempting to get FCM registration token...');
-      
+
       const currentToken = await getToken(messaging, {
         vapidKey: VAPID_KEY
       });
@@ -200,7 +200,7 @@ class FCMService {
       }
     } catch (error) {
       // SAFE GUARD: Catch ALL errors and return null - never throw
-      console.log('FCM token retrieval skipped due to error:', error?.message || error);
+      console.log(String('FCM token retrieval skipped due to error:') + " " + String(error?.message || error));
       return null;
     }
   }
@@ -224,7 +224,7 @@ class FCMService {
       console.log('FCM token saved to Firestore');
       return true;
     } catch (error) {
-      console.error('Error saving FCM token to Firestore:', error);
+      console.error(String('Error saving FCM token to Firestore:') + " " + String(error));
       return false;
     }
   }
@@ -241,7 +241,7 @@ class FCMService {
       console.log('FCM token removed from Firestore');
       return true;
     } catch (error) {
-      console.error('Error removing FCM token from Firestore:', error);
+      console.error(String('Error removing FCM token from Firestore:') + " " + String(error));
       return false;
     }
   }
@@ -250,23 +250,23 @@ class FCMService {
     if (!this.isSupported) return;
 
     onMessage(messaging, (payload) => {
-      console.log('Message received in foreground:', payload);
-      
+      console.log(String('Message received in foreground:') + " " + String(payload));
+
       // Show both browser notification and in-app toast
       if (payload.notification) {
         // Show browser notification
         this.showNotification(payload.notification);
-        
+
         // Show in-app toast notification using react-hot-toast
         this.showInAppNotification(payload.notification, payload.data);
       }
 
       // Call all registered message listeners
-      this.messageListeners.forEach(listener => {
+      this.messageListeners.forEach((listener) => {
         try {
           listener(payload);
         } catch (error) {
-          console.error('Error in message listener:', error);
+          console.error(String('Error in message listener:') + " " + String(error));
         }
       });
     });
@@ -286,7 +286,7 @@ class FCMService {
         tag: 'hh-foundation-notification',
         requireInteraction: true
       });
-      
+
       // Auto close after 10 seconds
       setTimeout(() => {
         browserNotification.close();
@@ -311,10 +311,10 @@ class FCMService {
         },
         icon: '🔔'
       };
-      
+
       // Determine toast type based on notification category or data
       const category = data?.category || 'info';
-      
+
       switch (category) {
         case 'payment':
         case 'reward':
@@ -341,8 +341,8 @@ class FCMService {
         default:
           toast(`${notification.title}\n${notification.body}`, toastOptions);
       }
-    }).catch(error => {
-      console.error('Error showing in-app notification:', error);
+    }).catch((error) => {
+      console.error(String('Error showing in-app notification:') + " " + String(error));
     });
   }
 
@@ -384,7 +384,7 @@ class FCMService {
 
       return tokens;
     } catch (error) {
-      console.error('Error getting user tokens:', error);
+      console.error(String('Error getting user tokens:') + " " + String(error));
       return [];
     }
   }
@@ -393,7 +393,7 @@ class FCMService {
     try {
       const tokens = [];
       const querySnapshot = await getDocs(collection(db, 'fcmTokens'));
-      
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.token) {
@@ -406,7 +406,7 @@ class FCMService {
 
       return tokens;
     } catch (error) {
-      console.error('Error getting all tokens:', error);
+      console.error(String('Error getting all tokens:') + " " + String(error));
       return [];
     }
   }
@@ -432,7 +432,7 @@ class FCMService {
       });
       callback(notifications);
     }, (error) => {
-      console.error('Error in notification subscription:', error);
+      console.error(String('Error in notification subscription:') + " " + String(error));
     });
   }
 
@@ -453,16 +453,16 @@ class FCMService {
 
       console.log('🔄 Force requesting notification permission...');
       const permission = await Notification.requestPermission();
-      
+
       if (permission === 'granted') {
         console.log('✅ Notification permission granted');
       } else {
         console.log('🚫 Notification permission denied');
       }
-      
+
       return permission;
     } catch (error) {
-      console.error('❌ Error force requesting notification permission:', error);
+      console.error(String('❌ Error force requesting notification permission:') + " " + String(error));
       return 'denied';
     }
   }
@@ -483,7 +483,7 @@ class FCMService {
       // Client-side push sending removed. Push must be sent by server/Cloud Functions.
       return false;
     } catch (error) {
-      console.error('❌ Error sending push notification:', error);
+      console.error(String('❌ Error sending push notification:') + " " + String(error));
       return false;
     }
   }
@@ -504,22 +504,22 @@ class FCMService {
           url: `/chat/${chatId}`
         },
         actions: [
-          {
-            action: 'reply',
-            title: 'Reply',
-            icon: '/icons/reply-icon.png'
-          },
-          {
-            action: 'view',
-            title: 'View Chat',
-            icon: '/icons/view-icon.png'
-          }
-        ]
+        {
+          action: 'reply',
+          title: 'Reply',
+          icon: '/icons/reply-icon.png'
+        },
+        {
+          action: 'view',
+          title: 'View Chat',
+          icon: '/icons/view-icon.png'
+        }]
+
       };
 
       return await this.sendNotificationToUser(receiverId, notificationData);
     } catch (error) {
-      console.error('❌ Error sending chat notification:', error);
+      console.error(String('❌ Error sending chat notification:') + " " + String(error));
       return false;
     }
   }
@@ -613,11 +613,11 @@ class FCMService {
   async sendQuickReply(chatId, message) {
     try {
       // This would integrate with your chat service
-      console.log('Sending quick reply to chat:', chatId, message);
+      console.log(String('Sending quick reply to chat:') + " " + String(chatId) + " " + String(message));
       // You would call your chat service here
       // await chatService.sendMessage(chatId, message);
     } catch (error) {
-      console.error('Error sending quick reply:', error);
+      console.error(String('Error sending quick reply:') + " " + String(error));
     }
   }
 }

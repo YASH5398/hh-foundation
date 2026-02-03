@@ -51,8 +51,8 @@ const SignupForm = () => {
       return;
     }
     if (form.paymentMethod === 'upi_generic' && !form.upiId) {
-        setMessage({ text: "Please enter your UPI ID.", type: 'error' });
-        return;
+      setMessage({ text: "Please enter your UPI ID.", type: 'error' });
+      return;
     }
     if (form.paymentMethod === 'bank') {
       if (!form.accountHolder || !form.accountNumber || !form.ifscCode) {
@@ -60,10 +60,10 @@ const SignupForm = () => {
         return;
       }
     }
-    
+
     // In a real application, you would send this data to a backend server.
     // For now, we'll just log it to the console.
-    console.log("Form submitted:", form);
+    console.log(String("Form submitted:") + " " + String(form));
 
     setMessage({ text: "Form submitted successfully! Check console for data.", type: 'success' });
     // Optionally, clear the form after successful submission
@@ -82,9 +82,9 @@ const SignupForm = () => {
         backgroundImage: 'url(https://iili.io/FIiJfBR.md.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed', // Makes background fixed when scrolling
-      }}
-    >
+        backgroundAttachment: 'fixed' // Makes background fixed when scrolling
+      }}>
+      
       {/* Dark overlay for better readability of content */}
       <div className="absolute inset-0 bg-black/70 z-0" /> {/* Increased opacity slightly */}
 
@@ -98,7 +98,7 @@ const SignupForm = () => {
               src="https://iili.io/FIQ0fZ7.md.png"
               alt="Company Logo"
               className="h-20 w-auto rounded-full shadow-lg" // Adjusted size and added rounded-full for logo
-              onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/80x80/cccccc/ffffff?text=Logo'; }} // Fallback image
+              onError={(e) => {e.target.onerror = null;e.target.src = 'https://placehold.co/80x80/cccccc/ffffff?text=Logo';}} // Fallback image
             />
           </div>
 
@@ -106,11 +106,11 @@ const SignupForm = () => {
           <h2 className="text-4xl font-extrabold text-white text-center mb-6 drop-shadow-lg">Sign Up</h2>
 
           {/* Message display area */}
-          {message.text && (
-            <div className={`p-3 rounded-md text-center ${message.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'} mb-4 transition-all duration-300`}>
+          {message.text &&
+          <div className={`p-3 rounded-md text-center ${message.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'} mb-4 transition-all duration-300`}>
               {message.text}
             </div>
-          )}
+          }
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5"> {/* Adjusted spacing */}
@@ -125,8 +125,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Enter your full name"
-                required
-              />
+                required />
+              
             </div>
 
             {/* Email */}
@@ -140,8 +140,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Enter your email"
-                required
-              />
+                required />
+              
             </div>
 
             {/* Phone Number */}
@@ -155,8 +155,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Enter your phone number"
-                required
-              />
+                required />
+              
             </div>
 
             {/* WhatsApp Number */}
@@ -169,8 +169,8 @@ const SignupForm = () => {
                 value={form.whatsapp}
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                placeholder="Enter your WhatsApp number (optional)"
-              />
+                placeholder="Enter your WhatsApp number (optional)" />
+              
             </div>
 
             {/* Sponsor ID */}
@@ -184,8 +184,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Enter sponsor ID"
-                required
-              />
+                required />
+              
             </div>
 
             {/* E-PIN */}
@@ -199,8 +199,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Enter E-PIN"
-                required
-              />
+                required />
+              
             </div>
 
             {/* Payment Method */}
@@ -212,8 +212,8 @@ const SignupForm = () => {
                 value={form.paymentMethod}
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200 appearance-none"
-                required
-              >
+                required>
+                
                 <option value="" className="text-gray-500">Select payment method</option>
                 <option value="phonepe" className="text-gray-900">PhonePe</option>
                 <option value="googlepay" className="text-gray-900">Google Pay</option>
@@ -222,102 +222,102 @@ const SignupForm = () => {
               </select>
               {/* Custom arrow for select dropdown */}
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 top-6">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
               </div>
             </div>
 
             {/* Dynamic Payment Fields based on selection */}
-            {form.paymentMethod === 'phonepe' && (
-              <div className="relative">
+            {form.paymentMethod === 'phonepe' &&
+            <div className="relative">
                 <label htmlFor="phonePeNumber" className="block text-white text-sm font-semibold mb-1">PhonePe Number</label>
                 <input
-                  type="tel"
-                  id="phonePeNumber"
-                  name="phonePeNumber"
-                  value={form.phonePeNumber}
-                  onChange={handleChange}
-                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                  placeholder="Enter your PhonePe number"
-                  required
-                />
+                type="tel"
+                id="phonePeNumber"
+                name="phonePeNumber"
+                value={form.phonePeNumber}
+                onChange={handleChange}
+                className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                placeholder="Enter your PhonePe number"
+                required />
+              
               </div>
-            )}
+            }
 
-            {form.paymentMethod === 'googlepay' && (
-              <div className="relative">
+            {form.paymentMethod === 'googlepay' &&
+            <div className="relative">
                 <label htmlFor="googlePayNumber" className="block text-white text-sm font-semibold mb-1">Google Pay Number</label>
                 <input
-                  type="tel"
-                  id="googlePayNumber"
-                  name="googlePayNumber"
-                  value={form.googlePayNumber}
-                  onChange={handleChange}
-                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                  placeholder="Enter your Google Pay number"
-                  required
-                />
+                type="tel"
+                id="googlePayNumber"
+                name="googlePayNumber"
+                value={form.googlePayNumber}
+                onChange={handleChange}
+                className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                placeholder="Enter your Google Pay number"
+                required />
+              
               </div>
-            )}
+            }
             
-            {form.paymentMethod === 'upi_generic' && (
-              <div className="relative">
+            {form.paymentMethod === 'upi_generic' &&
+            <div className="relative">
                 <label htmlFor="upiId" className="block text-white text-sm font-semibold mb-1">Enter UPI ID</label>
                 <input
-                  type="text"
-                  id="upiId"
-                  name="upiId"
-                  value={form.upiId}
-                  onChange={handleChange}
-                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                  placeholder="username@upi"
-                  required
-                />
+                type="text"
+                id="upiId"
+                name="upiId"
+                value={form.upiId}
+                onChange={handleChange}
+                className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                placeholder="username@upi"
+                required />
+              
               </div>
-            )}
+            }
 
-            {form.paymentMethod === 'bank' && (
-              <>
+            {form.paymentMethod === 'bank' &&
+            <>
                 <div className="relative">
                   <label htmlFor="accountHolder" className="block text-white text-sm font-semibold mb-1">Account Holder Name</label>
                   <input
-                    type="text"
-                    id="accountHolder"
-                    name="accountHolder"
-                    value={form.accountHolder}
-                    onChange={handleChange}
-                    className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                    placeholder="Enter account holder name"
-                    required
-                  />
+                  type="text"
+                  id="accountHolder"
+                  name="accountHolder"
+                  value={form.accountHolder}
+                  onChange={handleChange}
+                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                  placeholder="Enter account holder name"
+                  required />
+                
                 </div>
                 <div className="relative">
                   <label htmlFor="accountNumber" className="block text-white text-sm font-semibold mb-1">Account Number</label>
                   <input
-                    type="text"
-                    id="accountNumber"
-                    name="accountNumber"
-                    value={form.accountNumber}
-                    onChange={handleChange}
-                    className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                    placeholder="Enter account number"
-                    required
-                  />
+                  type="text"
+                  id="accountNumber"
+                  name="accountNumber"
+                  value={form.accountNumber}
+                  onChange={handleChange}
+                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                  placeholder="Enter account number"
+                  required />
+                
                 </div>
                 <div className="relative">
                   <label htmlFor="ifscCode" className="block text-white text-sm font-semibold mb-1">IFSC Code</label>
                   <input
-                    type="text"
-                    id="ifscCode"
-                    name="ifscCode"
-                    value={form.ifscCode}
-                    onChange={handleChange}
-                    className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
-                    placeholder="Enter IFSC code"
-                    required
-                  />
+                  type="text"
+                  id="ifscCode"
+                  name="ifscCode"
+                  value={form.ifscCode}
+                  onChange={handleChange}
+                  className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
+                  placeholder="Enter IFSC code"
+                  required />
+                
                 </div>
               </>
-            )}
+            }
 
             {/* Password */}
             <div className="relative">
@@ -330,8 +330,8 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Create a password"
-                required
-              />
+                required />
+              
             </div>
 
             {/* Confirm Password */}
@@ -345,22 +345,22 @@ const SignupForm = () => {
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200"
                 placeholder="Confirm your password"
-                required
-              />
+                required />
+              
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition duration-300 font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
+              className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition duration-300 font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105">
+              
               Sign Up
             </button>
           </form>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default SignupForm;

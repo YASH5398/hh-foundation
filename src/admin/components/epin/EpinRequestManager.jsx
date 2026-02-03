@@ -14,7 +14,7 @@ const statusColors = {
   accepted: 'bg-green-100 text-green-700',
   approved: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
-  rejected: 'bg-red-100 text-red-700',
+  rejected: 'bg-red-100 text-red-700'
 };
 
 function formatTimestamp(ts) {
@@ -76,7 +76,7 @@ const EpinRequestManager = () => {
       [['createdAt', 'desc']], // Sort by creation date, newest first
       (reqList, error) => {
         if (error) {
-          console.error('Error fetching E-PIN requests:', error);
+          console.error(String('Error fetching E-PIN requests:') + " " + String(error));
           toast.error('Failed to load E-PIN requests');
           setRequests([]);
         } else {
@@ -100,26 +100,26 @@ const EpinRequestManager = () => {
       toast.error('Admin access required');
       return;
     }
-    
+
     // CRITICAL: Block if Firestore profile is still loading
     if (profileLoading) {
       toast.error('Profile still loading. Please wait...');
       return;
     }
-    
+
     // CRITICAL: Build adminInfo ONLY from Firestore userProfile
     if (!userProfile?.uid || !userProfile?.fullName || !userProfile?.email) {
-      console.error('❌ Admin profile incomplete from Firestore:', userProfile);
+      console.error(String('❌ Admin profile incomplete from Firestore:') + " " + String(userProfile));
       toast.error('Admin profile incomplete. Please update your Firestore profile.');
       return;
     }
-    
+
     const adminInfo = {
       uid: userProfile.uid,
       fullName: userProfile.fullName,
       email: userProfile.email
     };
-    
+
     if (!req.id) {
       toast.error('Invalid request data. Missing required fields.');
       return;
@@ -131,7 +131,7 @@ const EpinRequestManager = () => {
     setProcessingRequest(req.id);
     try {
       await approveEpinRequest(req.id, adminInfo);
-      
+
       // Send notification to user about EPIN approval
       try {
         await sendNotification({
@@ -143,12 +143,12 @@ const EpinRequestManager = () => {
           targetUserId: req.userId
         });
       } catch (notificationError) {
-        console.error('Error sending approval notification:', notificationError);
+        console.error(String('Error sending approval notification:') + " " + String(notificationError));
       }
     } catch (error) {
+
       // approveEpinRequest already handles toast and logging
-    } finally {
-      setProcessingRequest(null);
+    } finally {setProcessingRequest(null);
     }
   };
 
@@ -164,14 +164,14 @@ const EpinRequestManager = () => {
       toast.error('Profile still loading. Please wait...');
       return;
     }
-    
+
     // CRITICAL: Build adminInfo ONLY from Firestore userProfile
     if (!userProfile?.uid || !userProfile?.fullName || !userProfile?.email) {
-      console.error('❌ Admin profile incomplete from Firestore:', userProfile);
+      console.error(String('❌ Admin profile incomplete from Firestore:') + " " + String(userProfile));
       toast.error('Admin profile incomplete. Please update your Firestore profile.');
       return;
     }
-    
+
     const adminInfo = {
       uid: userProfile.uid,
       fullName: userProfile.fullName,
@@ -199,12 +199,12 @@ const EpinRequestManager = () => {
       };
       // Log updateData without serverTimestamp fields
       const logUpdateData = { ...updateData, rejectedAt: '[serverTimestamp]', processedAt: '[serverTimestamp]' };
-      console.log('📝 Updating E-PIN with:', logUpdateData);
+      console.log(String('📝 Updating E-PIN with:') + " " + String(logUpdateData));
       if (!updateData.status || !updateData.rejectedBy?.uid || !updateData.rejectedBy?.fullName || updateData.rejectedBy?.email === undefined || updateData.rejectedBy?.email === null) {
         throw new Error('Invalid rejection data prepared');
       }
       await updateDoc(doc(db, 'epinRequests', req.id), updateData);
-      
+
       // Send notification to user about EPIN rejection
       try {
         await sendNotification({
@@ -216,12 +216,12 @@ const EpinRequestManager = () => {
           targetUserId: req.userId
         });
       } catch (notificationError) {
-        console.error('Error sending rejection notification:', notificationError);
+        console.error(String('Error sending rejection notification:') + " " + String(notificationError));
       }
-      
+
       toast.success('Request rejected successfully');
     } catch (error) {
-      console.error('Error rejecting E-PIN request:', error);
+      console.error(String('Error rejecting E-PIN request:') + " " + String(error));
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please check your admin status.');
       } else if (error.code === 'invalid-argument') {
@@ -234,11 +234,11 @@ const EpinRequestManager = () => {
     }
   };
 
-  const filtered = requests.filter(r =>
-    (filter === 'all' || r.status === filter) &&
-    ((r.fullName || r.userName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.userId || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.uid || '').toLowerCase().includes(search.toLowerCase()))
+  const filtered = requests.filter((r) =>
+  (filter === 'all' || r.status === filter) && (
+  (r.fullName || r.userName || '').toLowerCase().includes(search.toLowerCase()) ||
+  (r.userId || '').toLowerCase().includes(search.toLowerCase()) ||
+  (r.uid || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -258,15 +258,15 @@ const EpinRequestManager = () => {
               placeholder="Search by name or user ID..."
               className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+              onChange={(e) => setSearch(e.target.value)} />
+            
           </div>
           <div className="sm:w-48">
             <select
               className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={filter}
-              onChange={e => setFilter(e.target.value)}
-            >
+              onChange={(e) => setFilter(e.target.value)}>
+              
               <option value="all" className="bg-slate-800 text-slate-100">All Statuses</option>
               <option value="pending" className="bg-slate-800 text-slate-100">Pending</option>
               <option value="accepted" className="bg-slate-800 text-slate-100">Accepted</option>
@@ -294,8 +294,8 @@ const EpinRequestManager = () => {
             </thead>
             <tbody className="divide-y divide-slate-700/50">
               <AnimatePresence>
-                {filtered.length === 0 && !loading && (
-                  <tr>
+                {filtered.length === 0 && !loading &&
+                <tr>
                     <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-slate-400">
                         <FiCheckCircle className="w-12 h-12 mb-4 opacity-50" />
@@ -304,16 +304,16 @@ const EpinRequestManager = () => {
                       </div>
                     </td>
                   </tr>
-                )}
-                {filtered.map((req) => (
-                  <motion.tr
-                    key={req.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="hover:bg-slate-800/20 transition-all duration-200"
-                  >
+                }
+                {filtered.map((req) =>
+                <motion.tr
+                  key={req.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="hover:bg-slate-800/20 transition-all duration-200">
+                  
                     <td className="px-6 py-4">
                       <div className="text-slate-100 font-medium">{req.fullName || req.userName}</div>
                       <div className="text-slate-400 text-sm">{req.userId}</div>
@@ -331,33 +331,33 @@ const EpinRequestManager = () => {
                       <span className="text-slate-300 font-mono text-sm">{req.utrNumber || '-'}</span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {req.paymentScreenshotUrl ? (
-                        <button
-                          className="focus:outline-none group transition-transform hover:scale-105"
-                          title="View Screenshot"
-                          onClick={() => setModalImg(req.paymentScreenshotUrl)}
-                        >
+                      {req.paymentScreenshotUrl ?
+                    <button
+                      className="focus:outline-none group transition-transform hover:scale-105"
+                      title="View Screenshot"
+                      onClick={() => setModalImg(req.paymentScreenshotUrl)}>
+                      
                           <img
-                            src={req.paymentScreenshotUrl}
-                            alt="Payment Screenshot"
-                            className="w-12 h-12 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSIyNCIgeT0iMjQiIGZvbnQtc2l6ZT0iOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgYWxpZ25tZW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM4ODgiPkVycm9yPC90ZXh0Pjwvc3ZnPg==';
-                            }}
-                          />
-                        </button>
-                      ) : (
-                        <span className="text-slate-500 italic text-sm">No proof</span>
-                      )}
+                        src={req.paymentScreenshotUrl}
+                        alt="Payment Screenshot"
+                        className="w-12 h-12 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSIyNCIgeT0iMjQiIGZvbnQtc2l6ZT0iOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgYWxpZ25tZW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM4ODgiPkVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                        }} />
+                      
+                        </button> :
+
+                    <span className="text-slate-500 italic text-sm">No proof</span>
+                    }
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                        req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-                        req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                        'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                      }`}>
+                    req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                    req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                    req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                    'bg-slate-500/20 text-slate-300 border border-slate-500/30'}`
+                    }>
                         {req.status === 'pending' && '⏳ Pending'}
                         {(req.status === 'accepted' || req.status === 'approved') && '✅ Approved'}
                         {req.status === 'rejected' && '❌ Rejected'}
@@ -367,49 +367,49 @@ const EpinRequestManager = () => {
                       <div className="text-slate-300 text-sm">{formatTimestamp(req.timestamp || req.createdAt)}</div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {req.status === 'pending' && (
-                        <div className="flex items-center justify-center gap-2">
+                      {req.status === 'pending' &&
+                    <div className="flex items-center justify-center gap-2">
                           <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`p-2 rounded-lg transition-all duration-200 ${
-                              processingRequest === req.id
-                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                : 'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'
-                            }`}
-                            title={processingRequest === req.id ? 'Processing...' : 'Approve'}
-                            onClick={() => handleAccept(req)}
-                            disabled={processingRequest === req.id}
-                          >
-                            {processingRequest === req.id ? (
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div>
-                            ) : (
-                              <FiCheckCircle className="w-5 h-5" />
-                            )}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                        processingRequest === req.id ?
+                        'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                        'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'}`
+                        }
+                        title={processingRequest === req.id ? 'Processing...' : 'Approve'}
+                        onClick={() => handleAccept(req)}
+                        disabled={processingRequest === req.id}>
+                        
+                            {processingRequest === req.id ?
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div> :
+
+                        <FiCheckCircle className="w-5 h-5" />
+                        }
                           </motion.button>
                           <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`p-2 rounded-lg transition-all duration-200 ${
-                              processingRequest === req.id
-                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'
-                            }`}
-                            title={processingRequest === req.id ? 'Processing...' : 'Reject'}
-                            onClick={() => handleReject(req)}
-                            disabled={processingRequest === req.id}
-                          >
-                            {processingRequest === req.id ? (
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div>
-                            ) : (
-                              <FiXCircle className="w-5 h-5" />
-                            )}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                        processingRequest === req.id ?
+                        'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                        'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'}`
+                        }
+                        title={processingRequest === req.id ? 'Processing...' : 'Reject'}
+                        onClick={() => handleReject(req)}
+                        disabled={processingRequest === req.id}>
+                        
+                            {processingRequest === req.id ?
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div> :
+
+                        <FiXCircle className="w-5 h-5" />
+                        }
                           </motion.button>
                         </div>
-                      )}
+                    }
                     </td>
                   </motion.tr>
-                ))}
+                )}
               </AnimatePresence>
             </tbody>
         </table>
@@ -419,22 +419,22 @@ const EpinRequestManager = () => {
       {/* Mobile Card Layout */}
       <div className="md:hidden space-y-4">
         <AnimatePresence>
-          {filtered.length === 0 && !loading && (
-            <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-8 text-center">
+          {filtered.length === 0 && !loading &&
+          <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-8 text-center">
               <FiCheckCircle className="w-12 h-12 mx-auto mb-4 text-slate-500 opacity-50" />
               <p className="text-slate-300 text-lg font-medium">No E-PIN requests found</p>
               <p className="text-slate-500 text-sm mt-1">Try adjusting your search or filter criteria</p>
             </div>
-          )}
-          {filtered.map((req) => (
-            <motion.div
-              key={req.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-4 shadow-xl hover:shadow-2xl transition-all duration-200"
-            >
+          }
+          {filtered.map((req) =>
+          <motion.div
+            key={req.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="bg-slate-800/30 rounded-xl border border-slate-700/50 p-4 shadow-xl hover:shadow-2xl transition-all duration-200">
+            
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-slate-100 text-lg">{req.fullName || req.userName}</h3>
@@ -442,11 +442,11 @@ const EpinRequestManager = () => {
                   <p className="text-slate-500 text-xs mt-1">{formatTimestamp(req.timestamp || req.createdAt)}</p>
                 </div>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                  req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                  req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-                  req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                  'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                }`}>
+              req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+              req.status === 'accepted' || req.status === 'approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+              req.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+              'bg-slate-500/20 text-slate-300 border border-slate-500/30'}`
+              }>
                   {req.status === 'pending' && '⏳ Pending'}
                   {(req.status === 'accepted' || req.status === 'approved') && '✅ Approved'}
                   {req.status === 'rejected' && '❌ Rejected'}
@@ -472,102 +472,102 @@ const EpinRequestManager = () => {
                 </div>
               </div>
 
-              {req.paymentScreenshotUrl && (
-                <div className="mb-4">
+              {req.paymentScreenshotUrl &&
+            <div className="mb-4">
                   <p className="text-xs text-slate-400 uppercase font-medium mb-2">Images</p>
                   <div className="flex gap-4">
-                    {req.paymentScreenshotUrl && (
-                      <div className="flex flex-col items-center">
+                    {req.paymentScreenshotUrl &&
+                <div className="flex flex-col items-center">
                         <button
-                          className="focus:outline-none group transition-transform hover:scale-105 touch-manipulation"
-                          title="View Screenshot"
-                          onClick={() => setModalImg(req.paymentScreenshotUrl)}
-                        >
+                    className="focus:outline-none group transition-transform hover:scale-105 touch-manipulation"
+                    title="View Screenshot"
+                    onClick={() => setModalImg(req.paymentScreenshotUrl)}>
+                    
                           <img
-                            src={req.paymentScreenshotUrl}
-                            alt="Payment Screenshot"
-                            className="w-20 h-20 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSI0MCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjODg4Ij5FcnJvcjwvdGV4dD48L3N2Zz4=';
-                            }}
-                          />
+                      src={req.paymentScreenshotUrl}
+                      alt="Payment Screenshot"
+                      className="w-20 h-20 object-cover rounded-lg border border-slate-600 group-hover:border-slate-500 transition-colors"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSI0MCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjODg4Ij5FcnJvcjwvdGV4dD48L3N2Zz4=';
+                      }} />
+                    
                         </button>
                         <span className="text-xs text-slate-400 mt-1">Payment</span>
                       </div>
-                    )}
+                }
                   </div>
                 </div>
-              )}
+            }
 
-              {req.status === 'pending' && (
-                <div className="flex gap-3 pt-4 border-t border-slate-700/50">
+              {req.status === 'pending' &&
+            <div className="flex gap-3 pt-4 border-t border-slate-700/50">
                   <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
-                      processingRequest === req.id
-                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                        : 'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'
-                    }`}
-                    disabled={processingRequest === req.id}
-                    onClick={() => handleAccept(req)}
-                  >
+                whileTap={{ scale: 0.95 }}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
+                processingRequest === req.id ?
+                'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/25'}`
+                }
+                disabled={processingRequest === req.id}
+                onClick={() => handleAccept(req)}>
+                
                     <FiCheckCircle className="inline mr-2" size={16} />
                     {processingRequest === req.id ? 'Processing...' : 'Approve'}
                   </motion.button>
                   <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
-                      processingRequest === req.id
-                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                        : 'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'
-                    }`}
-                    disabled={processingRequest === req.id}
-                    onClick={() => handleReject(req)}
-                  >
+                whileTap={{ scale: 0.95 }}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 touch-manipulation ${
+                processingRequest === req.id ?
+                'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-red-600 hover:bg-red-500 text-white shadow-lg hover:shadow-red-500/25'}`
+                }
+                disabled={processingRequest === req.id}
+                onClick={() => handleReject(req)}>
+                
                     <FiXCircle className="inline mr-2" size={16} />
                     {processingRequest === req.id ? 'Processing...' : 'Reject'}
                   </motion.button>
                 </div>
-              )}
+            }
             </motion.div>
-          ))}
+          )}
         </AnimatePresence>
       </div>
       {/* Modal for image preview */}
       <AnimatePresence>
-        {modalImg && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setModalImg(null)}
-          >
+        {modalImg &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setModalImg(null)}>
+          
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-4xl max-h-full bg-slate-800 rounded-xl border border-slate-600 overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="relative max-w-4xl max-h-full bg-slate-800 rounded-xl border border-slate-600 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}>
+            
               <img
-                src={modalImg}
-                alt="Payment Screenshot"
-                className="max-w-full max-h-full object-contain"
-              />
+              src={modalImg}
+              alt="Payment Screenshot"
+              className="max-w-full max-h-full object-contain" />
+            
               <button
-                className="absolute top-4 right-4 bg-slate-700/80 hover:bg-slate-600 text-slate-100 rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl transition-all duration-200 touch-manipulation hover:scale-110"
-                onClick={() => setModalImg(null)}
-              >
+              className="absolute top-4 right-4 bg-slate-700/80 hover:bg-slate-600 text-slate-100 rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl transition-all duration-200 touch-manipulation hover:scale-110"
+              onClick={() => setModalImg(null)}>
+              
                 ×
               </button>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
 export default EpinRequestManager;

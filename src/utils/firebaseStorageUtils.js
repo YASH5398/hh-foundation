@@ -7,27 +7,27 @@
  */
 export const getDirectImageUrl = (downloadURL) => {
   if (!downloadURL) return '';
-  
+
   // If it's already a direct public URL, return as is
   if (downloadURL.includes('firebasestorage.googleapis.com/v0/b/')) {
     return downloadURL;
   }
-  
+
   // If it's a Firebase Storage download URL, convert it
   if (downloadURL.includes('firebasestorage.googleapis.com/v0/b/') && downloadURL.includes('?alt=media')) {
     return downloadURL;
   }
-  
+
   // Extract the path from the download URL
   const url = new URL(downloadURL);
   const pathMatch = url.pathname.match(/\/v0\/b\/([^\/]+)\/o\/(.+)/);
-  
+
   if (pathMatch) {
     const bucket = pathMatch[1];
     const encodedPath = encodeURIComponent(pathMatch[2]);
     return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
   }
-  
+
   // If we can't parse it, return the original URL
   return downloadURL;
 };
@@ -55,26 +55,26 @@ export const createDirectImageUrl = (userId, fileName, folder = 'paymentProofs')
  */
 export const extractImageInfo = (downloadURL) => {
   if (!downloadURL) return { userId: '', fileName: '' };
-  
+
   try {
     const url = new URL(downloadURL);
     const pathMatch = url.pathname.match(/\/v0\/b\/[^\/]+\/o\/(.+)/);
-    
+
     if (pathMatch) {
       const decodedPath = decodeURIComponent(pathMatch[1]);
       const pathParts = decodedPath.split('/');
-      
+
       if (pathParts.length >= 3) {
         const folder = pathParts[0];
         const userId = pathParts[1];
         const fileName = pathParts.slice(2).join('/');
-        
+
         return { folder, userId, fileName };
       }
     }
   } catch (error) {
-    console.error('Error extracting image info:', error);
+    console.error(String('Error extracting image info:') + " " + String(error));
   }
-  
+
   return { userId: '', fileName: '' };
-}; 
+};

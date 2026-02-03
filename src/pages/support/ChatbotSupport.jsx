@@ -22,13 +22,13 @@ const ChatbotSupport = () => {
   };
 
   // Typing Indicator Component
-  const TypingIndicator = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="flex items-start space-x-3 mb-4"
-    >
+  const TypingIndicator = () =>
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    className="flex items-start space-x-3 mb-4">
+    
       <div className="flex-shrink-0">
         <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm">
           🤖
@@ -37,12 +37,12 @@ const ChatbotSupport = () => {
       <div className="bg-white text-gray-800 rounded-2xl rounded-bl-md shadow-sm px-4 py-3">
         <div className="flex space-x-1">
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
         </div>
       </div>
-    </motion.div>
-  );
+    </motion.div>;
+
 
   useEffect(() => {
     scrollToBottom();
@@ -56,7 +56,7 @@ const ChatbotSupport = () => {
     const initializeChatRoom = async () => {
       const chatbotChatRef = doc(db, 'chatbotChats', currentUser.uid);
       const chatbotChatDoc = await getDoc(chatbotChatRef);
-      
+
       if (!chatbotChatDoc.exists()) {
         // Create new chat room for chatbot
         await setDoc(chatbotChatRef, {
@@ -69,7 +69,7 @@ const ChatbotSupport = () => {
           closedAt: null
         });
       }
-      
+
       setChatRoomId(currentUser.uid);
     };
 
@@ -84,7 +84,7 @@ const ChatbotSupport = () => {
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map(doc => ({
+      const chatMessages = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
@@ -104,20 +104,20 @@ const ChatbotSupport = () => {
 
     try {
       // Prepare conversation history
-      const history = Array.isArray(conversationContext)
-        ? conversationContext.slice(-10).filter((m) => m && typeof m === 'object')
-        : [];
-      
-      const payload = { 
+      const history = Array.isArray(conversationContext) ?
+      conversationContext.slice(-10).filter((m) => m && typeof m === 'object') :
+      [];
+
+      const payload = {
         message: userMessage.trim(),
-        history 
+        history
       };
-      
-      console.log('[chatbotReply] request', {
+
+      console.log(String('[chatbotReply] request') + " " + String({
         messageLength: userMessage.length,
         historyLength: history.length,
         timestamp: new Date().toISOString()
-      });
+      }));
 
       const currentUser = auth.currentUser;
 
@@ -127,7 +127,7 @@ const ChatbotSupport = () => {
       }
 
       const token = await currentUser.getIdToken(true);
-      
+
       const response = await fetch(
         'https://us-central1-hh-foundation.cloudfunctions.net/handleChatbotMessage',
         {
@@ -142,16 +142,16 @@ const ChatbotSupport = () => {
         }
       );
 
-      console.log('[chatbotReply] response status', response.status);
+      console.log(String('[chatbotReply] response status') + " " + String(response.status));
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('[chatbotReply] HTTP error', {
+        console.error(String('[chatbotReply] HTTP error') + " " + String({
           status: response.status,
           statusText: response.statusText,
           error: errorData.error,
           timestamp: new Date().toISOString()
-        });
+        }));
 
         // Return specific error messages based on status
         if (response.status === 400) {
@@ -166,11 +166,11 @@ const ChatbotSupport = () => {
       }
 
       const data = await response.json();
-      console.log('[chatbotReply] success', {
+      console.log(String('[chatbotReply] success') + " " + String({
         hasReply: !!data.reply,
         replyLength: data.reply?.length || 0,
         timestamp: new Date().toISOString()
-      });
+      }));
 
       const reply = data?.reply;
       if (typeof reply === 'string' && reply.trim()) {
@@ -181,16 +181,19 @@ const ChatbotSupport = () => {
       }
 
     } catch (error) {
-      console.error('[chatbotReply] error', {
+      console.error(String('[chatbotReply] error') + " " + String({
         error: error.message,
         name: error.name,
         timestamp: new Date().toISOString()
-      });
+      }));
 
       // Handle specific error types
+      // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+      const safeMessage = typeof error?.message === "string" ? error.message : "";
+
       if (error.name === 'AbortError' || error.name === 'TimeoutError') {
         return fallbackMessages.timeout;
-      } else if (error.message?.includes('fetch') || error.message?.includes('network')) {
+      } else if (safeMessage.includes('fetch') || safeMessage.includes('network')) {
         return fallbackMessages.network;
       } else {
         return fallbackMessages.generic;
@@ -214,7 +217,7 @@ const ChatbotSupport = () => {
         console.error('Chatbot: user not logged in');
         return;
       }
-      
+
       // Add user message
       const userMessageData = {
         senderUid: currentUser.uid,
@@ -226,17 +229,17 @@ const ChatbotSupport = () => {
       await addDoc(collection(db, 'chatbotChats', chatRoomId, 'messages'), userMessageData);
 
       // Simulate typing delay with enhanced visual feedback
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       // Get AI response (server-side ChatGPT via Cloud Function)
       aiResponse = await getChatbotReply(messageText);
-      setConversationContext(prev => [
-        ...(Array.isArray(prev) ? prev.slice(-10) : []),
-        { role: 'user', content: messageText },
-        { role: 'assistant', content: aiResponse }
-      ]);
+      setConversationContext((prev) => [
+      ...(Array.isArray(prev) ? prev.slice(-10) : []),
+      { role: 'user', content: messageText },
+      { role: 'assistant', content: aiResponse }]
+      );
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error(String('Error sending message:') + " " + String(error));
       toast.error('Failed to send message');
     }
 
@@ -251,7 +254,7 @@ const ChatbotSupport = () => {
       };
       await addDoc(collection(db, 'chatbotChats', chatRoomId, 'messages'), aiMessageData);
     } catch (error) {
-      console.error('Error appending bot reply:', error);
+      console.error(String('Error appending bot reply:') + " " + String(error));
     } finally {
       setIsLoading(false);
       setIsTyping(false);
@@ -271,13 +274,13 @@ const ChatbotSupport = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const TypingIndicatorBubble = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="flex items-start gap-3 mb-4"
-    >
+  const TypingIndicatorBubble = () =>
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    className="flex items-start gap-3 mb-4">
+    
       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
         <FiMessageCircle className="w-4 h-4 text-white" />
       </div>
@@ -288,13 +291,13 @@ const ChatbotSupport = () => {
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
         </div>
       </div>
-    </motion.div>
-  );
+    </motion.div>;
+
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       {/* WhatsApp-style Header */}
-      <div className="bg-green-600 text-white px-4 py-3 flex items-center gap-3 shadow-lg fixed top-0 left-0 right-0 z-[100] w-full" style={{height: 64}}>
+      <div className="bg-green-600 text-white px-4 py-3 flex items-center gap-3 shadow-lg fixed top-0 left-0 right-0 z-[100] w-full" style={{ height: 64 }}>
         <button
           onClick={() => {
             console.log('ChatbotSupport: Back button clicked, dispatching open-dashboard-sidebar event');
@@ -302,14 +305,14 @@ const ChatbotSupport = () => {
             if (window && window.dispatchEvent) {
               const event = new CustomEvent('open-dashboard-sidebar');
               const dispatched = window.dispatchEvent(event);
-              console.log('ChatbotSupport: Event dispatched successfully:', dispatched);
+              console.log(String('ChatbotSupport: Event dispatched successfully:') + " " + String(dispatched));
             } else {
               console.error('ChatbotSupport: window.dispatchEvent not available');
             }
           }}
           className="p-2 hover:bg-green-700 rounded-full transition-colors"
-          title="Open sidebar"
-        >
+          title="Open sidebar">
+          
           <FiArrowLeft className="w-5 h-5" />
         </button>
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -325,16 +328,16 @@ const ChatbotSupport = () => {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-4 min-h-0" style={{marginTop: 64}}>
-        {messages.length === 0 && (
-          <div className="text-center py-8">
+      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-4 min-h-0" style={{ marginTop: 64 }}>
+        {messages.length === 0 &&
+        <div className="text-center py-8">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <FiMessageCircle className="w-8 h-8 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to AI Support!</h3>
             <p className="text-gray-600">Start a conversation and I'll help you with any questions.</p>
           </div>
-        )}
+        }
 
         <AnimatePresence>
           {messages.map((message) => {
@@ -345,34 +348,34 @@ const ChatbotSupport = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                {!isUser && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                
+                {!isUser &&
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <FiMessageCircle className="w-4 h-4 text-white" />
                   </div>
-                )}
+                }
                 
                 <div className={`max-w-[280px] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2 sm:py-3 rounded-2xl shadow-sm ${
-                  isUser 
-                    ? 'bg-green-500 text-white rounded-br-md' 
-                    : 'bg-white text-gray-800 rounded-bl-md'
-                }`}>
+                isUser ?
+                'bg-green-500 text-white rounded-br-md' :
+                'bg-white text-gray-800 rounded-bl-md'}`
+                }>
                   <p className="text-sm sm:text-base leading-relaxed break-words">{message.text}</p>
                   <p className={`text-xs mt-1 ${
-                    isUser ? 'text-green-100' : 'text-gray-500'
-                  }`}>
+                  isUser ? 'text-green-100' : 'text-gray-500'}`
+                  }>
                     {formatTime(message.timestamp)}
                   </p>
                 </div>
                 
-                {isUser && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                {isUser &&
+                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <FiUser className="w-4 h-4 text-white" />
                   </div>
-                )}
-              </motion.div>
-            );
+                }
+              </motion.div>);
+
           })}
         </AnimatePresence>
 
@@ -395,21 +398,21 @@ const ChatbotSupport = () => {
               placeholder="Type a message..."
               className="w-full resize-none outline-none text-gray-800 placeholder-gray-500 max-h-20"
               rows={1}
-              disabled={isLoading}
-            />
+              disabled={isLoading} />
+            
           </div>
           
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || isLoading}
-            className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0"
-          >
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0">
+            
             <FiSend className="w-5 h-5 text-white" />
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default ChatbotSupport;

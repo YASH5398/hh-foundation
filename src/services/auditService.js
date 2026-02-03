@@ -7,7 +7,7 @@ export const AUDIT_EVENTS = {
   // Authentication
   AGENT_LOGIN: 'agent_login',
   AGENT_LOGOUT: 'agent_logout',
-  
+
   // Ticket Management
   TICKET_CREATED: 'ticket_created',
   TICKET_ASSIGNED: 'ticket_assigned',
@@ -17,32 +17,32 @@ export const AUDIT_EVENTS = {
   TICKET_NOTE_ADDED: 'ticket_note_added',
   TICKET_ESCALATED: 'ticket_escalated',
   TICKET_RESOLVED: 'ticket_resolved',
-  
+
   // Payment Verification
   PAYMENT_VERIFIED: 'payment_verified',
   PAYMENT_REJECTED: 'payment_rejected',
   PAYMENT_STATUS_CHANGED: 'payment_status_changed',
   PAYMENT_FLAGGED: 'payment_flagged',
-  
+
   // User Management
   USER_PROFILE_VIEWED: 'user_profile_viewed',
   USER_PROFILE_UPDATED: 'user_profile_updated',
   USER_BLOCKED: 'user_blocked',
   USER_UNBLOCKED: 'user_unblocked',
   USER_KYC_UPDATED: 'user_kyc_updated',
-  
+
   // Communication
   MESSAGE_SENT: 'message_sent',
   EMAIL_SENT: 'email_sent',
   WHATSAPP_SENT: 'whatsapp_sent',
   TEMPLATE_USED: 'template_used',
-  
+
   // Knowledge Base
   KB_ARTICLE_CREATED: 'kb_article_created',
   KB_ARTICLE_UPDATED: 'kb_article_updated',
   KB_ARTICLE_DELETED: 'kb_article_deleted',
   KB_ARTICLE_VIEWED: 'kb_article_viewed',
-  
+
   // System Events
   DATA_EXPORT: 'data_export',
   BULK_ACTION: 'bulk_action',
@@ -65,17 +65,17 @@ class AuditService {
     this.flushInterval = 5000; // 5 seconds
     this.pendingLogs = [];
     this.isOnline = navigator.onLine;
-    
+
     // Setup offline/online listeners
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.flushPendingLogs();
     });
-    
+
     window.addEventListener('offline', () => {
       this.isOnline = false;
     });
-    
+
     // Auto-flush pending logs
     setInterval(() => {
       if (this.pendingLogs.length > 0 && this.isOnline) {
@@ -123,7 +123,7 @@ class AuditService {
       }
 
     } catch (error) {
-      console.error('Failed to log audit event:', error);
+      console.error(String('Failed to log audit event:') + " " + String(error));
       // Store in local storage as fallback
       this.storeLocalAuditLog({ eventType, details, agentId, severity, error: error.message });
     }
@@ -153,7 +153,7 @@ class AuditService {
       localStorage.removeItem('pendingAuditLogs');
       console.log(`Flushed ${logsToFlush.length} pending audit logs`);
     } catch (error) {
-      console.error('Failed to flush pending logs:', error);
+      console.error(String('Failed to flush pending logs:') + " " + String(error));
       // Put logs back if failed
       this.pendingLogs = [...this.pendingLogs, ...logsToFlush];
     }
@@ -166,7 +166,7 @@ class AuditService {
     try {
       localStorage.setItem('pendingAuditLogs', JSON.stringify(this.pendingLogs));
     } catch (error) {
-      console.error('Failed to store offline logs:', error);
+      console.error(String('Failed to store offline logs:') + " " + String(error));
     }
   }
 
@@ -180,7 +180,7 @@ class AuditService {
         this.pendingLogs = JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Failed to load offline logs:', error);
+      console.error(String('Failed to load offline logs:') + " " + String(error));
     }
   }
 
@@ -191,15 +191,15 @@ class AuditService {
     try {
       const existingLogs = JSON.parse(localStorage.getItem('fallbackAuditLogs') || '[]');
       existingLogs.push({ ...logData, timestamp: new Date().toISOString() });
-      
+
       // Keep only last 100 logs to prevent storage overflow
       if (existingLogs.length > 100) {
         existingLogs.splice(0, existingLogs.length - 100);
       }
-      
+
       localStorage.setItem('fallbackAuditLogs', JSON.stringify(existingLogs));
     } catch (error) {
-      console.error('Failed to store fallback audit log:', error);
+      console.error(String('Failed to store fallback audit log:') + " " + String(error));
     }
   }
 
@@ -237,49 +237,49 @@ class AuditService {
   subscribeToAuditLogs(callback, filters = {}, limitCount = 50) {
     try {
       let auditQuery = collection(db, 'auditLogs');
-      
+
       // Apply filters
       if (filters.agentId) {
         auditQuery = query(auditQuery, where('agentId', '==', filters.agentId));
       }
-      
+
       if (filters.eventType) {
         auditQuery = query(auditQuery, where('eventType', '==', filters.eventType));
       }
-      
+
       if (filters.severity) {
         auditQuery = query(auditQuery, where('severity', '==', filters.severity));
       }
-      
+
       if (filters.startDate) {
         auditQuery = query(auditQuery, where('timestamp', '>=', Timestamp.fromDate(filters.startDate)));
       }
-      
+
       if (filters.endDate) {
         auditQuery = query(auditQuery, where('timestamp', '<=', Timestamp.fromDate(filters.endDate)));
       }
-      
+
       // Order by timestamp and limit
       auditQuery = query(auditQuery, orderBy('timestamp', 'desc'), limit(limitCount));
-      
+
       const unsubscribe = onSnapshot(auditQuery, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({
+        const logs = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data()
         }));
         callback(logs);
       }, (error) => {
-        console.error('Error subscribing to audit logs:', error);
+        console.error(String('Error subscribing to audit logs:') + " " + String(error));
         toast.error('Failed to load audit logs');
       });
-      
+
       // Store unsubscribe function
       const listenerId = `audit_${Date.now()}`;
       this.listeners.set(listenerId, unsubscribe);
-      
+
       return listenerId;
     } catch (error) {
-      console.error('Error setting up audit log subscription:', error);
+      console.error(String('Error setting up audit log subscription:') + " " + String(error));
       throw error;
     }
   }
@@ -314,7 +314,7 @@ class AuditService {
         criticalEvents: 0
       };
     } catch (error) {
-      console.error('Error getting audit statistics:', error);
+      console.error(String('Error getting audit statistics:') + " " + String(error));
       throw error;
     }
   }
@@ -342,7 +342,7 @@ class AuditService {
         downloadUrl: null // Would contain actual download URL
       };
     } catch (error) {
-      console.error('Error exporting audit logs:', error);
+      console.error(String('Error exporting audit logs:') + " " + String(error));
       throw error;
     }
   }
@@ -358,7 +358,7 @@ class AuditService {
   }
 
   // Convenience methods for common audit events
-  
+
   async logTicketAction(action, ticketId, agentId, details = {}) {
     await this.logEvent(
       action,
@@ -418,26 +418,26 @@ auditService.loadOfflineLogs();
 export default auditService;
 
 // Export convenience functions
-export const logAuditEvent = (eventType, details, agentId, severity, metadata) => 
-  auditService.logEvent(eventType, details, agentId, severity, metadata);
+export const logAuditEvent = (eventType, details, agentId, severity, metadata) =>
+auditService.logEvent(eventType, details, agentId, severity, metadata);
 
-export const subscribeToAuditLogs = (callback, filters, limit) => 
-  auditService.subscribeToAuditLogs(callback, filters, limit);
+export const subscribeToAuditLogs = (callback, filters, limit) =>
+auditService.subscribeToAuditLogs(callback, filters, limit);
 
-export const unsubscribeFromAuditLogs = (listenerId) => 
-  auditService.unsubscribeFromAuditLogs(listenerId);
+export const unsubscribeFromAuditLogs = (listenerId) =>
+auditService.unsubscribeFromAuditLogs(listenerId);
 
-export const logTicketAction = (action, ticketId, agentId, details) => 
-  auditService.logTicketAction(action, ticketId, agentId, details);
+export const logTicketAction = (action, ticketId, agentId, details) =>
+auditService.logTicketAction(action, ticketId, agentId, details);
 
-export const logPaymentAction = (action, paymentId, agentId, details) => 
-  auditService.logPaymentAction(action, paymentId, agentId, details);
+export const logPaymentAction = (action, paymentId, agentId, details) =>
+auditService.logPaymentAction(action, paymentId, agentId, details);
 
-export const logUserAction = (action, userId, agentId, details) => 
-  auditService.logUserAction(action, userId, agentId, details);
+export const logUserAction = (action, userId, agentId, details) =>
+auditService.logUserAction(action, userId, agentId, details);
 
-export const logSecurityEvent = (details, agentId) => 
-  auditService.logSecurityEvent(details, agentId);
+export const logSecurityEvent = (details, agentId) =>
+auditService.logSecurityEvent(details, agentId);
 
-export const logSystemError = (error, context, agentId) => 
-  auditService.logSystemError(error, context, agentId);
+export const logSystemError = (error, context, agentId) =>
+auditService.logSystemError(error, context, agentId);

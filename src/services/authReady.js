@@ -43,7 +43,7 @@ export async function requireFreshIdToken({ timeoutMs = 10000 } = {}) {
     await user.getIdToken(true); // Force refresh
     return user;
   } catch (error) {
-    console.error('Error getting fresh ID token:', error);
+    console.error(String('Error getting fresh ID token:') + " " + String(error));
     throw new Error('Failed to get authentication token');
   }
 }

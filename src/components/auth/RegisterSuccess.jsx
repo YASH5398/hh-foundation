@@ -35,9 +35,11 @@ const RegisterSuccess = () => {
     joiningDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  // Use fullName or name for display
-  const fullName = user.fullName || user.name || '-';
-  const firstName = fullName.split(' ')[0];
+  // Use fullName or name for display - SAFE fallback with comprehensive null-safety
+  // Force fullName to always be a string to prevent undefined/null crashes
+  const fullName = String(user.fullName || user.name || '-');
+  // Check for space before split to ensure safe string operation
+  const firstName = fullName.includes(' ') ? fullName.split(' ')[0] : fullName;
   const email = user.email || '-';
   const userId = user.userId || '-';
   const sponsorId = user.sponsorId || '-';

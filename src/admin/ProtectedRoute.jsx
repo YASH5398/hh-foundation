@@ -4,16 +4,16 @@ import { useAuth } from '../context/AuthContext';
 
 const AdminProtectedRoute = ({ children }) => {
   const { user, loading, isAdmin, userProfile } = useAuth();
-  
+
   console.log('🔍 AdminProtectedRoute: ===== ADMIN ACCESS CHECK =====');
-  console.log('🔍 AdminProtectedRoute: user?', !!user, user?.uid);
-  console.log('🔍 AdminProtectedRoute: user email:', user?.email);
-  console.log('🔍 AdminProtectedRoute: loading?', loading);
-  console.log('🔍 AdminProtectedRoute: userProfile type:', typeof userProfile);
-  console.log('🔍 AdminProtectedRoute: userProfile?', !!userProfile);
-  console.log('🔍 AdminProtectedRoute: userProfile.role:', userProfile?.role);
-  console.log('🔍 AdminProtectedRoute: isAdmin (derived)?', isAdmin);
-  console.log('🔍 AdminProtectedRoute: Firebase project:', typeof window !== 'undefined' && window.__FIREBASE_APP_OPTIONS__?.projectId);
+  console.log(String('🔍 AdminProtectedRoute: user?') + " " + String(!!user) + " " + String(user?.uid));
+  console.log(String('🔍 AdminProtectedRoute: user email:') + " " + String(user?.email));
+  console.log(String('🔍 AdminProtectedRoute: loading?') + " " + String(loading));
+  console.log(String('🔍 AdminProtectedRoute: userProfile type:') + " " + String(typeof userProfile));
+  console.log(String('🔍 AdminProtectedRoute: userProfile?') + " " + String(!!userProfile));
+  console.log(String('🔍 AdminProtectedRoute: userProfile.role:') + " " + String(userProfile?.role));
+  console.log(String('🔍 AdminProtectedRoute: isAdmin (derived)?') + " " + String(isAdmin));
+  console.log(String('🔍 AdminProtectedRoute: Firebase project:') + " " + String(typeof window !== 'undefined' && window.__FIREBASE_APP_OPTIONS__?.projectId));
   console.log('🔍 AdminProtectedRoute: =====================================');
 
   // Show loader while auth/profile are loading
@@ -24,8 +24,8 @@ const AdminProtectedRoute = ({ children }) => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading authentication...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Redirect to login if not authenticated
@@ -46,18 +46,18 @@ const AdminProtectedRoute = ({ children }) => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading admin profile...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Treat only explicit userProfile.role === "admin" as admin
   // userProfile can be: null (document doesn't exist) or object (has data)
   // Both non-admin cases should deny access
   const explicitIsAdmin = userProfile && userProfile.role === 'admin';
-  console.log('🔍 AdminProtectedRoute: explicitIsAdmin check:', explicitIsAdmin);
-  console.log('🔍 AdminProtectedRoute: userProfile exists?', !!userProfile);
-  console.log('🔍 AdminProtectedRoute: userProfile.role === "admin"?', userProfile?.role === 'admin');
-  
+  console.log(String('🔍 AdminProtectedRoute: explicitIsAdmin check:') + " " + String(explicitIsAdmin));
+  console.log(String('🔍 AdminProtectedRoute: userProfile exists?') + " " + String(!!userProfile));
+  console.log(String('🔍 AdminProtectedRoute: userProfile.role === "admin"?') + " " + String(userProfile?.role === 'admin'));
+
   if (!explicitIsAdmin) {
     console.log('🔍 AdminProtectedRoute: ❌ ADMIN ACCESS DENIED');
     console.log('🔍 AdminProtectedRoute: Reason: User is not admin (role is not admin or profile is null)');

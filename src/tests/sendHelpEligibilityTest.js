@@ -18,7 +18,7 @@ const TEST_CONFIG = {
   inactiveUserPassword: 'test123', // Update with real password
 
   // Expected level for testing - update based on your user's level
-  testLevel: 'Star', // Change this to match your test user's level
+  testLevel: 'Star' // Change this to match your test user's level
 };
 
 /**
@@ -28,7 +28,7 @@ function log(message, data = null) {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${message}`);
   if (data) {
-    console.log('Data:', data);
+    console.log(String('Data:') + " " + String(data));
   }
 }
 
@@ -71,7 +71,7 @@ export async function runSendHelpEligibilityTest() {
     // Step 3: Analyze results
     log('📋 Step 3: Analyzing query results...');
 
-    const allReceivers = receiversSnap.docs.map(doc => ({
+    const allReceivers = receiversSnap.docs.map((doc) => ({
       uid: doc.id,
       ...doc.data()
     }));
@@ -231,15 +231,15 @@ export async function runSendHelpEligibilityTest() {
  * CONVENIENCE FUNCTION - Run test and log results
  */
 export async function runTestAndLog() {
-  console.log('='.repeat(80));
+  console.log(String('='.repeat(80)));
   console.log('SEND HELP ELIGIBILITY TEST');
-  console.log('='.repeat(80));
+  console.log(String('='.repeat(80)));
 
   const result = await runSendHelpEligibilityTest();
 
-  console.log('='.repeat(80));
+  console.log(String('='.repeat(80)));
   console.log('TEST RESULTS SUMMARY');
-  console.log('='.repeat(80));
+  console.log(String('='.repeat(80)));
 
   if (result.success) {
     console.log('✅ TEST PASSED - Eligible receivers found!');
@@ -257,7 +257,7 @@ export async function runTestAndLog() {
     }
   }
 
-  console.log('='.repeat(80));
+  console.log(String('='.repeat(80)));
 
   return result;
 }

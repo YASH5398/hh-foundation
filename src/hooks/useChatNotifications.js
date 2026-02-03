@@ -20,7 +20,7 @@ export const useChatNotifications = () => {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error(String('Error fetching user data:') + " " + String(error));
       return null;
     }
   }, []);
@@ -34,7 +34,7 @@ export const useChatNotifications = () => {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching FCM token:', error);
+      console.error(String('Error fetching FCM token:') + " " + String(error));
       return null;
     }
   }, []);
@@ -43,7 +43,7 @@ export const useChatNotifications = () => {
   const handleNewMessage = useCallback(async (messageData) => {
     try {
       const { senderId, recipientId, text, chatId, timestamp } = messageData;
-      
+
       // Don't send notification if current user is the sender
       if (user && senderId === user.uid) {
         return;
@@ -74,9 +74,9 @@ export const useChatNotifications = () => {
         chatId
       );
 
-      console.log('Chat notification sent for message:', messageData.id);
+      console.log(String('Chat notification sent for message:') + " " + String(messageData.id));
     } catch (error) {
-      console.error('Error handling new message notification:', error);
+      console.error(String('Error handling new message notification:') + " " + String(error));
     }
   }, [user, getUserData, getUserFCMToken]);
 
@@ -117,17 +117,17 @@ export const useChatNotifications = () => {
             const now = new Date();
             const timeDiff = now - messageTime;
 
-            if (timeDiff < 30000) { // 30 seconds
+            if (timeDiff < 30000) {// 30 seconds
               handleNewMessage(messageData);
             }
           }
         });
       }, (error) => {
-        console.error('Error listening to messages:', error);
+        console.error(String('Error listening to messages:') + " " + String(error));
       });
 
     } catch (error) {
-      console.error('Error setting up message listener:', error);
+      console.error(String('Error setting up message listener:') + " " + String(error));
     }
 
     return () => {
@@ -168,26 +168,26 @@ export const useChatNotifications = () => {
             };
 
             // Check if current user is the recipient and not the sender
-            if (messageData.recipientId === user.uid && 
-                messageData.senderId !== user.uid) {
-              
+            if (messageData.recipientId === user.uid &&
+            messageData.senderId !== user.uid) {
+
               // Only process recent messages
               const messageTime = messageData.timestamp?.toDate?.() || new Date(messageData.timestamp);
               const now = new Date();
               const timeDiff = now - messageTime;
 
-              if (timeDiff < 30000) { // 30 seconds
+              if (timeDiff < 30000) {// 30 seconds
                 handleNewMessage(messageData);
               }
             }
           }
         });
       }, (error) => {
-        console.error('Error listening to all messages:', error);
+        console.error(String('Error listening to all messages:') + " " + String(error));
       });
 
     } catch (error) {
-      console.error('Error setting up global message listener:', error);
+      console.error(String('Error setting up global message listener:') + " " + String(error));
     }
 
     return () => {

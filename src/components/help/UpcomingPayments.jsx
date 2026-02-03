@@ -17,7 +17,7 @@ const UpcomingPayments = () => {
   const getLevelName = (level) => {
     const levelMap = {
       1: 'Star',
-      2: 'Silver', 
+      2: 'Silver',
       3: 'Gold',
       4: 'Platinum',
       5: 'Diamond'
@@ -46,16 +46,16 @@ const UpcomingPayments = () => {
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const userList = snapshot.docs.map(docSnap => ({ 
-        id: docSnap.id, 
-        ...docSnap.data() 
+      const userList = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
       }));
-      
+
       setUsers(userList);
       setLoading(false);
-      console.log('📦 Top 100 activated users loaded:', userList.length);
+      console.log(String('📦 Top 100 activated users loaded:') + " " + String(userList.length));
     }, (err) => {
-      console.error('Firestore listener error:', err);
+      console.error(String('Firestore listener error:') + " " + String(err));
       setError('Failed to load users');
       setLoading(false);
     });
@@ -68,16 +68,16 @@ const UpcomingPayments = () => {
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
         <LoadingSpinner size="h-10 w-10" color="border-purple-400" />
         <div className="text-gray-600 mt-2">Loading upcoming payments...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
         <div className="text-red-600 text-lg font-semibold">{error}</div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -109,39 +109,39 @@ const UpcomingPayments = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {users.map((u, idx) => (
-                  <tr
-                    key={u.id}
-                    className={
-                      `${currentUser?.uid === u.uid ? 'bg-purple-100 font-semibold ring-2 ring-purple-300' : ''} ` +
-                      `${idx < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : 'hover:bg-gray-50'} ` +
-                      `transition-colors`
-                    }
-                  >
+                {users.map((u, idx) =>
+                <tr
+                  key={u.id}
+                  className={
+                  `${currentUser?.uid === u.uid ? 'bg-purple-100 font-semibold ring-2 ring-purple-300' : ''} ` +
+                  `${idx < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : 'hover:bg-gray-50'} ` +
+                  `transition-colors`
+                  }>
+                  
                     <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-lg font-semibold">
-                      {idx < 3 ? (
-                        <span className="text-2xl drop-shadow-md">{BADGES[idx]}</span>
-                      ) : (
-                        <span className="text-gray-700 font-bold">#{idx + 1}</span>
-                      )}
+                      {idx < 3 ?
+                    <span className="text-2xl drop-shadow-md">{BADGES[idx]}</span> :
+
+                    <span className="text-gray-700 font-bold">#{idx + 1}</span>
+                    }
                     </td>
                     <td className="px-2 sm:px-4 py-3 whitespace-nowrap font-mono text-xs sm:text-sm text-blue-800 font-semibold">{u.userId}</td>
                     <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {u.profileImage ? (
-                          <img src={u.profileImage} alt={u.fullName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-blue-400" />
-                        ) : (
-                          <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-blue-500">
+                        {u.profileImage ?
+                      <img src={u.profileImage} alt={u.fullName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-blue-400" /> :
+
+                      <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-blue-500">
                             {u.fullName?.[0] || '?'}
                           </span>
-                        )}
+                      }
                         <div className="flex-1 min-w-0">
                           <span className="text-gray-900 font-semibold text-xs sm:text-base truncate">{u.fullName}</span>
-                          {currentUser?.uid === u.uid && (
-                            <span className="ml-2 px-2 py-0.5 bg-purple-600 text-white rounded text-xs font-semibold shadow">
+                          {currentUser?.uid === u.uid &&
+                        <span className="ml-2 px-2 py-0.5 bg-purple-600 text-white rounded text-xs font-semibold shadow">
                               You
                             </span>
-                          )}
+                        }
                         </div>
                       </div>
                     </td>
@@ -164,15 +164,15 @@ const UpcomingPayments = () => {
                       </span>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-          {users.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+          {users.length === 0 &&
+          <div className="text-center py-12 text-gray-500">
               <p className="text-lg">No eligible users found</p>
             </div>
-          )}
+          }
         </div>
 
         {/* Legend */}
@@ -186,8 +186,8 @@ const UpcomingPayments = () => {
           </ul>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
-export default UpcomingPayments; 
+export default UpcomingPayments;

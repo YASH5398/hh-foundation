@@ -21,15 +21,15 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
     const checkSupport = () => {
       const supported = fcmService.isNotificationSupported();
       const permission = fcmService.getPermissionStatus();
-      
+
       setIsSupported(supported);
       setPermissionStatus(permission);
-      
-      console.log('🔍 Notification support check:', {
+
+      console.log(String('🔍 Notification support check:') + " " + String({
         supported,
         permission,
         canRequest: fcmService.canRequestPermission()
-      });
+      }));
     };
 
     checkSupport();
@@ -60,19 +60,19 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
 
     setIsLoading(true);
     try {
-      console.log('🔄 Initializing FCM for user:', user.uid);
+      console.log(String('🔄 Initializing FCM for user:') + " " + String(user.uid));
       const success = await fcmService.initializeForUser(user.uid);
-      
+
       if (success && fcmService.token) {
         setFcmToken(fcmService.token);
         setPermissionStatus('granted');
         setHasInitialized(true);
-        
+
         // Call callback if provided
         if (onTokenGenerated) {
           onTokenGenerated(fcmService.token);
         }
-        
+
         if (showUI) {
           toast.success('✅ Notifications enabled successfully!');
         }
@@ -81,7 +81,7 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
       } else {
         const currentPermission = fcmService.getPermissionStatus();
         setPermissionStatus(currentPermission);
-        
+
         if (currentPermission === 'denied') {
           console.log('🚫 FCM initialization failed: Permission denied');
         } else {
@@ -93,7 +93,7 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
         return false;
       }
     } catch (error) {
-      console.error('❌ Error during FCM initialization:', error);
+      console.error(String('❌ Error during FCM initialization:') + " " + String(error));
       if (showUI) {
         toast.error('❌ Error enabling notifications');
       }
@@ -117,11 +117,11 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
     setIsLoading(true);
     try {
       console.log('🔔 User requested to enable notifications');
-      
+
       // Force request permission (even if previously denied)
       const permission = await fcmService.forceRequestPermission();
       setPermissionStatus(permission);
-      
+
       if (permission === 'granted') {
         // Initialize FCM after permission granted
         await initializeFCM();
@@ -131,7 +131,7 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
         toast.error('❌ Notifications are not supported in this browser');
       }
     } catch (error) {
-      console.error('❌ Error enabling notifications:', error);
+      console.error(String('❌ Error enabling notifications:') + " " + String(error));
       toast.error('❌ Error enabling notifications');
     } finally {
       setIsLoading(false);
@@ -176,10 +176,10 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
   };
 
   const shouldShowButton = () => {
-    return isSupported && 
-           user && 
-           (permissionStatus === 'default' || permissionStatus === 'denied') && 
-           !hasInitialized;
+    return isSupported &&
+    user && (
+    permissionStatus === 'default' || permissionStatus === 'denied') &&
+    !hasInitialized;
   };
 
   if (!showUI) {
@@ -200,47 +200,47 @@ const NotificationPermissionManager = ({ onTokenGenerated, showUI = true }) => {
           </div>
         </div>
         
-        {shouldShowButton() && (
-          <button
-            onClick={handleEnableNotifications}
-            disabled={isLoading}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              isLoading
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-            }`}
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
+        {shouldShowButton() &&
+        <button
+          onClick={handleEnableNotifications}
+          disabled={isLoading}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+          isLoading ?
+          'bg-gray-100 text-gray-400 cursor-not-allowed' :
+          'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'}`
+          }>
+          
+            {isLoading ?
+          <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                 <span>Enabling...</span>
-              </div>
-            ) : (
-              'Enable Notifications'
-            )}
+              </div> :
+
+          'Enable Notifications'
+          }
           </button>
-        )}
+        }
         
-        {permissionStatus === 'granted' && fcmToken && (
-          <div className="flex items-center space-x-2">
+        {permissionStatus === 'granted' && fcmToken &&
+        <div className="flex items-center space-x-2">
             <span className="text-xs text-green-600 font-medium">Active</span>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           </div>
-        )}
+        }
       </div>
       
       {/* Debug info for development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+      {process.env.NODE_ENV === 'development' &&
+      <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
           <div>Permission: {permissionStatus}</div>
           <div>Supported: {isSupported ? 'Yes' : 'No'}</div>
           <div>Initialized: {hasInitialized ? 'Yes' : 'No'}</div>
           <div>User: {user ? 'Logged in' : 'Not logged in'}</div>
           {fcmToken && <div>Token: {fcmToken.substring(0, 20)}...</div>}
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default NotificationPermissionManager;

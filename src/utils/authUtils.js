@@ -3,8 +3,8 @@ import {
   signOut,
   onAuthStateChanged,
   getIdTokenResult,
-  createUserWithEmailAndPassword
-} from 'firebase/auth';
+  createUserWithEmailAndPassword } from
+'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
@@ -23,35 +23,35 @@ export const getUserProfile = async (uid) => {
   if (!uid) return null;
 
   try {
-    console.log('🔍 getUserProfile: Fetching profile for uid:', uid);
-    console.log('🔍 getUserProfile: Firebase project:', db.app.options.projectId);
-    console.log('🔍 getUserProfile: Firebase auth domain:', db.app.options.authDomain);
+    console.log(String('🔍 getUserProfile: Fetching profile for uid:') + " " + String(uid));
+    console.log(String('🔍 getUserProfile: Firebase project:') + " " + String(db.app.options.projectId));
+    console.log(String('🔍 getUserProfile: Firebase auth domain:') + " " + String(db.app.options.authDomain));
 
     const userDoc = doc(db, 'users', uid);
     const snapshot = await getDoc(userDoc);
 
-    console.log('🔍 getUserProfile: Document exists?', snapshot.exists());
+    console.log(String('🔍 getUserProfile: Document exists?') + " " + String(snapshot.exists()));
 
     if (snapshot.exists()) {
       const data = { id: snapshot.id, ...snapshot.data() };
-      console.log('🔍 getUserProfile: Profile data -', {
+      console.log(String('🔍 getUserProfile: Profile data -') + " " + String({
         uid: data.uid,
         email: data.email,
         role: data.role,
         fullName: data.fullName
-      });
+      }));
       return data;
     } else {
-      console.log('🔍 getUserProfile: Document does not exist for uid:', uid);
+      console.log(String('🔍 getUserProfile: Document does not exist for uid:') + " " + String(uid));
       return null;
     }
   } catch (error) {
-    console.error('🔍 getUserProfile: Error fetching profile -', {
+    console.error(String('🔍 getUserProfile: Error fetching profile -') + " " + String({
       uid,
       code: error.code,
       message: error.message,
       projectId: db.app.options.projectId
-    });
+    }));
     // Rethrow error so caller can distinguish from "document doesn't exist"
     throw error;
   }
@@ -66,25 +66,25 @@ export const checkAdminRole = async (user) => {
   if (!user) return false;
 
   try {
-    console.log('🔍 checkAdminRole: Checking admin role for uid:', user.uid);
-    console.log('🔍 checkAdminRole: Firebase project:', db.app.options.projectId);
+    console.log(String('🔍 checkAdminRole: Checking admin role for uid:') + " " + String(user.uid));
+    console.log(String('🔍 checkAdminRole: Firebase project:') + " " + String(db.app.options.projectId));
 
     // CRITICAL: Check Firestore role field, not custom claims
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (userDoc.exists()) {
       const userData = userDoc.data();
       const isAdmin = userData.role === 'admin';
-      console.log('🔍 checkAdminRole: User role:', userData.role, '| isAdmin:', isAdmin);
+      console.log(String('🔍 checkAdminRole: User role:') + " " + String(userData.role) + " " + String('| isAdmin:') + " " + String(isAdmin));
       return isAdmin;
     }
     console.log('🔍 checkAdminRole: User document does not exist');
     return false;
   } catch (error) {
-    console.error('🔍 checkAdminRole: Error checking admin role -', {
+    console.error(String('🔍 checkAdminRole: Error checking admin role -') + " " + String({
       uid: user.uid,
       code: error.code,
       message: error.message
-    });
+    }));
     return false;
   }
 };
@@ -105,7 +105,7 @@ export const checkAgentRole = async (user) => {
     }
     return false;
   } catch (error) {
-    console.error('Error checking agent role:', error);
+    console.error(String('Error checking agent role:') + " " + String(error));
     return false;
   }
 };
@@ -132,9 +132,9 @@ export const signInWithEmailPassword = async (email, password) => {
 export const signOutUser = async () => {
   try {
     console.log("🔍 SIGNOUT: ===== FIREBASE SIGNOUT START =====");
-    console.log("🔍 SIGNOUT: Auth instance:", !!auth);
-    console.log("🔍 SIGNOUT: Current Firebase user before signOut:", auth.currentUser?.uid);
-    console.log("🔍 SIGNOUT: Current Firebase user email:", auth.currentUser?.email);
+    console.log(String("🔍 SIGNOUT: Auth instance:") + " " + String(!!auth));
+    console.log(String("🔍 SIGNOUT: Current Firebase user before signOut:") + " " + String(auth.currentUser?.uid));
+    console.log(String("🔍 SIGNOUT: Current Firebase user email:") + " " + String(auth.currentUser?.email));
 
     // CRITICAL: Clear any cached auth data BEFORE signOut
     if (typeof window !== 'undefined') {
@@ -149,9 +149,9 @@ export const signOutUser = async () => {
         }
       }
 
-      keysToRemove.forEach(key => {
+      keysToRemove.forEach((key) => {
         localStorage.removeItem(key);
-        console.log("🔍 SIGNOUT: Removed localStorage key:", key);
+        console.log(String("🔍 SIGNOUT: Removed localStorage key:") + " " + String(key));
       });
     }
 
@@ -159,7 +159,7 @@ export const signOutUser = async () => {
     await signOut(auth);
 
     console.log("🔍 SIGNOUT: Firebase signOut completed successfully");
-    console.log("🔍 SIGNOUT: Firebase currentUser after signOut:", auth.currentUser?.uid);
+    console.log(String("🔍 SIGNOUT: Firebase currentUser after signOut:") + " " + String(auth.currentUser?.uid));
 
     // Double-check that signOut actually worked
     if (auth.currentUser) {
@@ -189,12 +189,12 @@ export const signOutUser = async () => {
     console.log("🔍 SIGNOUT: ===== FIREBASE SIGNOUT COMPLETE =====");
     return { success: true };
   } catch (error) {
-    console.error('🔍 SIGNOUT: ❌ FIREBASE SIGNOUT FAILED:', error);
-    console.error('🔍 SIGNOUT: Error details:', {
+    console.error(String('🔍 SIGNOUT: ❌ FIREBASE SIGNOUT FAILED:') + " " + String(error));
+    console.error(String('🔍 SIGNOUT: Error details:') + " " + String({
       code: error.code,
       message: error.message,
       name: error.name
-    });
+    }));
     return { success: false, error: error.message };
   }
 };

@@ -1,6 +1,6 @@
 import {
-  createUserWithEmailAndPassword
-} from "firebase/auth";
+  createUserWithEmailAndPassword } from
+"firebase/auth";
 import {
   doc,
   setDoc,
@@ -9,8 +9,8 @@ import {
   collection,
   query,
   where,
-  writeBatch
-} from "firebase/firestore";
+  writeBatch } from
+"firebase/firestore";
 import { auth, db } from "../config/firebase";
 import emailjs from 'emailjs-com';
 import { sendPaymentRequestNotification } from './notificationService';
@@ -23,12 +23,12 @@ const generateUserId = () => {
 
 const getRank = (level) => {
   switch (level) {
-    case 1: return "Star";
-    case 2: return "Silver";
-    case 3: return "Gold";
-    case 4: return "Platinum";
-    case 5: return "Diamond";
-    default: return "Unknown";
+    case 1:return "Star";
+    case 2:return "Silver";
+    case 3:return "Gold";
+    case 4:return "Platinum";
+    case 5:return "Diamond";
+    default:return "Unknown";
   }
 };
 
@@ -42,7 +42,7 @@ export const registerUser = async (userData) => {
     sponsorId,
     epins,
     paymentMethod,
-    bankDetails, // Add bankDetails to destructuring
+    bankDetails // Add bankDetails to destructuring
   } = userData;
 
   try {
@@ -62,14 +62,14 @@ export const registerUser = async (userData) => {
 
     // ✅ STEP 2: Create Auth User
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
+
     // ⚠️ CRITICAL: Use auth.currentUser.uid instead of userCredential.user.uid
     // This ensures the Firestore rule check passes: request.auth.uid == uid
     const uid = auth.currentUser?.uid || userCredential.user.uid;
     if (!uid) {
       throw new Error('Failed to get user UID after authentication');
     }
-    
+
     const user = userCredential.user;
     const userId = generateUserId();
     const joinDateString = new Date().toLocaleDateString("en-GB");
@@ -130,7 +130,7 @@ export const registerUser = async (userData) => {
     batch.set(doc(db, "users", uid), {
       ...newUserDoc,
       isOnHold: false, // Always set explicitly
-      isReceivingHeld: false, // Always set explicitly
+      isReceivingHeld: false // Always set explicitly
     });
     batch.update(epinDocRef, { isUsed: true });
 
@@ -150,12 +150,12 @@ export const registerUser = async (userData) => {
           email: email,
           password: password,
           sponsorId: sponsorId || '-',
-          registrationDate: joinDateString,
+          registrationDate: joinDateString
         },
         process.env.REACT_APP_EMAILJS_PUBLIC_KEY
       );
     } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
+      console.error(String('Failed to send welcome email:') + " " + String(emailError));
       // Optionally: continue, don't block registration
     }
 
@@ -172,7 +172,7 @@ export const registerUser = async (userData) => {
         priority: 'high'
       });
     } catch (notificationError) {
-      console.error('Failed to create welcome notification:', notificationError);
+      console.error(String('Failed to create welcome notification:') + " " + String(notificationError));
     }
 
     // ✅ STEP 6: Return details to UI
@@ -182,11 +182,11 @@ export const registerUser = async (userData) => {
       userId,
       password,
       joinDate: joinDateString,
-      rank: getRank(newUserDoc.level),
+      rank: getRank(newUserDoc.level)
     };
 
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error(String("Error registering user:") + " " + String(error));
     throw error;
   }
 };

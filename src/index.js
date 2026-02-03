@@ -11,13 +11,13 @@ import './index.css';
 
 // Register Firebase Messaging Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then((registration) => {
-      console.log('Firebase Messaging Service Worker registered successfully:', registration);
-    })
-    .catch((error) => {
-      console.error('Firebase Messaging Service Worker registration failed:', error);
-    });
+  navigator.serviceWorker.register('/firebase-messaging-sw.js').
+  then((registration) => {
+    console.log(String('Firebase Messaging Service Worker registered successfully:') + " " + String(registration));
+  }).
+  catch((error) => {
+    console.error(String('Firebase Messaging Service Worker registration failed:') + " " + String(error));
+  });
 }
 
 const AppWrapper = () => {
@@ -27,8 +27,8 @@ const AppWrapper = () => {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+      </div>);
+
   }
 
   // If user is logged in and blocked, hard-block the entire app

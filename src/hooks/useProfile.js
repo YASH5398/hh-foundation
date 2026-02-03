@@ -31,12 +31,12 @@ export function useSocialTasks(uid) {
     if (!uid || !taskKey) return;
     // Prevent duplicate update if already completed
     if (tasks && tasks[taskKey]) return;
-    
+
     try {
       await updateSocialTask(uid, taskKey, username);
     } catch (error) {
       setError('Failed to complete task');
-      console.error('Error completing task:', error);
+      console.error(String('Error completing task:') + " " + String(error));
     }
   };
 

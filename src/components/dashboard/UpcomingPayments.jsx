@@ -17,7 +17,7 @@ const UpcomingPayments = () => {
   const getLevelName = (level) => {
     const levelMap = {
       1: 'Star',
-      2: 'Silver', 
+      2: 'Silver',
       3: 'Gold',
       4: 'Platinum',
       5: 'Diamond'
@@ -46,16 +46,16 @@ const UpcomingPayments = () => {
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const userList = snapshot.docs.map(docSnap => ({ 
-        id: docSnap.id, 
-        ...docSnap.data() 
+      const userList = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
       }));
-      
+
       setUsers(userList);
       setLoading(false);
-      console.log('📦 Top 100 activated users loaded:', userList.length);
+      console.log(String('📦 Top 100 activated users loaded:') + " " + String(userList.length));
     }, (err) => {
-      console.error('Firestore listener error:', err);
+      console.error(String('Firestore listener error:') + " " + String(err));
       setError('Failed to load users');
       setLoading(false);
     });
@@ -68,16 +68,16 @@ const UpcomingPayments = () => {
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
         <LoadingSpinner size="h-10 w-10" color="border-purple-400" />
         <div className="text-gray-600 mt-2">Loading upcoming payments...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
         <div className="text-red-600 text-lg font-semibold">{error}</div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -104,38 +104,38 @@ const UpcomingPayments = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {users.map((u, idx) => (
-                  <tr
-                    key={u.id}
-                    className={
-                      `${currentUser?.uid === u.uid ? 'bg-purple-100 font-semibold ring-2 ring-purple-400' : ''} ` +
-                      `${idx < 3 ? 'bg-blue-50' : 'hover:bg-gray-50'} ` +
-                      `transition-colors`
-                    }
-                  >
+                {users.map((u, idx) =>
+                <tr
+                  key={u.id}
+                  className={
+                  `${currentUser?.uid === u.uid ? 'bg-purple-100 font-semibold ring-2 ring-purple-400' : ''} ` +
+                  `${idx < 3 ? 'bg-blue-50' : 'hover:bg-gray-50'} ` +
+                  `transition-colors`
+                  }>
+                  
                     <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-lg font-semibold">
-                      {idx < 3 ? (
-                        <span className="text-2xl drop-shadow-md">{BADGES[idx]}</span>
-                      ) : (
-                        <span className="text-gray-700">#{idx + 1}</span>
-                      )}
+                      {idx < 3 ?
+                    <span className="text-2xl drop-shadow-md">{BADGES[idx]}</span> :
+
+                    <span className="text-gray-700">#{idx + 1}</span>
+                    }
                     </td>
                     <td className="px-2 sm:px-4 py-2 whitespace-nowrap font-mono text-sm sm:text-base text-blue-800 font-semibold">{u.userId}</td>
                     <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {u.profileImage ? (
-                          <img src={u.profileImage} alt={u.fullName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-blue-400" />
-                        ) : (
-                          <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white bg-blue-500 border-2 border-blue-400">
+                        {u.profileImage ?
+                      <img src={u.profileImage} alt={u.fullName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-blue-400" /> :
+
+                      <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold text-white bg-blue-500 border-2 border-blue-400">
                             {u.fullName?.[0] || '?'}
                           </span>
-                        )}
+                      }
                         <span className="text-gray-900 font-semibold text-sm sm:text-base">{u.fullName}</span>
-                        {currentUser?.uid === u.uid && (
-                          <span className="ml-2 px-2 py-0.5 bg-purple-600 text-white rounded text-xs font-semibold shadow">
+                        {currentUser?.uid === u.uid &&
+                      <span className="ml-2 px-2 py-0.5 bg-purple-600 text-white rounded text-xs font-semibold shadow">
                             You
                           </span>
-                        )}
+                      }
                       </div>
                     </td>
                     <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-center text-green-700 font-bold text-sm sm:text-base">
@@ -155,19 +155,19 @@ const UpcomingPayments = () => {
                       </span>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-          {users.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
+          {users.length === 0 &&
+          <div className="text-center py-8 text-gray-500">
               No eligible users found
             </div>
-          )}
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
-export default UpcomingPayments; 
+export default UpcomingPayments;

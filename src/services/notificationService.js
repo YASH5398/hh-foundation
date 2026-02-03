@@ -8,8 +8,8 @@ import {
   getDocs,
   onSnapshot,
   serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
+  Timestamp } from
+'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { createAdminNotificationData, createActivityNotificationData, cleanNotificationData } from '../utils/createNotificationData';
 import { functions } from '../config/firebase';
@@ -55,95 +55,95 @@ export async function createNotification(notificationData) {
 
     return { success: true, id: res.data?.id, duplicate: !!res.data?.duplicate };
   } catch (error) {
-    console.error('Error creating notification:', error);
+    console.error(String('Error creating notification:') + " " + String(error));
     throw error;
   }
 }
 
 function categorizeNotification(notificationData) {
-    const { title = '', message = '', type = 'system' } = notificationData;
-    const content = `${title} ${message}`.toLowerCase();
+  const { title = '', message = '', type = 'system' } = notificationData;
+  const content = `${title} ${message}`.toLowerCase();
 
-    // Determine category
-    let category = notificationData.category || 'general';
-    let priority = notificationData.priority || 'medium';
+  // Determine category
+  let category = notificationData.category || 'general';
+  let priority = notificationData.priority || 'medium';
 
-    // Payment-related notifications
-    if (content.includes('payment') || content.includes('₹') || content.includes('amount') ||
-        content.includes('transaction') || content.includes('transfer')) {
-      category = 'payment';
-      priority = content.includes('failed') || content.includes('error') ? 'high' : 'medium';
-    }
-
-    // Level and upgrade notifications
-    else if (content.includes('level') || content.includes('upgrade') || content.includes('achievement')) {
-      category = 'upgrade';
-      priority = 'high';
-    }
-
-    // Referral notifications
-    else if (content.includes('referral') || content.includes('joined') || content.includes('network')) {
-      category = 'referral';
-      priority = 'medium';
-    }
-
-    // Help and assignment notifications
-    else if (content.includes('help') || content.includes('assignment') || content.includes('receive') ||
-             content.includes('send')) {
-      category = 'help';
-      priority = 'high';
-    }
-
-    // E-PIN notifications
-    else if (content.includes('e-pin') || content.includes('epin') || content.includes('testimonial')) {
-      category = 'epin';
-      priority = content.includes('approved') ? 'high' : 'medium';
-    }
-
-    // Support notifications
-    else if (content.includes('support') || content.includes('ticket') || content.includes('agent')) {
-      category = 'support';
-      priority = 'medium';
-    }
-
-    // Security and blocked notifications
-    else if (content.includes('blocked') || content.includes('security') || content.includes('suspended')) {
-      category = 'security';
-      priority = 'high';
-    }
-
-    // Warning and error notifications
-    else if (content.includes('alert') || content.includes('warning') || content.includes('error') ||
-             content.includes('failed') || content.includes('issue')) {
-      category = 'warning';
-      priority = 'high';
-    }
-
-    // Success notifications
-    else if (content.includes('success') || content.includes('completed') || content.includes('confirmed')) {
-      category = 'success';
-      priority = 'medium';
-    }
-
-    // Admin notifications
-    else if (type === 'admin' || content.includes('admin') || content.includes('announcement')) {
-      category = 'admin';
-      priority = 'medium';
-    }
-
-    // Add metadata for grouping
-    const groupKey = generateGroupKey(category, notificationData.relatedAction, notificationData.relatedHelpId);
-    const tags = extractTags(content);
-
-    return {
-      ...notificationData,
-      category,
-      priority,
-      groupKey,
-      tags,
-      searchableContent: content
-    };
+  // Payment-related notifications
+  if (content.includes('payment') || content.includes('₹') || content.includes('amount') ||
+  content.includes('transaction') || content.includes('transfer')) {
+    category = 'payment';
+    priority = content.includes('failed') || content.includes('error') ? 'high' : 'medium';
   }
+
+  // Level and upgrade notifications
+  else if (content.includes('level') || content.includes('upgrade') || content.includes('achievement')) {
+    category = 'upgrade';
+    priority = 'high';
+  }
+
+  // Referral notifications
+  else if (content.includes('referral') || content.includes('joined') || content.includes('network')) {
+    category = 'referral';
+    priority = 'medium';
+  }
+
+  // Help and assignment notifications
+  else if (content.includes('help') || content.includes('assignment') || content.includes('receive') ||
+  content.includes('send')) {
+    category = 'help';
+    priority = 'high';
+  }
+
+  // E-PIN notifications
+  else if (content.includes('e-pin') || content.includes('epin') || content.includes('testimonial')) {
+    category = 'epin';
+    priority = content.includes('approved') ? 'high' : 'medium';
+  }
+
+  // Support notifications
+  else if (content.includes('support') || content.includes('ticket') || content.includes('agent')) {
+    category = 'support';
+    priority = 'medium';
+  }
+
+  // Security and blocked notifications
+  else if (content.includes('blocked') || content.includes('security') || content.includes('suspended')) {
+    category = 'security';
+    priority = 'high';
+  }
+
+  // Warning and error notifications
+  else if (content.includes('alert') || content.includes('warning') || content.includes('error') ||
+  content.includes('failed') || content.includes('issue')) {
+    category = 'warning';
+    priority = 'high';
+  }
+
+  // Success notifications
+  else if (content.includes('success') || content.includes('completed') || content.includes('confirmed')) {
+    category = 'success';
+    priority = 'medium';
+  }
+
+  // Admin notifications
+  else if (type === 'admin' || content.includes('admin') || content.includes('announcement')) {
+    category = 'admin';
+    priority = 'medium';
+  }
+
+  // Add metadata for grouping
+  const groupKey = generateGroupKey(category, notificationData.relatedAction, notificationData.relatedHelpId);
+  const tags = extractTags(content);
+
+  return {
+    ...notificationData,
+    category,
+    priority,
+    groupKey,
+    tags,
+    searchableContent: content
+  };
+}
 
 function generateGroupKey(category, relatedAction, relatedId) {
   const parts = [category];
@@ -161,7 +161,7 @@ function extractTags(content) {
     error: ['error', 'failed', 'issue', 'problem']
   };
   Object.entries(keywords).forEach(([tag, words]) => {
-    if (words.some(word => content.includes(word))) {
+    if (words.some((word) => content.includes(word))) {
       tags.push(tag);
     }
   });
@@ -186,7 +186,7 @@ export async function getUserData(userId) {
       ...userData
     };
   } catch (error) {
-    console.error('Error getting user data:', error);
+    console.error(String('Error getting user data:') + " " + String(error));
     return null;
   }
 }
@@ -221,7 +221,7 @@ export async function sendPaymentRequestNotification(senderUid, senderId, receiv
 
     return await createNotification(notificationData);
   } catch (error) {
-    console.error('Error sending payment request notification:', error);
+    console.error(String('Error sending payment request notification:') + " " + String(error));
     throw error;
   }
 }
@@ -241,21 +241,21 @@ const subscribeToAllNotifications = async (onUpdate, onError) => {
     );
 
     return onSnapshot(q,
-      (snapshot) => {
-        const notifications = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date()
-        }));
-        onUpdate(notifications);
-      },
-      (error) => {
-        console.error('Error in notifications listener:', error);
-        if (onError) onError(error);
-      }
+    (snapshot) => {
+      const notifications = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate() || new Date()
+      }));
+      onUpdate(notifications);
+    },
+    (error) => {
+      console.error(String('Error in notifications listener:') + " " + String(error));
+      if (onError) onError(error);
+    }
     );
   } catch (error) {
-    console.error('Error setting up notifications listener:', error);
+    console.error(String('Error setting up notifications listener:') + " " + String(error));
     if (onError) onError(error);
     return () => {}; // Return empty unsubscribe function
   }
@@ -363,7 +363,7 @@ export function getPriorityLevels() {
 // Filter notifications by category
 export function filterByCategory(notifications, category) {
   if (!category || category === 'all') return notifications;
-  return notifications.filter(notification => notification.category === category);
+  return notifications.filter((notification) => notification.category === category);
 }
 
 // Filter notifications by priority
@@ -371,8 +371,8 @@ export function filterByPriority(notifications, minPriority = 'low') {
   const priorities = getPriorityLevels();
   const minScore = priorities[minPriority]?.score || 0;
 
-  return notifications.filter(notification =>
-    (notification.priorityScore || 0) >= minScore
+  return notifications.filter((notification) =>
+  (notification.priorityScore || 0) >= minScore
   );
 }
 
@@ -381,11 +381,11 @@ export function searchNotifications(notifications, searchTerm) {
   if (!searchTerm) return notifications;
 
   const term = searchTerm.toLowerCase();
-  return notifications.filter(notification =>
-    notification.title?.toLowerCase().includes(term) ||
-    notification.message?.toLowerCase().includes(term) ||
-    notification.searchableContent?.includes(term) ||
-    notification.tags?.some(tag => tag.includes(term))
+  return notifications.filter((notification) =>
+  notification.title?.toLowerCase().includes(term) ||
+  notification.message?.toLowerCase().includes(term) ||
+  notification.searchableContent?.includes(term) ||
+  notification.tags?.some((tag) => tag.includes(term))
   );
 }
 
@@ -405,7 +405,7 @@ export async function markAllAsRead(userUid) {
     );
 
     const snapshot = await getDocs(userNotificationsQuery);
-    const unreadNotificationIds = snapshot.docs.map(doc => doc.id);
+    const unreadNotificationIds = snapshot.docs.map((doc) => doc.id);
 
     if (unreadNotificationIds.length === 0) {
       return { success: true, updated: 0 };
@@ -413,7 +413,7 @@ export async function markAllAsRead(userUid) {
 
     return await bulkMarkNotificationsRead(unreadNotificationIds);
   } catch (error) {
-    console.error('Error getting unread notifications:', error);
+    console.error(String('Error getting unread notifications:') + " " + String(error));
     throw error;
   }
 }

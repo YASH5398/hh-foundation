@@ -36,13 +36,13 @@ const PaymentErrors = () => {
       snapshot.forEach((doc) => {
         const errorData = { id: doc.id, ...doc.data() };
         errorsData.push(errorData);
-        
+
         totalAmount += errorData.amount || 0;
-        
+
         switch (errorData.status?.toLowerCase()) {
-          case 'pending': pending++; break;
-          case 'resolved': resolved++; break;
-          case 'failed': failed++; break;
+          case 'pending':pending++;break;
+          case 'resolved':resolved++;break;
+          case 'failed':failed++;break;
         }
       });
 
@@ -56,7 +56,7 @@ const PaymentErrors = () => {
       });
       setLoading(false);
     }, (error) => {
-      console.error('Error fetching payment errors:', error);
+      console.error(String('Error fetching payment errors:') + " " + String(error));
       toast.error('Failed to load payment errors');
       setLoading(false);
     });
@@ -64,7 +64,7 @@ const PaymentErrors = () => {
     return () => unsubscribe();
   }, []);
 
-  const filteredErrors = paymentErrors.filter(error => {
+  const filteredErrors = paymentErrors.filter((error) => {
     if (filter !== 'all' && error.status?.toLowerCase() !== filter) return false;
     if (errorTypeFilter !== 'all' && error.errorType !== errorTypeFilter) return false;
     return true;
@@ -79,44 +79,44 @@ const PaymentErrors = () => {
       });
       toast.success(`Payment error marked as ${newStatus}`);
     } catch (error) {
-      console.error('Error updating payment error:', error);
+      console.error(String('Error updating payment error:') + " " + String(error));
       toast.error('Failed to update payment error status');
     }
   };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'resolved': return 'bg-green-100 text-green-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending':return 'bg-yellow-100 text-yellow-800';
+      case 'resolved':return 'bg-green-100 text-green-800';
+      case 'failed':return 'bg-red-100 text-red-800';
+      default:return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
-      case 'pending': return <FiClock className="w-4 h-4" />;
-      case 'resolved': return <FiCheckCircle className="w-4 h-4" />;
-      case 'failed': return <FiXCircle className="w-4 h-4" />;
-      default: return <FiAlertTriangle className="w-4 h-4" />;
+      case 'pending':return <FiClock className="w-4 h-4" />;
+      case 'resolved':return <FiCheckCircle className="w-4 h-4" />;
+      case 'failed':return <FiXCircle className="w-4 h-4" />;
+      default:return <FiAlertTriangle className="w-4 h-4" />;
     }
   };
 
   const getErrorTypeColor = (errorType) => {
     switch (errorType) {
-      case 'card_declined': return 'bg-red-100 text-red-800';
-      case 'insufficient_funds': return 'bg-orange-100 text-orange-800';
-      case 'expired_card': return 'bg-yellow-100 text-yellow-800';
-      case 'invalid_card': return 'bg-red-100 text-red-800';
-      case 'network_error': return 'bg-blue-100 text-blue-800';
-      case 'processing_error': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'card_declined':return 'bg-red-100 text-red-800';
+      case 'insufficient_funds':return 'bg-orange-100 text-orange-800';
+      case 'expired_card':return 'bg-yellow-100 text-yellow-800';
+      case 'invalid_card':return 'bg-red-100 text-red-800';
+      case 'network_error':return 'bg-blue-100 text-blue-800';
+      case 'processing_error':return 'bg-purple-100 text-purple-800';
+      default:return 'bg-gray-100 text-gray-800';
     }
   };
 
   const formatErrorType = (errorType) => {
-    return errorType?.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
+    return errorType?.split('_').map((word) =>
+    word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ') || '';
   };
 
@@ -128,7 +128,7 @@ const PaymentErrors = () => {
     }).format(amount || 0);
   };
 
-  const uniqueErrorTypes = [...new Set(paymentErrors.map(error => error.errorType).filter(Boolean))];
+  const uniqueErrorTypes = [...new Set(paymentErrors.map((error) => error.errorType).filter(Boolean))];
 
   if (loading) {
     return (
@@ -139,8 +139,8 @@ const PaymentErrors = () => {
             <p className="mt-4 text-gray-600">Loading payment errors...</p>
           </div>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -211,8 +211,8 @@ const PaymentErrors = () => {
                   <select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
+                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="resolved">Resolved</option>
@@ -224,12 +224,12 @@ const PaymentErrors = () => {
                   <select
                     value={errorTypeFilter}
                     onChange={(e) => setErrorTypeFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
+                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    
                     <option value="all">All Types</option>
-                    {uniqueErrorTypes.map(type => (
-                      <option key={type} value={type}>{formatErrorType(type)}</option>
-                    ))}
+                    {uniqueErrorTypes.map((type) =>
+                    <option key={type} value={type}>{formatErrorType(type)}</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -244,18 +244,18 @@ const PaymentErrors = () => {
         {/* Errors List */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-6">
-            {filteredErrors.length === 0 ? (
-              <div className="text-center py-12">
+            {filteredErrors.length === 0 ?
+            <div className="text-center py-12">
                 <FiCheckCircle className="mx-auto h-12 w-12 text-green-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No payment errors found</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   {filter === 'all' ? 'No payment errors to display.' : `No ${filter} payment errors found.`}
                 </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredErrors.map((error) => (
-                  <div key={error.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+              </div> :
+
+            <div className="space-y-4">
+                {filteredErrors.map((error) =>
+              <div key={error.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
                         <div className="flex items-center mb-2">
@@ -294,12 +294,12 @@ const PaymentErrors = () => {
                           </div>
                         </div>
 
-                        {error.errorMessage && (
-                          <div className="mb-3">
+                        {error.errorMessage &&
+                    <div className="mb-3">
                             <p className="text-sm font-medium text-gray-600">Error Message</p>
                             <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error.errorMessage}</p>
                           </div>
-                        )}
+                    }
 
                         <div className="flex items-center text-sm text-gray-500 space-x-4">
                           <div className="flex items-center">
@@ -310,43 +310,43 @@ const PaymentErrors = () => {
                             <FiCreditCard className="w-4 h-4 mr-1" />
                             <span>Gateway: {error.paymentGateway || 'N/A'}</span>
                           </div>
-                          {error.retryCount > 0 && (
-                            <div className="flex items-center">
+                          {error.retryCount > 0 &&
+                      <div className="flex items-center">
                               <FiRefreshCw className="w-4 h-4 mr-1" />
                               <span>Retries: {error.retryCount}</span>
                             </div>
-                          )}
+                      }
                         </div>
                       </div>
                     </div>
                     
-                    {error.status === 'pending' && (
-                      <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                    {error.status === 'pending' &&
+                <div className="flex space-x-3 pt-4 border-t border-gray-200">
                         <button
-                          onClick={() => updateErrorStatus(error.id, 'resolved')}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
+                    onClick={() => updateErrorStatus(error.id, 'resolved')}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    
                           <FiCheckCircle className="w-4 h-4 mr-2" />
                           Mark Resolved
                         </button>
                         <button
-                          onClick={() => updateErrorStatus(error.id, 'failed')}
-                          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
+                    onClick={() => updateErrorStatus(error.id, 'failed')}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    
                           <FiXCircle className="w-4 h-4 mr-2" />
                           Mark Failed
                         </button>
                       </div>
-                    )}
+                }
                   </div>
-                ))}
+              )}
               </div>
-            )}
+            }
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default PaymentErrors;

@@ -23,11 +23,11 @@ export const requestEpin = async ({ userId, requestedQuantity, upiId, qrCodeImag
       qrCodeImageUrl,
       proofImageUrl,
       transactionId,
-      createdAt: serverTimestamp(),
+      createdAt: serverTimestamp()
     });
     return { success: true, message: 'E-PIN request submitted successfully!' };
   } catch (error) {
-    console.error('Error requesting E-PIN:', error);
+    console.error(String('Error requesting E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -37,13 +37,13 @@ export const getAssignedEpins = async (userId) => {
   try {
     const q = query(collection(db, 'epins'), where('assignedTo', '==', userId));
     const querySnapshot = await getDocs(q);
-    const epins = querySnapshot.docs.map(doc => ({
+    const epins = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, epins };
   } catch (error) {
-    console.error('Error fetching assigned E-PINs:', error);
+    console.error(String('Error fetching assigned E-PINs:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -53,13 +53,13 @@ export const getAllEpinsForUser = async (userId) => {
   try {
     const q = query(collection(db, 'epins'), where('assignedTo', '==', userId));
     const querySnapshot = await getDocs(q);
-    const epins = querySnapshot.docs.map(doc => ({
+    const epins = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, epins };
   } catch (error) {
-    console.error('Error fetching all E-PINs for user:', error);
+    console.error(String('Error fetching all E-PINs for user:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -77,11 +77,11 @@ export const transferEpin = async (epinCode, currentUserId, receiverUserId) => {
       assignedTo: receiverUserId,
       transferredTo: receiverUserId,
       status: 'transferred',
-      transferredAt: serverTimestamp(),
+      transferredAt: serverTimestamp()
     }, { merge: true });
     return { success: true, message: `E-PIN ${epinCode} transferred successfully to ${receiverUserId}!` };
   } catch (error) {
-    console.error('Error transferring E-PIN:', error);
+    console.error(String('Error transferring E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -103,12 +103,12 @@ export const useEpin = async (epinCode, userId) => {
 
     const epinDoc = querySnapshot.docs[0];
     await updateDoc(doc(db, 'epins', epinDoc.id), {
-      status: 'used',
+      status: 'used'
     });
 
     return { success: true, message: 'E-PIN used successfully! Your account is now activated.' };
   } catch (error) {
-    console.error('Error using E-PIN:', error);
+    console.error(String('Error using E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -124,13 +124,13 @@ export const generateEpins = async (quantity) => {
         epin,
         status: 'unused',
         assignedTo: '',
-        createdAt: serverTimestamp(),
+        createdAt: serverTimestamp()
       });
       generated.push(epin);
     }
     return { success: true, message: `${quantity} E-PINs generated successfully!`, generated };
   } catch (error) {
-    console.error('Error generating E-PINs:', error);
+    console.error(String('Error generating E-PINs:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -139,13 +139,13 @@ export const generateEpins = async (quantity) => {
 export const getAllEpins = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, 'epins'));
-    const epins = querySnapshot.docs.map(doc => ({
+    const epins = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, epins };
   } catch (error) {
-    console.error('Error fetching all E-PINs:', error);
+    console.error(String('Error fetching all E-PINs:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -156,7 +156,7 @@ export const deleteEpin = async (epinId) => {
     await deleteDoc(doc(db, 'epins', epinId));
     return { success: true, message: 'E-PIN deleted successfully!' };
   } catch (error) {
-    console.error('Error deleting E-PIN:', error);
+    console.error(String('Error deleting E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -167,7 +167,7 @@ export const updateEpin = async (epinId, updates) => {
     await updateDoc(doc(db, 'epins', epinId), updates);
     return { success: true, message: 'E-PIN updated successfully!' };
   } catch (error) {
-    console.error('Error updating E-PIN:', error);
+    console.error(String('Error updating E-PIN:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };

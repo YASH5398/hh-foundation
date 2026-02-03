@@ -29,7 +29,7 @@ const AgentProtectedRoute = ({ children }) => {
           // Force refresh of the ID token to ensure claims are up to date
           await currentUser.getIdToken(true);
         } catch (error) {
-          console.error("Error reloading user credentials:", error);
+          console.error(String("Error reloading user credentials:") + " " + String(error));
         } finally {
           if (mounted) setIsReloading(false);
         }
@@ -51,8 +51,8 @@ const AgentProtectedRoute = ({ children }) => {
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600">Verifying agent access...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // 2. Not Logged In OR Not Agent -> Redirect

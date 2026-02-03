@@ -22,16 +22,16 @@ const AgentChat = () => {
   useEffect(() => {
     const chatsQuery = query(collection(db, 'agentChats'), orderBy('startedAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(chatsQuery, (snapshot) => {
-      const chatsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const chatsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setChats(chatsData);
 
       if (chatIdFromUrl && !selectedChat) {
-        const chatToSelect = chatsData.find(chat => chat.id === chatIdFromUrl);
+        const chatToSelect = chatsData.find((chat) => chat.id === chatIdFromUrl);
         if (chatToSelect) setSelectedChat(chatToSelect);
       }
       setLoading(false);
     }, (error) => {
-      console.error('Error fetching chats:', error);
+      console.error(String('Error fetching chats:') + " " + String(error));
       toast.error('Sync failed');
       setLoading(false);
     });
@@ -42,7 +42,7 @@ const AgentChat = () => {
     if (selectedChat) {
       const messagesQuery = query(collection(db, 'agentChats', selectedChat.id, 'messages'), orderBy('timestamp', 'asc'), limit(200));
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const messagesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setMessages(messagesData);
         scrollToBottom();
       });
@@ -64,7 +64,7 @@ const AgentChat = () => {
         senderUid: currentUser?.uid,
         senderType: 'agent',
         senderName: currentUser?.displayName || 'Agent Support',
-        timestamp: serverTimestamp(),
+        timestamp: serverTimestamp()
       });
       await updateDoc(doc(db, 'agentChats', selectedChat.id), {
         lastMessage: text,
@@ -72,7 +72,7 @@ const AgentChat = () => {
         lastMessageBy: 'agent'
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error(String('Error:') + " " + String(error));
       toast.error('Message failed');
     }
   };
@@ -83,10 +83,10 @@ const AgentChat = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const filteredChats = chats.filter(chat =>
-    !searchTerm ||
-    chat.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.userEmail?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredChats = chats.filter((chat) =>
+  !searchTerm ||
+  chat.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  chat.userEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -96,8 +96,8 @@ const AgentChat = () => {
           <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-500 font-medium">Decrypting Channels...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -115,22 +115,22 @@ const AgentChat = () => {
                 placeholder="Search dossiers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
+                className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
-            {filteredChats.map(chat => (
-              <motion.button
-                layout
-                key={chat.id}
-                onClick={() => setSelectedChat(chat)}
-                className={`w-full text-left p-4 rounded-[1.5rem] transition-all flex items-center gap-4 ${selectedChat?.id === chat.id ? 'bg-blue-600/10 border border-blue-500/20 shadow-lg' : 'hover:bg-slate-800/40 border border-transparent'
-                  }`}
-              >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-inner ${selectedChat?.id === chat.id ? 'bg-blue-600' : 'bg-slate-800'
-                  }`}>
+            {filteredChats.map((chat) =>
+            <motion.button
+              layout
+              key={chat.id}
+              onClick={() => setSelectedChat(chat)}
+              className={`w-full text-left p-4 rounded-[1.5rem] transition-all flex items-center gap-4 ${selectedChat?.id === chat.id ? 'bg-blue-600/10 border border-blue-500/20 shadow-lg' : 'hover:bg-slate-800/40 border border-transparent'}`
+              }>
+              
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-inner ${selectedChat?.id === chat.id ? 'bg-blue-600' : 'bg-slate-800'}`
+              }>
                   {chat.userName?.[0] || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -145,29 +145,29 @@ const AgentChat = () => {
                   <p className="text-xs text-slate-500 truncate">{chat.lastMessage || 'Waiting for signal...'}</p>
                 </div>
               </motion.button>
-            ))}
+            )}
           </div>
         </div>
 
         {/* Chat Window */}
         <div className={`flex-1 flex-col bg-slate-950/20 relative ${selectedChat ? 'flex' : 'hidden lg:flex'}`}>
           <AnimatePresence mode="wait">
-            {selectedChat ? (
-              <motion.div
-                key={selectedChat.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col h-full"
-              >
+            {selectedChat ?
+            <motion.div
+              key={selectedChat.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col h-full">
+              
                 {/* Chat Header */}
                 <div className="p-4 lg:p-6 border-b border-slate-800/50 flex items-center justify-between backdrop-blur-md bg-slate-900/10">
                   <div className="flex items-center gap-4">
                     {/* Mobile Back Button */}
                     <button
-                      onClick={() => setSelectedChat(null)}
-                      className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-white"
-                    >
+                    onClick={() => setSelectedChat(null)}
+                    className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-white">
+                    
                       <FiArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center font-bold text-white shrink-0">
@@ -186,26 +186,26 @@ const AgentChat = () => {
                 {/* Messages Panel */}
                 <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 custom-scrollbar">
                   {messages.map((msg, idx) => {
-                    const isSelf = msg.senderType === 'agent';
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, x: isSelf ? 20 : -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        key={msg.id + idx}
-                        className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[85%] rounded-[1.5rem] p-4 shadow-xl ${isSelf
-                          ? 'bg-blue-600 text-white rounded-tr-none'
-                          : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'
-                          }`}>
+                  const isSelf = msg.senderType === 'agent';
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, x: isSelf ? 20 : -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      key={msg.id + idx}
+                      className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                      
+                        <div className={`max-w-[85%] rounded-[1.5rem] p-4 shadow-xl ${isSelf ?
+                      'bg-blue-600 text-white rounded-tr-none' :
+                      'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/50'}`
+                      }>
                           <p className="text-sm leading-relaxed">{msg.text}</p>
                           <p className={`text-[10px] mt-2 font-medium ${isSelf ? 'text-blue-100/60' : 'text-slate-500'}`}>
                             {formatTime(msg.timestamp)}
                           </p>
                         </div>
-                      </motion.div>
-                    );
-                  })}
+                      </motion.div>);
+
+                })}
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -216,30 +216,30 @@ const AgentChat = () => {
                       <FiPaperclip className="w-5 h-5" />
                     </button>
                     <textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                      placeholder="Secure message link..."
-                      rows={1}
-                      className="flex-1 bg-transparent border-none outline-none text-slate-200 py-2.5 text-sm resize-none placeholder:text-slate-600 px-2"
-                    />
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Secure message link..."
+                    rows={1}
+                    className="flex-1 bg-transparent border-none outline-none text-slate-200 py-2.5 text-sm resize-none placeholder:text-slate-600 px-2" />
+                  
                     <button
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim()}
-                      className="p-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 shrink-0"
-                    >
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim()}
+                    className="p-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 shrink-0">
+                    
                       <FiSend className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
-              </motion.div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
+              </motion.div> :
+
+            <div className="flex-1 flex items-center justify-center">
                 <div className="text-center p-8 opacity-50">
                   <div className="w-20 h-20 bg-slate-800/50 border border-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl">
                     <FiMessageCircle className="w-10 h-10 text-slate-600" />
@@ -248,12 +248,12 @@ const AgentChat = () => {
                   <p className="text-slate-500 max-w-xs mx-auto text-sm">Select an active dossier from the left panel to establish a secure link.</p>
                 </div>
               </div>
-            )}
+            }
           </AnimatePresence>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default AgentChat;

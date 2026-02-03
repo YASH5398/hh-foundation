@@ -24,7 +24,7 @@ class FirebaseMessagingService {
         return null;
       }
     } catch (error) {
-      console.error('❌ Error requesting notification permission:', error);
+      console.error(String('❌ Error requesting notification permission:') + " " + String(error));
       return null;
     }
   }
@@ -42,7 +42,7 @@ class FirebaseMessagingService {
       });
 
       if (token) {
-        console.log('✅ FCM Token obtained:', token);
+        console.log(String('✅ FCM Token obtained:') + " " + String(token));
         this.currentToken = token;
         return token;
       } else {
@@ -50,7 +50,7 @@ class FirebaseMessagingService {
         return null;
       }
     } catch (error) {
-      console.error('❌ Error getting FCM token:', error);
+      console.error(String('❌ Error getting FCM token:') + " " + String(error));
       return null;
     }
   }
@@ -69,10 +69,10 @@ class FirebaseMessagingService {
         lastTokenUpdate: new Date()
       });
 
-      console.log('✅ FCM token saved to database for user:', userId);
+      console.log(String('✅ FCM token saved to database for user:') + " " + String(userId));
       return true;
     } catch (error) {
-      console.error('❌ Error saving FCM token to database:', error);
+      console.error(String('❌ Error saving FCM token to database:') + " " + String(error));
       return false;
     }
   }
@@ -87,7 +87,7 @@ class FirebaseMessagingService {
 
       const userRef = doc(db, 'users', userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         return userData.fcmToken || null;
@@ -96,7 +96,7 @@ class FirebaseMessagingService {
         return null;
       }
     } catch (error) {
-      console.error('❌ Error getting user FCM token:', error);
+      console.error(String('❌ Error getting user FCM token:') + " " + String(error));
       return null;
     }
   }
@@ -109,11 +109,11 @@ class FirebaseMessagingService {
     }
 
     const unsubscribe = onMessage(this.messaging, (payload) => {
-      console.log('📨 Received foreground message:', payload);
-      
+      console.log(String('📨 Received foreground message:') + " " + String(payload));
+
       // Show notification even when app is in foreground
       this.showNotification(payload);
-      
+
       // Call the callback with the message payload
       if (callback && typeof callback === 'function') {
         callback(payload);
@@ -128,7 +128,7 @@ class FirebaseMessagingService {
   showNotification(payload) {
     try {
       const { notification, data } = payload;
-      
+
       if (!notification) return;
 
       const notificationTitle = notification.title || 'New Message';
@@ -140,15 +140,15 @@ class FirebaseMessagingService {
         requireInteraction: true,
         data: data || {},
         actions: [
-          {
-            action: 'open_chat',
-            title: 'Open Chat'
-          },
-          {
-            action: 'mark_read',
-            title: 'Mark as Read'
-          }
-        ]
+        {
+          action: 'open_chat',
+          title: 'Open Chat'
+        },
+        {
+          action: 'mark_read',
+          title: 'Mark as Read'
+        }]
+
       };
 
       // Show the notification
@@ -160,7 +160,7 @@ class FirebaseMessagingService {
         new Notification(notificationTitle, notificationOptions);
       }
     } catch (error) {
-      console.error('❌ Error showing notification:', error);
+      console.error(String('❌ Error showing notification:') + " " + String(error));
     }
   }
 
@@ -174,36 +174,36 @@ class FirebaseMessagingService {
 
       // Request permission and get token
       const token = await this.requestPermission();
-      
+
       if (token) {
         // Save token to database
         await this.storeTokenInFirestore(userId, token);
-        
+
         // Set up foreground message listener
         this.onForegroundMessage((payload) => {
           // Handle incoming messages
-          console.log('📨 New message received:', payload);
-          
+          console.log(String('📨 New message received:') + " " + String(payload));
+
           // You can dispatch custom events here for your app to handle
           window.dispatchEvent(new CustomEvent('fcm-message', {
             detail: payload
           }));
         });
 
-        console.log('✅ Firebase Messaging initialized successfully for user:', userId);
+        console.log(String('✅ Firebase Messaging initialized successfully for user:') + " " + String(userId));
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('❌ Error initializing Firebase Messaging:', error);
+      console.error(String('❌ Error initializing Firebase Messaging:') + " " + String(error));
       return false;
     }
   }
 
   // Clean up listeners
   cleanup() {
-    this.messageListeners.forEach(unsubscribe => {
+    this.messageListeners.forEach((unsubscribe) => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();
       }

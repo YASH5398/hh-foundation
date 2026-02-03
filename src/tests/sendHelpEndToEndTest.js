@@ -42,7 +42,7 @@ export async function testSendHelpAssignment() {
       throw new Error('Assignment failed');
     }
 
-    console.log('✅ Assignment successful:', result.helpId);
+    console.log(String('✅ Assignment successful:') + " " + String(result.helpId));
 
     // Verify documents exist
     const sendHelpDoc = await getDoc(doc(db, 'sendHelp', result.helpId));
@@ -64,12 +64,12 @@ export async function testSendHelpAssignment() {
     }
 
     console.log('✅ Documents created with correct status and expiresAt');
-    console.log('📅 Expires at:', sendHelpData.expiresAt.toDate());
+    console.log(String('📅 Expires at:') + " " + String(sendHelpData.expiresAt.toDate()));
 
     return { success: true, helpId: result.helpId };
 
   } catch (error) {
-    console.error('❌ Assignment test failed:', error);
+    console.error(String('❌ Assignment test failed:') + " " + String(error));
     return { success: false, error: error.message };
   }
 }
@@ -99,7 +99,7 @@ export async function testImageUpload(helpId) {
       await uploadBytes(storageRef, blob);
 
       const downloadURL = await getDownloadURL(storageRef);
-      console.log('✅ Image uploaded successfully:', downloadURL);
+      console.log(String('✅ Image uploaded successfully:') + " " + String(downloadURL));
 
       // Update sendHelp document
       await updateDoc(doc(db, 'sendHelp', helpId), {
@@ -121,7 +121,7 @@ export async function testImageUpload(helpId) {
     });
 
   } catch (error) {
-    console.error('❌ Image upload test failed:', error);
+    console.error(String('❌ Image upload test failed:') + " " + String(error));
     return { success: false, error: error.message };
   }
 }
@@ -166,7 +166,7 @@ export async function testPermissions(helpId) {
     return { success: true };
 
   } catch (error) {
-    console.error('❌ Permissions test failed:', error);
+    console.error(String('❌ Permissions test failed:') + " " + String(error));
     return { success: false, error: error.message };
   }
 }
@@ -183,7 +183,7 @@ export async function cleanupTestData(helpId) {
     console.log('✅ Test data cleaned up');
     return { success: true };
   } catch (error) {
-    console.error('❌ Cleanup failed:', error);
+    console.error(String('❌ Cleanup failed:') + " " + String(error));
     return { success: false, error: error.message };
   }
 }
@@ -221,7 +221,7 @@ export async function runSendHelpEndToEndTest() {
     return { success: true };
 
   } catch (error) {
-    console.error('❌ END-TO-END TEST FAILED:', error);
+    console.error(String('❌ END-TO-END TEST FAILED:') + " " + String(error));
     return { success: false, error: error.message };
   } finally {
     // Cleanup
@@ -237,9 +237,9 @@ export async function runSendHelpEndToEndTest() {
 export async function runTestAndLog() {
   const result = await runSendHelpEndToEndTest();
 
-  console.log('\n' + '='.repeat(50));
+  console.log(String('\n' + '='.repeat(50)));
   console.log('END-TO-END TEST RESULTS');
-  console.log('='.repeat(50));
+  console.log(String('='.repeat(50)));
 
   if (result.success) {
     console.log('✅ ALL TESTS PASSED');
@@ -250,7 +250,7 @@ export async function runTestAndLog() {
     console.log('\n🔧 Fix the issues above and re-run the test.');
   }
 
-  console.log('='.repeat(50));
+  console.log(String('='.repeat(50)));
 
   return result;
 }

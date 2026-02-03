@@ -28,7 +28,7 @@ const AgentLogin = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -61,7 +61,7 @@ const AgentLogin = () => {
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error(String('Login error:') + " " + String(error));
       if (error.code === 'auth/user-not-found') {
         toast.error('No account found with this email');
       } else if (error.code === 'auth/wrong-password') {
@@ -103,7 +103,7 @@ const AgentLogin = () => {
         toast.error('Email not yet verified. Please check your inbox.');
       }
     } catch (error) {
-      console.error('Verification check error:', error);
+      console.error(String('Verification check error:') + " " + String(error));
       toast.error('Failed to check status. Please try again.');
     } finally {
       setVerifying(false);
@@ -115,8 +115,8 @@ const AgentLogin = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingSpinner />
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -135,8 +135,8 @@ const AgentLogin = () => {
         </div>
 
         <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
-          {step === 1 ? (
-            <form onSubmit={handleEmailLogin} className="space-y-6">
+          {step === 1 ?
+          <form onSubmit={handleEmailLogin} className="space-y-6">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email Address
@@ -146,16 +146,16 @@ const AgentLogin = () => {
                     <FiMail className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Enter your email"
-                  />
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter your email" />
+                
                 </div>
               </div>
 
@@ -168,42 +168,42 @@ const AgentLogin = () => {
                     <FiLock className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Enter your password"
-                  />
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter your password" />
+                
                   <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <FiEyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <FiEye className="h-5 w-5 text-gray-400" />
-                    )}
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}>
+                  
+                    {showPassword ?
+                  <FiEyeOff className="h-5 w-5 text-gray-400" /> :
+
+                  <FiEye className="h-5 w-5 text-gray-400" />
+                  }
                   </button>
                 </div>
               </div>
 
               <div>
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                type="submit"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                
                   {loading ? <LoadingSpinner size="sm" /> : 'Sign In'}
                 </button>
               </div>
-            </form>
-          ) : (
-            <div className="space-y-6 text-center">
+            </form> :
+
+          <div className="space-y-6 text-center">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100">
                 <FiMail className="h-8 w-8 text-indigo-600" />
               </div>
@@ -216,30 +216,30 @@ const AgentLogin = () => {
               </div>
               <div className="space-y-3 pt-4">
                 <button
-                  type="button"
-                  onClick={handleCheckVerification}
-                  disabled={verifying}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-                >
+                type="button"
+                onClick={handleCheckVerification}
+                disabled={verifying}
+                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                
                   {verifying ? <LoadingSpinner size="sm" /> :
-                    <span className="flex items-center gap-2"><FiCheckCircle /> I have verified my email</span>}
+                <span className="flex items-center gap-2"><FiCheckCircle /> I have verified my email</span>}
                 </button>
                 <button
-                  type="button"
-                  onClick={handleResendVerification}
-                  disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                >
+                type="button"
+                onClick={handleResendVerification}
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                
                   {loading ? <LoadingSpinner size="sm" color="text-gray-600" /> :
-                    <span className="flex items-center gap-2"><FiRefreshCw /> Resend Verification Email</span>}
+                <span className="flex items-center gap-2"><FiRefreshCw /> Resend Verification Email</span>}
                 </button>
               </div>
             </div>
-          )}
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default AgentLogin;

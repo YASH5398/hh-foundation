@@ -1,0 +1,889 @@
+[
+  {
+    "type": "info",
+    "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold",
+    "args": [
+      "JSHandle:%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools",
+      "JSHandle:font-weight:bold"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 157128,
+      "columnNumber": 20
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: ===== FIREBASE CONFIGURATION =====",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: ===== FIREBASE CONFIGURATION ====="
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417322,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Project ID: hh-foundation",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Project ID: hh-foundation"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417323,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Auth Domain: hh-foundation.firebaseapp.com",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Auth Domain: hh-foundation.firebaseapp.com"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417324,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: App ID: 1:310213307250:web:bcd588790c923ddb0beb",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: App ID: 1:310213307250:web:bcd588790c923ddb0beb"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417325,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Storage Bucket: hh-foundation.firebasestorage.app",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Storage Bucket: hh-foundation.firebasestorage.app"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417326,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Messaging Sender ID: 310213307250",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Messaging Sender ID: 310213307250"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417327,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Runtime override used? false",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Runtime override used? false"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417328,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: =====================================",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: ====================================="
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417329,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: Firebase app initialized successfully",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: Firebase app initialized successfully"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417334,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: App name: [DEFAULT]",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: App name: [DEFAULT]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417335,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: App options.projectId: hh-foundation",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: App options.projectId: hh-foundation"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417336,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: App options.authDomain: hh-foundation.firebaseapp.com",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: App options.authDomain: hh-foundation.firebaseapp.com"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417337,
+      "columnNumber": 8
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 FIREBASE INIT: App options exported to window.__FIREBASE_APP_OPTIONS__",
+    "args": [
+      "JSHandle:🔍 FIREBASE INIT: App options exported to window.__FIREBASE_APP_OPTIONS__"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417342,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ Firebase Messaging initialized successfully",
+    "args": [
+      "JSHandle:✅ Firebase Messaging initialized successfully"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417370,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "warn",
+    "text": "The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio",
+    "args": [],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 462845
+    }
+  },
+  {
+    "type": "log",
+    "text": "FCM: Environment check passed",
+    "args": [
+      "JSHandle:FCM: Environment check passed"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 460031,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "NotificationContext: No auth.currentUser, skipping fetch",
+    "args": [
+      "JSHandle:NotificationContext: No auth.currentUser, skipping fetch"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 418132,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH CONTEXT: Setting up auth listener...",
+    "args": [
+      "JSHandle:🔍 AUTH CONTEXT: Setting up auth listener..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417871,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "NotificationContext: No auth.currentUser, skipping fetch",
+    "args": [
+      "JSHandle:NotificationContext: No auth.currentUser, skipping fetch"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 418132,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH CONTEXT: Setting up auth listener...",
+    "args": [
+      "JSHandle:🔍 AUTH CONTEXT: Setting up auth listener..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417871,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "Auth state changed: No user",
+    "args": [
+      "JSHandle:Auth state changed: No user"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 458916,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH STATE CHANGED: LOGGED OUT undefined",
+    "args": [
+      "JSHandle:🔍 AUTH STATE CHANGED: LOGGED OUT undefined"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417873,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "warn",
+    "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+    "args": [
+      "JSHandle:⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 321974,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ Firebase Auth persistence enabled (browserLocalPersistence)",
+    "args": [
+      "JSHandle:✅ Firebase Auth persistence enabled (browserLocalPersistence)"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417349,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "Firebase Messaging Service Worker registered successfully: [object ServiceWorkerRegistration]",
+    "args": [
+      "JSHandle:Firebase Messaging Service Worker registered successfully: [object ServiceWorkerRegistration]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 419426,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "verbose",
+    "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"new-password\"): (More info: https://goo.gl/9p2vKq) %o",
+    "args": [],
+    "location": {
+      "url": "http://localhost:3000/signup"
+    }
+  },
+  {
+    "type": "verbose",
+    "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"new-password\"): (More info: https://goo.gl/9p2vKq) %o",
+    "args": [],
+    "location": {
+      "url": "http://localhost:3000/signup"
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 1: Validating E-PIN via HTTP Cloud Function...",
+    "args": [
+      "JSHandle:🔍 STEP 1: Validating E-PIN via HTTP Cloud Function..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380909,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "Sending E-PIN payload: [object Object]",
+    "args": [
+      "JSHandle:Sending E-PIN payload: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380915,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ STEP 1: E-PIN validated, ID: undefined",
+    "args": [
+      "JSHandle:✅ STEP 1: E-PIN validated, ID: undefined"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380941,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 2: Creating Firebase Auth user...",
+    "args": [
+      "JSHandle:🔍 STEP 2: Creating Firebase Auth user..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380950,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 2: auth.currentUser before createUserWithEmailAndPassword: null",
+    "args": [
+      "JSHandle:🔍 STEP 2: auth.currentUser before createUserWithEmailAndPassword: null"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380951,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "Auth state changed: User: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:Auth state changed: User: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 458916,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH STATE CHANGED: LOGGED IN Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 AUTH STATE CHANGED: LOGGED IN Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417873,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ STEP 2: Auth user created, UID: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:✅ STEP 2: Auth user created, UID: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380972,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ STEP 2: auth.currentUser after createUserWithEmailAndPassword: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:✅ STEP 2: auth.currentUser after createUserWithEmailAndPassword: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380973,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 3: Skipping document existence check to avoid early read permission error",
+    "args": [
+      "JSHandle:🔍 STEP 3: Skipping document existence check to avoid early read permission error"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380974,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: Creating user document with FULL data...",
+    "args": [
+      "JSHandle:🔍 STEP 4: Creating user document with FULL data..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381008,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: auth.currentUser before setDoc: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 STEP 4: auth.currentUser before setDoc: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381009,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: uid being used for document: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 STEP 4: uid being used for document: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381010,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: uid matches auth.currentUser.uid: true",
+    "args": [
+      "JSHandle:🔍 STEP 4: uid matches auth.currentUser.uid: true"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381011,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: User data payload (no password): [object Object]",
+    "args": [
+      "JSHandle:🔍 STEP 4: User data payload (no password): [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381067,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 4: About to call setDoc with path: users/Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 STEP 4: About to call setDoc with path: users/Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381068,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "NotificationContext: Fetching notifications for user: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:NotificationContext: Fetching notifications for user: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 418145,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH CONTEXT: Fetching profile for: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 AUTH CONTEXT: Fetching profile for: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417897,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 getUserProfile: Fetching profile for uid: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2",
+    "args": [
+      "JSHandle:🔍 getUserProfile: Fetching profile for uid: Kv8Tgkhw1Rd8SLraIm5o0Jhvc2e2"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 464692,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 getUserProfile: Firebase project: hh-foundation",
+    "args": [
+      "JSHandle:🔍 getUserProfile: Firebase project: hh-foundation"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 464693,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 getUserProfile: Firebase auth domain: hh-foundation.firebaseapp.com",
+    "args": [
+      "JSHandle:🔍 getUserProfile: Firebase auth domain: hh-foundation.firebaseapp.com"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 464694,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "NotificationContext: Fetched notifications: 0",
+    "args": [
+      "JSHandle:NotificationContext: Fetched notifications: 0"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 418155,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "NotificationContext: Unread count: 0",
+    "args": [
+      "JSHandle:NotificationContext: Unread count: 0"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 418158,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 getUserProfile: Document exists? true",
+    "args": [
+      "JSHandle:🔍 getUserProfile: Document exists? true"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 464697,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 getUserProfile: Profile data - [object Object]",
+    "args": [
+      "JSHandle:🔍 getUserProfile: Profile data - [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 464703,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 AUTH CONTEXT: Profile fetched successfully: user",
+    "args": [
+      "JSHandle:🔍 AUTH CONTEXT: Profile fetched successfully: user"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417900,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ STEP 4: User document created successfully with all required fields",
+    "args": [
+      "JSHandle:✅ STEP 4: User document created successfully with all required fields"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381071,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 5: E-PIN validation skipped (handled server-side)",
+    "args": [
+      "JSHandle:🔍 STEP 5: E-PIN validation skipped (handled server-side)"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381096,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 6: Signup completed, giving AuthContext time to fetch profile...",
+    "args": [
+      "JSHandle:🔍 STEP 6: Signup completed, giving AuthContext time to fetch profile..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381097,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 STEP 7: Now navigating to user details...",
+    "args": [
+      "JSHandle:🔍 STEP 7: Now navigating to user details..."
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381102,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "✅ STEP 7: Navigation initiated - SIGNUP COMPLETE",
+    "args": [
+      "JSHandle:✅ STEP 7: Navigation initiated - SIGNUP COMPLETE"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 381104,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: [object Object]",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380448,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: User authenticated, rendering children",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: User authenticated, rendering children"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380509,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: [object Object]",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380448,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: User authenticated, rendering children",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: User authenticated, rendering children"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380509,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 USER DETAILS: [object Object]",
+    "args": [
+      "JSHandle:🔍 USER DETAILS: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 434827,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 USER DETAILS: Ready to show form [object Object]",
+    "args": [
+      "JSHandle:🔍 USER DETAILS: Ready to show form [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 434857,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 USER DETAILS: [object Object]",
+    "args": [
+      "JSHandle:🔍 USER DETAILS: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 434827,
+      "columnNumber": 12
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 USER DETAILS: Ready to show form [object Object]",
+    "args": [
+      "JSHandle:🔍 USER DETAILS: Ready to show form [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 434857,
+      "columnNumber": 14
+    }
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 500 ()",
+    "args": [],
+    "location": {
+      "url": "https://us-central1-hh-foundation.cloudfunctions.net/getReceiveEligibility"
+    }
+  },
+  {
+    "type": "error",
+    "text": "Firebase error: FirebaseError: INTERNAL",
+    "args": [
+      "JSHandle:Firebase error: FirebaseError: INTERNAL"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 461576,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "error",
+    "text": "Internal Firebase error: FirebaseError: INTERNAL",
+    "args": [
+      "JSHandle:Internal Firebase error: FirebaseError: INTERNAL"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 461598,
+      "columnNumber": 16
+    }
+  },
+  {
+    "type": "warn",
+    "text": "Eligibility check failed: JSHandle@error",
+    "args": [
+      "JSHandle:Eligibility check failed:",
+      "JSHandle@error"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 417921,
+      "columnNumber": 18
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: [object Object]",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380448,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: User authenticated, rendering children",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: User authenticated, rendering children"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380509,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: [object Object]",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: [object Object]"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380448,
+      "columnNumber": 10
+    }
+  },
+  {
+    "type": "log",
+    "text": "🔍 PROTECTED ROUTE: User authenticated, rendering children",
+    "args": [
+      "JSHandle:🔍 PROTECTED ROUTE: User authenticated, rendering children"
+    ],
+    "location": {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "lineNumber": 380509,
+      "columnNumber": 10
+    }
+  }
+]

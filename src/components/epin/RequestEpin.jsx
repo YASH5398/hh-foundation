@@ -19,13 +19,13 @@ const RequestEpin = () => {
   // Package options
   // Example data (matches requested spec)
   const packages = [
-    { total: 5, paid: 5, free: 0, price: 300 },
-    { total: 11, paid: 10, free: 1, price: 600 },
-    { total: 17, paid: 15, free: 2, price: 900 },
-    { total: 29, paid: 25, free: 4, price: 1500 },
-    { total: 60, paid: 50, free: 10, price: 3000 },
-    { total: 130, paid: 100, free: 30, price: 6000 }
-  ];
+  { total: 5, paid: 5, free: 0, price: 300 },
+  { total: 11, paid: 10, free: 1, price: 600 },
+  { total: 17, paid: 15, free: 2, price: 900 },
+  { total: 29, paid: 25, free: 4, price: 1500 },
+  { total: 60, paid: 50, free: 10, price: 3000 },
+  { total: 130, paid: 100, free: 30, price: 6000 }];
+
 
   const pricePerEpin = 60;
 
@@ -35,24 +35,24 @@ const RequestEpin = () => {
 
   const fetchRequestHistory = async () => {
     if (!user) return;
-    
+
     try {
       const q = query(
         collection(db, 'epinRequests'),
         where('userId', '==', user.uid),
         orderBy('createdAt', 'desc')
       );
-      
+
       const querySnapshot = await getDocs(q);
-      const requests = querySnapshot.docs.map(doc => ({
+      const requests = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate()
       }));
-      
+
       setRequestHistory(requests);
     } catch (error) {
-      console.error('Error fetching request history:', error);
+      console.error(String('Error fetching request history:') + " " + String(error));
       toast.error('Failed to load request history');
     } finally {
       setLoadingHistory(false);
@@ -92,11 +92,11 @@ const RequestEpin = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 px-4 py-6">
         <div className="w-full max-w-5xl mx-auto">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20"
-          >
+            className="flex flex-col items-center justify-center py-20">
+            
           {/* Package Selection */}
             <div className="relative">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200"></div>
@@ -105,8 +105,8 @@ const RequestEpin = () => {
             <p className="text-gray-600 dark:text-gray-300 mt-4 font-medium">Loading E-PIN requests...</p>
           </motion.div>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -116,8 +116,8 @@ const RequestEpin = () => {
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
+          className="text-center">
+          
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
             Select E-PIN Package
           </h1>
@@ -131,17 +131,17 @@ const RequestEpin = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {packages.map((pkg, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              whileHover={{ scale: 1.02 }}
-              className="group h-full"
-            >
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          {packages.map((pkg, idx) =>
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            whileHover={{ scale: 1.02 }}
+            className="group h-full">
+            
               {/* Gradient border card */}
               <div className="relative h-full p-[1px] rounded-2xl bg-gradient-to-r from-indigo-500/40 via-violet-500/40 to-fuchsia-500/40">
                 <div className="h-full rounded-2xl bg-white dark:bg-gray-900 shadow-[0_6px_24px_rgba(16,24,40,0.06)] group-hover:shadow-[0_10px_28px_rgba(16,24,40,0.12)] transition-shadow duration-300">
@@ -154,11 +154,11 @@ const RequestEpin = () => {
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">Total E-PINs</div>
                       </div>
-                      {pkg.free > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                      {pkg.free > 0 &&
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
                           <FiGift className="w-3.5 h-3.5" /> FREE
                         </span>
-                      )}
+                    }
                     </div>
 
                     {/* Breakdown */}
@@ -184,11 +184,11 @@ const RequestEpin = () => {
                     {/* Buy Button */}
                     <div className="mt-auto">
                       <motion.button
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleBuyNow(pkg)}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white font-semibold py-3 shadow-md hover:shadow-lg transition-all"
-                      >
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleBuyNow(pkg)}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white font-semibold py-3 shadow-md hover:shadow-lg transition-all">
+                      
                         <FiCreditCard className="w-4 h-4" /> Buy Now
                       </motion.button>
                     </div>
@@ -196,11 +196,11 @@ const RequestEpin = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+          )}
         </motion.div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default RequestEpin;

@@ -6,55 +6,55 @@ import { db } from '../../config/firebase';
 
 // Fallback FAQ data
 const mockFAQs = [
-  {
-    id: 1,
-    question: "How does the helping plan work?",
-    answer: "Our helping plan is a peer-to-peer community where members help each other financially. When you join, you send help to existing members and receive help from new members who join after you. It's a transparent, community-driven system.",
-    category: "General"
-  },
-  {
-    id: 2,
-    question: "Is this platform safe and secure?",
-    answer: "Yes, absolutely. We use advanced security measures to protect your data and transactions. All payments are direct between members, and we provide complete transparency with real-time tracking of all activities.",
-    category: "Security"
-  },
-  {
-    id: 3,
-    question: "How much can I earn?",
-    answer: "Earnings depend on your level and activity. Our levels range from Star (₹300 to ₹900) to Diamond (₹2,00,000 to ₹18,00,000). The more you participate and help others, the more you can earn.",
-    category: "Earnings"
-  },
-  {
-    id: 4,
-    question: "How do I get paid?",
-    answer: "Payments are made directly between members through UPI, bank transfer, or other secure payment methods. You'll receive payment details when it's your turn to receive help.",
-    category: "Payments"
-  },
-  {
-    id: 5,
-    question: "What if someone doesn't pay?",
-    answer: "We have strict verification processes and community guidelines. Members who don't fulfill their commitments are removed from the platform. We also provide support to resolve any payment issues.",
-    category: "Support"
-  },
-  {
-    id: 6,
-    question: "How do I join?",
-    answer: "Simply register with your details, complete KYC verification, and start with any level that suits your budget. You'll be guided through the entire process step by step.",
-    category: "Getting Started"
-  },
-  {
-    id: 7,
-    question: "Can I upgrade my level?",
-    answer: "Yes, you can upgrade to higher levels anytime to increase your earning potential. Each level has different investment amounts and corresponding returns.",
-    category: "Levels"
-  },
-  {
-    id: 8,
-    question: "Is there any hidden fee?",
-    answer: "No, there are no hidden fees. The platform is completely transparent. You only pay the help amount for your chosen level, and that's it.",
-    category: "Fees"
-  }
-];
+{
+  id: 1,
+  question: "How does the helping plan work?",
+  answer: "Our helping plan is a peer-to-peer community where members help each other financially. When you join, you send help to existing members and receive help from new members who join after you. It's a transparent, community-driven system.",
+  category: "General"
+},
+{
+  id: 2,
+  question: "Is this platform safe and secure?",
+  answer: "Yes, absolutely. We use advanced security measures to protect your data and transactions. All payments are direct between members, and we provide complete transparency with real-time tracking of all activities.",
+  category: "Security"
+},
+{
+  id: 3,
+  question: "How much can I earn?",
+  answer: "Earnings depend on your level and activity. Our levels range from Star (₹300 to ₹900) to Diamond (₹2,00,000 to ₹18,00,000). The more you participate and help others, the more you can earn.",
+  category: "Earnings"
+},
+{
+  id: 4,
+  question: "How do I get paid?",
+  answer: "Payments are made directly between members through UPI, bank transfer, or other secure payment methods. You'll receive payment details when it's your turn to receive help.",
+  category: "Payments"
+},
+{
+  id: 5,
+  question: "What if someone doesn't pay?",
+  answer: "We have strict verification processes and community guidelines. Members who don't fulfill their commitments are removed from the platform. We also provide support to resolve any payment issues.",
+  category: "Support"
+},
+{
+  id: 6,
+  question: "How do I join?",
+  answer: "Simply register with your details, complete KYC verification, and start with any level that suits your budget. You'll be guided through the entire process step by step.",
+  category: "Getting Started"
+},
+{
+  id: 7,
+  question: "Can I upgrade my level?",
+  answer: "Yes, you can upgrade to higher levels anytime to increase your earning potential. Each level has different investment amounts and corresponding returns.",
+  category: "Levels"
+},
+{
+  id: 8,
+  question: "Is there any hidden fee?",
+  answer: "No, there are no hidden fees. The platform is completely transparent. You only pay the help amount for your chosen level, and that's it.",
+  category: "Fees"
+}];
+
 
 const categories = ['All', 'General', 'Security', 'Earnings', 'Payments', 'Support', 'Getting Started', 'Levels', 'Fees'];
 
@@ -70,7 +70,7 @@ export default function FAQs() {
     const fetchFAQs = async () => {
       try {
         const faqsDoc = await getDoc(doc(db, 'settings', 'faqs'));
-        
+
         if (faqsDoc.exists()) {
           const faqsData = faqsDoc.data();
           if (faqsData.questions && Array.isArray(faqsData.questions)) {
@@ -81,19 +81,19 @@ export default function FAQs() {
               answer: faq.answer || '',
               category: faq.category || 'General'
             }));
-            
+
             // Use real FAQs if available, otherwise use mock data
             setFaqs(realFAQs.length > 0 ? [...realFAQs, ...mockFAQs.slice(realFAQs.length)] : mockFAQs);
           }
         }
       } catch (error) {
-        console.error('Error fetching FAQs:', error);
+        console.error(String('Error fetching FAQs:') + " " + String(error));
         // Keep fallback data on error
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchFAQs();
   }, []);
 
@@ -102,10 +102,10 @@ export default function FAQs() {
   };
 
   // Filter FAQs based on category and search term
-  const filteredFaqs = faqs.filter(faq => {
+  const filteredFaqs = faqs.filter((faq) => {
     const matchesCategory = activeCategory === 'All' || faq.category === activeCategory;
     const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
+    faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -118,8 +118,8 @@ export default function FAQs() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
-        >
+          className="text-center mb-16">
+          
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
               <HelpCircle className="w-8 h-8 text-white" />
@@ -140,8 +140,8 @@ export default function FAQs() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="mb-8"
-        >
+          className="mb-8">
+          
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -149,8 +149,8 @@ export default function FAQs() {
               placeholder="Search FAQs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
-            />
+              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm" />
+            
           </div>
         </motion.div>
 
@@ -160,22 +160,22 @@ export default function FAQs() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
           viewport={{ once: true }}
-          className="mb-12"
-        >
+          className="mb-12">
+          
           <div className="flex flex-wrap justify-center gap-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  activeCategory === category
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                }`}
-              >
+            {categories.map((category) =>
+            <button
+              key={category}
+              onClick={() => setActiveCategory(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              activeCategory === category ?
+              'bg-blue-600 text-white shadow-lg' :
+              'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`
+              }>
+              
                 {category}
               </button>
-            ))}
+            )}
           </div>
         </motion.div>
 
@@ -185,21 +185,21 @@ export default function FAQs() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="space-y-4"
-        >
-          {filteredFaqs.map((faq, index) => (
-            <motion.div
-              key={faq.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            >
+          className="space-y-4">
+          
+          {filteredFaqs.map((faq, index) =>
+          <motion.div
+            key={faq.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+            viewport={{ once: true }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            
               <button
-                onClick={() => toggleFaq(index)}
-                className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
-              >
+              onClick={() => toggleFaq(index)}
+              className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200">
+              
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     {faq.question}
@@ -209,46 +209,46 @@ export default function FAQs() {
                   </span>
                 </div>
                 <motion.div
-                  animate={{ rotate: openFaq === index ? 180 : 0 }}
-                  transition={{ duration: 0.3 }}
-                >
+                animate={{ rotate: openFaq === index ? 180 : 0 }}
+                transition={{ duration: 0.3 }}>
+                
                   <ChevronDown className="w-5 h-5 text-gray-500" />
                 </motion.div>
               </button>
               
               <AnimatePresence>
-                {openFaq === index && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
+                {openFaq === index &&
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden">
+                
                     <div className="px-6 pb-5 text-gray-600 leading-relaxed">
                       {faq.answer}
                     </div>
                   </motion.div>
-                )}
+              }
               </AnimatePresence>
             </motion.div>
-          ))}
+          )}
         </motion.div>
 
         {/* No Results */}
-        {filteredFaqs.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
-          >
+        {filteredFaqs.length === 0 &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12">
+          
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No FAQs Found</h3>
             <p className="text-gray-600">Try adjusting your search or category filter.</p>
           </motion.div>
-        )}
+        }
 
         {/* Contact Support */}
         <motion.div
@@ -256,8 +256,8 @@ export default function FAQs() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           viewport={{ once: true }}
-          className="text-center mt-16"
-        >
+          className="text-center mt-16">
+          
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-3xl p-8 text-white">
             <MessageCircle className="w-12 h-12 mx-auto mb-4" />
             <h3 className="text-2xl font-bold mb-4">
@@ -269,13 +269,13 @@ export default function FAQs() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-white text-blue-600 px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-            >
+              className="bg-white text-blue-600 px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300">
+              
               Contact Support
             </motion.button>
           </div>
         </motion.div>
       </div>
-    </section>
-  );
+    </section>);
+
 }

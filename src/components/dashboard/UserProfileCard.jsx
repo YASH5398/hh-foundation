@@ -31,7 +31,7 @@ const UserProfileCard = () => {
           setError('User data not found.');
         }
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        console.error(String('Error fetching user data:') + " " + String(err));
         setError('Failed to load user data.');
       } finally {
         setLoading(false);
@@ -78,8 +78,8 @@ const UserProfileCard = () => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="flex justify-center items-center p-6 sm:p-8"
-      >
+        className="flex justify-center items-center p-6 sm:p-8">
+        
         <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-xl">
           <div className="animate-pulse flex space-x-4">
             <div className="rounded-full bg-slate-300 h-12 w-12"></div>
@@ -89,8 +89,8 @@ const UserProfileCard = () => {
             </div>
           </div>
         </div>
-      </motion.div>
-    );
+      </motion.div>);
+
   }
 
   if (error) {
@@ -98,16 +98,16 @@ const UserProfileCard = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center items-center p-6 sm:p-8"
-      >
+        className="flex justify-center items-center p-6 sm:p-8">
+        
         <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-2xl p-6 shadow-lg">
           <div className="flex items-center space-x-3">
             <FiXCircle className="text-red-500 text-xl" />
             <div className="text-red-700 font-medium">{error}</div>
           </div>
         </div>
-      </motion.div>
-    );
+      </motion.div>);
+
   }
 
   if (!userData) {
@@ -115,16 +115,16 @@ const UserProfileCard = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center items-center p-6 sm:p-8"
-      >
+        className="flex justify-center items-center p-6 sm:p-8">
+        
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-6 shadow-lg">
           <div className="flex items-center space-x-3">
             <FiUser className="text-gray-400 text-xl" />
             <div className="text-gray-600 font-medium">No user profile data available.</div>
           </div>
         </div>
-      </motion.div>
-    );
+      </motion.div>);
+
   }
 
   const statusConfig = getStatusConfig(userData);
@@ -136,8 +136,8 @@ const UserProfileCard = () => {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
       whileHover={{ y: -2, scale: 1.01 }}
-      className="relative bg-gradient-to-br from-slate-900/95 via-blue-900/95 to-purple-900/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden mx-auto max-w-5xl"
-    >
+      className="relative bg-gradient-to-br from-slate-900/95 via-blue-900/95 to-purple-900/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden mx-auto max-w-5xl">
+      
       {/* Enhanced Glassmorphism overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/10 to-white/5 backdrop-blur-xl" />
       
@@ -145,8 +145,8 @@ const UserProfileCard = () => {
       <motion.div
         className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-blue-500/10 to-purple-600/10 opacity-0"
         whileHover={{ opacity: 1 }}
-        transition={{ duration: 0.7 }}
-      />
+        transition={{ duration: 0.7 }} />
+      
 
       <div className="relative z-10 p-6 sm:p-8">
         {/* Header */}
@@ -154,8 +154,8 @@ const UserProfileCard = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="text-center mb-10"
-        >
+          className="text-center mb-10">
+          
           <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent mb-3">User Profile</h2>
           <div className="w-32 h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full mx-auto shadow-lg" />
         </motion.div>
@@ -171,8 +171,8 @@ const UserProfileCard = () => {
               transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
+              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500">
+              
               <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
               <div className="relative z-10">
                 <div className="flex items-center mb-3">
@@ -194,8 +194,8 @@ const UserProfileCard = () => {
               transition={{ delay: 0.4 }}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
+              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500">
+              
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
               <div className="relative z-10">
                 <div className="flex items-center mb-3">
@@ -220,8 +220,8 @@ const UserProfileCard = () => {
               transition={{ delay: 0.5 }}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
+              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500">
+              
               <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
               <div className="relative z-10">
                 <div className="flex items-center mb-3">
@@ -243,8 +243,8 @@ const UserProfileCard = () => {
               transition={{ delay: 0.6 }}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
+              className="group relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500">
+              
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
               <div className="relative z-10">
                 <div className="flex items-center mb-3">
@@ -255,9 +255,9 @@ const UserProfileCard = () => {
                 </div>
                 <p className="font-bold text-yellow-300 text-sm leading-tight">
                   {userData.levelStatus || 'N/A'}
-                  {userData.level && (
-                    <span className="text-xs text-yellow-200 ml-1">({userData.level})</span>
-                  )}
+                  {userData.level &&
+                  <span className="text-xs text-yellow-200 ml-1">({userData.level})</span>
+                  }
                 </p>
               </div>
             </motion.div>
@@ -270,8 +270,8 @@ const UserProfileCard = () => {
             transition={{ delay: 0.7 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={`group relative ${statusConfig.bgColor} backdrop-blur-md border border-white/30 rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}
-          >
+            className={`group relative ${statusConfig.bgColor} backdrop-blur-md border border-white/30 rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}>
+            
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className={`p-2 ${statusConfig.bgColor} rounded-lg mr-3`}>
@@ -286,8 +286,8 @@ const UserProfileCard = () => {
                 <motion.div
                   className={`w-3 h-3 ${statusConfig.dotColor} rounded-full`}
                   animate={statusConfig.pulse ? { scale: [1, 1.2, 1], opacity: [1, 0.7, 1] } : {}}
-                  transition={statusConfig.pulse ? { duration: 2, repeat: Infinity } : {}}
-                />
+                  transition={statusConfig.pulse ? { duration: 2, repeat: Infinity } : {}} />
+                
               </div>
             </div>
           </motion.div>
@@ -302,8 +302,8 @@ const UserProfileCard = () => {
             transition={{ delay: 0.3 }}
             whileHover={{ y: -8, scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
-          >
+            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden">
+            
             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
             <div className="relative z-10">
               <div className="flex items-center mb-4">
@@ -326,8 +326,8 @@ const UserProfileCard = () => {
             transition={{ delay: 0.4 }}
             whileHover={{ y: -8, scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
-          >
+            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden">
+            
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
             <div className="relative z-10">
               <div className="flex items-center mb-4">
@@ -350,8 +350,8 @@ const UserProfileCard = () => {
             transition={{ delay: 0.5 }}
             whileHover={{ y: -8, scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
-          >
+            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden">
+            
             <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
             <div className="relative z-10">
               <div className="flex items-center mb-4">
@@ -374,8 +374,8 @@ const UserProfileCard = () => {
             transition={{ delay: 0.6 }}
             whileHover={{ y: -8, scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
-          >
+            className="group relative bg-white/8 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden">
+            
             <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
             <div className="relative z-10">
               <div className="flex items-center mb-4">
@@ -387,9 +387,9 @@ const UserProfileCard = () => {
               <p className="font-bold text-yellow-300 text-lg">
                 {userData.levelStatus || 'N/A'}
               </p>
-              {userData.level && (
-                <p className="text-sm text-yellow-200 mt-1">Level {userData.level}</p>
-              )}
+              {userData.level &&
+              <p className="text-sm text-yellow-200 mt-1">Level {userData.level}</p>
+              }
               <p className="text-xs text-white/70 mt-2">Current rank</p>
             </div>
           </motion.div>
@@ -402,8 +402,8 @@ const UserProfileCard = () => {
           transition={{ delay: 0.7 }}
           whileHover={{ y: -4, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className={`hidden sm:block group relative ${statusConfig.bgColor} backdrop-blur-md border border-white/30 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden mt-6`}
-        >
+          className={`hidden sm:block group relative ${statusConfig.bgColor} backdrop-blur-md border border-white/30 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden mt-6`}>
+          
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center">
@@ -414,9 +414,9 @@ const UserProfileCard = () => {
                 <p className="text-sm font-semibold text-white/90 uppercase tracking-wide mb-1">Account Status</p>
                 <p className={`font-bold text-2xl ${statusConfig.color}`}>{statusConfig.text}</p>
                 <p className="text-xs text-white/70 mt-1">
-                  {statusConfig.text === 'Active' ? 'Account is fully activated' : 
-                   statusConfig.text === 'Blocked' ? 'Account access restricted' : 
-                   'Awaiting activation'}
+                  {statusConfig.text === 'Active' ? 'Account is fully activated' :
+                  statusConfig.text === 'Blocked' ? 'Account access restricted' :
+                  'Awaiting activation'}
                 </p>
               </div>
             </div>
@@ -424,14 +424,14 @@ const UserProfileCard = () => {
               <motion.div
                 className={`w-4 h-4 ${statusConfig.dotColor} rounded-full shadow-lg`}
                 animate={statusConfig.pulse ? { scale: [1, 1.3, 1], opacity: [1, 0.6, 1] } : {}}
-                transition={statusConfig.pulse ? { duration: 2, repeat: Infinity } : {}}
-              />
+                transition={statusConfig.pulse ? { duration: 2, repeat: Infinity } : {}} />
+              
             </div>
           </div>
         </motion.div>
       </div>
-    </motion.div>
-  );
+    </motion.div>);
+
 };
 
 export default UserProfileCard;

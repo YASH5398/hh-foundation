@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   signOut,
-  sendEmailVerification
-} from 'firebase/auth';
+  sendEmailVerification } from
+'firebase/auth';
 import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 import { signInWithEmailPassword, signOutUser, checkAgentRole, getAuthErrorMessage } from '../utils/authUtils';
@@ -28,9 +28,9 @@ export const AgentAuthProvider = ({ children }) => {
   const checkFirebaseConfig = () => {
     const config = auth.app.options;
     console.log('🔧 Firebase Configuration Check:');
-    console.log('- Project ID:', config.projectId);
-    console.log('- Auth Domain:', config.authDomain);
-    console.log('- API Key exists:', !!config.apiKey);
+    console.log(String('- Project ID:') + " " + String(config.projectId));
+    console.log(String('- Auth Domain:') + " " + String(config.authDomain));
+    console.log(String('- API Key exists:') + " " + String(!!config.apiKey));
 
     return {
       projectId: config.projectId,
@@ -66,7 +66,7 @@ export const AgentAuthProvider = ({ children }) => {
     // Continue URL: Navigate back to agent login after email link click
     const actionCodeSettings = {
       url: window.location.origin + '/agent-login',
-      handleCodeInApp: true,
+      handleCodeInApp: true
     };
 
     try {
@@ -74,7 +74,7 @@ export const AgentAuthProvider = ({ children }) => {
       toast.success('Verification email sent!');
       return true;
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      console.error(String('Error sending verification email:') + " " + String(error));
       if (error.code === 'auth/too-many-requests') {
         throw new Error('Too many requests. Please wait before asking for another email.');
       }
@@ -113,7 +113,7 @@ export const AgentAuthProvider = ({ children }) => {
           setCurrentUser(user);
         }
       } catch (error) {
-        console.error('🔍 AGENT AUTH: Error verifying agent role:', error);
+        console.error(String('🔍 AGENT AUTH: Error verifying agent role:') + " " + String(error));
         if (isMounted) setIsAgent(false);
       } finally {
         if (isMounted) setLoading(false);
@@ -121,7 +121,7 @@ export const AgentAuthProvider = ({ children }) => {
     };
 
     syncAndVerify();
-    return () => { isMounted = false; };
+    return () => {isMounted = false;};
   }, [user]);
 
   const value = {
@@ -138,6 +138,6 @@ export const AgentAuthProvider = ({ children }) => {
   return (
     <AgentAuthContext.Provider value={value}>
       {children}
-    </AgentAuthContext.Provider>
-  );
+    </AgentAuthContext.Provider>);
+
 };

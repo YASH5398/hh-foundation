@@ -12,8 +12,8 @@ import {
   getDocs,
   getDoc,
   orderBy,
-  limit,
-} from 'firebase/firestore';
+  limit } from
+'firebase/firestore';
 import StatCard from '../common/StatCard';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -35,61 +35,61 @@ import { firestoreQueryService } from '../../services/firestoreQueryService';
 import { FiSend, FiDownload, FiUsers, FiCreditCard, FiArrowUpCircle, FiDollarSign, FiCopy, FiCheck, FiShare2, FiCalendar, FiClock } from 'react-icons/fi';
 
 const SOCIALS = [
-  {
-    name: 'Telegram',
-    icon: Send, // Use Send as a Telegram-like icon
-    color: '#0088cc',
-    url: 'https://t.me/yourchannel',
-    tooltip: 'Follow us on Telegram',
-  },
-  {
-    name: 'Twitter',
-    icon: Twitter,
-    color: '#1DA1F2',
-    url: 'https://twitter.com/yourhandle',
-    tooltip: 'Follow us on Twitter',
-  },
-  {
-    name: 'Facebook',
-    icon: Facebook,
-    color: '#1877F3',
-    url: 'https://facebook.com/yourpage',
-    tooltip: 'Follow us on Facebook',
-  },
-  {
-    name: 'Instagram',
-    icon: Instagram,
-    color: '#E4405F',
-    url: 'https://instagram.com/yourprofile',
-    tooltip: 'Follow us on Instagram',
-  },
-];
+{
+  name: 'Telegram',
+  icon: Send, // Use Send as a Telegram-like icon
+  color: '#0088cc',
+  url: 'https://t.me/yourchannel',
+  tooltip: 'Follow us on Telegram'
+},
+{
+  name: 'Twitter',
+  icon: Twitter,
+  color: '#1DA1F2',
+  url: 'https://twitter.com/yourhandle',
+  tooltip: 'Follow us on Twitter'
+},
+{
+  name: 'Facebook',
+  icon: Facebook,
+  color: '#1877F3',
+  url: 'https://facebook.com/yourpage',
+  tooltip: 'Follow us on Facebook'
+},
+{
+  name: 'Instagram',
+  icon: Instagram,
+  color: '#E4405F',
+  url: 'https://instagram.com/yourprofile',
+  tooltip: 'Follow us on Instagram'
+}];
 
-const SocialMediaBar = () => (
-  <footer className="w-full mt-8 sm:mt-12">
+
+const SocialMediaBar = () =>
+<footer className="w-full mt-8 sm:mt-12">
     <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 py-4 sm:py-6 bg-white/80 border-t border-gray-200">
-      {SOCIALS.map(({ name, icon: Icon, color, url, tooltip }) => (
-        <a
-          key={name}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative flex items-center justify-center"
-          aria-label={tooltip}
-        >
+      {SOCIALS.map(({ name, icon: Icon, color, url, tooltip }) =>
+    <a
+      key={name}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative flex items-center justify-center"
+      aria-label={tooltip}>
+      
           <Icon
-            className="transition-transform duration-200 group-hover:scale-125"
-            size={24}
-            style={{ color }}
-          />
+        className="transition-transform duration-200 group-hover:scale-125"
+        size={24}
+        style={{ color }} />
+      
           <span className="absolute bottom-[-2rem] sm:bottom-[-2.2rem] left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg transition-transform duration-200 z-50 pointer-events-none">
             {tooltip}
           </span>
         </a>
-      ))}
+    )}
     </div>
-  </footer>
-);
+  </footer>;
+
 
 const ReferralLink = ({ userProfile }) => {
   const [copySuccess, setCopySuccess] = useState('');
@@ -125,8 +125,8 @@ const ReferralLink = ({ userProfile }) => {
           <div className="flex-grow h-12 bg-gray-200 rounded-lg animate-pulse" />
           <div className="w-24 h-12 bg-gray-200 rounded-lg animate-pulse" />
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -142,27 +142,27 @@ const ReferralLink = ({ userProfile }) => {
           type="text"
           value={referralLink}
           readOnly
-          className="flex-grow px-4 py-3 border border-blue-200 rounded-lg bg-white text-gray-700 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-        />
+          className="flex-grow px-4 py-3 border border-blue-200 rounded-lg bg-white text-gray-700 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent" />
+        
         <button
           onClick={copyToClipboard}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-base"
-        >
-          {copySuccess ? (
-            <>
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg text-base">
+          
+          {copySuccess ?
+          <>
               <FiCheck className="text-base" />
               <span className="text-sm font-medium">Copied</span>
-            </>
-          ) : (
-            <>
+            </> :
+
+          <>
               <FiCopy className="text-base" />
               <span className="text-sm font-medium">Copy</span>
             </>
-          )}
+          }
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 function TickerSection() {
@@ -199,7 +199,7 @@ function TickerSection() {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching ticker settings:', error);
+              console.error(String('Error fetching ticker settings:') + " " + String(error));
               setEnabled(true); // Default to enabled on error
               return;
             }
@@ -220,7 +220,7 @@ function TickerSection() {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching user data for ticker:', error);
+              console.error(String('Error fetching user data for ticker:') + " " + String(error));
               setFullName('');
             } else if (documents.length > 0) {
               setFullName(documents[0].fullName || '');
@@ -233,7 +233,7 @@ function TickerSection() {
         unsubscribers.push(userUnsubscribe);
 
       } catch (error) {
-        console.error('Failed to setup ticker listeners:', error);
+        console.error(String('Failed to setup ticker listeners:') + " " + String(error));
         setEnabled(true);
         setFullName('');
         setLoading(false);
@@ -244,11 +244,11 @@ function TickerSection() {
 
     return () => {
       console.log('Cleaning up ticker listeners');
-      unsubscribers.forEach(unsubscribe => {
+      unsubscribers.forEach((unsubscribe) => {
         try {
           unsubscribe();
         } catch (error) {
-          console.error('Error cleaning up ticker listener:', error);
+          console.error(String('Error cleaning up ticker listener:') + " " + String(error));
         }
       });
     };
@@ -269,8 +269,8 @@ function TickerSection() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 const DashboardHome = () => {
@@ -302,8 +302,8 @@ const DashboardHome = () => {
 
   // Debug logging for component lifecycle
   console.log('🚀 DashboardHome component rendered');
-  console.log('🔐 Auth state:', { user, loading, authenticated: authGuardService.isAuthenticated() });
-  console.log('📊 Component state:', { userProfile, error });
+  console.log(String('🔐 Auth state:') + " " + String({ user, loading, authenticated: authGuardService.isAuthenticated() }));
+  console.log(String('📊 Component state:') + " " + String({ userProfile, error }));
 
   // Test mode - set to true to use fixed UID for testing
   const TEST_MODE = false;
@@ -318,20 +318,20 @@ const DashboardHome = () => {
         return;
       }
 
-      console.log('🧪 Testing Firestore connection for UID:', userId);
+      console.log(String('🧪 Testing Firestore connection for UID:') + " " + String(userId));
       const userRef = doc(db, 'users', userId);
       const docSnap = await getDoc(userRef);
 
       if (docSnap.exists()) {
         const userData = docSnap.data();
-        console.log('✅ Firestore test successful:', userData);
+        console.log(String('✅ Firestore test successful:') + " " + String(userData));
         return userData;
       } else {
         console.log('❌ User document not found in Firestore');
         return null;
       }
     } catch (error) {
-      console.error('❌ Firestore test failed:', error);
+      console.error(String('❌ Firestore test failed:') + " " + String(error));
       return null;
     }
   };
@@ -346,7 +346,7 @@ const DashboardHome = () => {
 
   // Fetch user profile from Firestore
   useEffect(() => {
-    let unsubscribe = () => { };
+    let unsubscribe = () => {};
 
     const setupListener = async () => {
       // Check authentication before setting up listener
@@ -364,7 +364,7 @@ const DashboardHome = () => {
       }
 
       try {
-        console.log('Setting up user profile listener for:', userId);
+        console.log(String('Setting up user profile listener for:') + " " + String(userId));
 
         // Use safe listener from firestoreQueryService
         unsubscribe = firestoreQueryService.setupSafeListener(
@@ -373,17 +373,17 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching user profile:', error);
+              console.error(String('Error fetching user profile:') + " " + String(error));
               setError('Failed to load user profile. Please try refreshing the page.');
               return;
             }
 
             if (documents.length > 0) {
               const userProfile = documents[0];
-              console.log('User profile loaded:', userProfile);
+              console.log(String('User profile loaded:') + " " + String(userProfile));
               setUserProfile({ ...userProfile, uid: userId });
               setLocalUserProfile({ ...userProfile, uid: userId });
-              setStats(prev => ({
+              setStats((prev) => ({
                 ...prev,
                 totalTeam: userProfile.totalTeam || 0
               }));
@@ -398,7 +398,7 @@ const DashboardHome = () => {
         );
 
       } catch (error) {
-        console.error('Failed to setup user profile listener:', error);
+        console.error(String('Failed to setup user profile listener:') + " " + String(error));
         setError('Failed to setup user profile listener. Please try refreshing the page.');
       }
     };
@@ -428,7 +428,7 @@ const DashboardHome = () => {
       }
 
       try {
-        console.log('Setting up stats listeners for user:', userProfile.uid);
+        console.log(String('Setting up stats listeners for user:') + " " + String(userProfile.uid));
 
         // 1. Total Sent Help
         const sentHelpUnsubscribe = firestoreQueryService.setupSafeListener(
@@ -437,14 +437,14 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching sent help:', error);
+              console.error(String('Error fetching sent help:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               total += Number(doc.amount) || 0;
             });
-            setStats(prev => ({ ...prev, totalSentAmount: total }));
+            setStats((prev) => ({ ...prev, totalSentAmount: total }));
           }
         );
         unsubscribers.push(sentHelpUnsubscribe);
@@ -456,14 +456,14 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching received autopool:', error);
+              console.error(String('Error fetching received autopool:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               total += Number(doc.amount) || 0;
             });
-            setStats(prev => ({ ...prev, totalReceivedAutopool: total }));
+            setStats((prev) => ({ ...prev, totalReceivedAutopool: total }));
           }
         );
         unsubscribers.push(receivedAutoPoolUnsubscribe);
@@ -475,14 +475,14 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching received sponsor:', error);
+              console.error(String('Error fetching received sponsor:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               total += Number(doc.amount) || 0;
             });
-            setStats(prev => ({ ...prev, totalReceivedSponsor: total }));
+            setStats((prev) => ({ ...prev, totalReceivedSponsor: total }));
           }
         );
         unsubscribers.push(receivedSponsorUnsubscribe);
@@ -494,16 +494,16 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching earnings:', error);
+              console.error(String('Error fetching earnings:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               if ([HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED].includes(doc.status)) {
                 total += Number(doc.amount) || 0;
               }
             });
-            setStats(prev => ({ ...prev, totalEarnings: total }));
+            setStats((prev) => ({ ...prev, totalEarnings: total }));
           }
         );
         unsubscribers.push(earningsUnsubscribe);
@@ -515,16 +515,16 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching pending helps:', error);
+              console.error(String('Error fetching pending helps:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               if (['ASSIGNED', 'PAYMENT_REQUESTED', 'PAYMENT_DONE'].includes(doc.status)) {
                 total += Number(doc.amount) || 0;
               }
             });
-            setStats(prev => ({ ...prev, pendingHelps: total }));
+            setStats((prev) => ({ ...prev, pendingHelps: total }));
           }
         );
         unsubscribers.push(pendingHelpsUnsubscribe);
@@ -536,22 +536,22 @@ const DashboardHome = () => {
           [],
           (documents, error) => {
             if (error) {
-              console.error('Error fetching upcoming payments:', error);
+              console.error(String('Error fetching upcoming payments:') + " " + String(error));
               return;
             }
             let total = 0;
-            documents.forEach(doc => {
+            documents.forEach((doc) => {
               if ([HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE].includes(doc.status)) {
                 total += Number(doc.amount) || 0;
               }
             });
-            setStats(prev => ({ ...prev, upcomingPayment: total }));
+            setStats((prev) => ({ ...prev, upcomingPayment: total }));
           }
         );
         unsubscribers.push(upcomingUnsubscribe);
 
       } catch (error) {
-        console.error('Failed to setup stats listeners:', error);
+        console.error(String('Failed to setup stats listeners:') + " " + String(error));
         setError('Failed to load dashboard statistics. Please try refreshing the page.');
       }
     };
@@ -560,11 +560,11 @@ const DashboardHome = () => {
 
     return () => {
       console.log('Cleaning up stats listeners');
-      unsubscribers.forEach(unsubscribe => {
+      unsubscribers.forEach((unsubscribe) => {
         try {
           unsubscribe();
         } catch (error) {
-          console.error('Error cleaning up listener:', error);
+          console.error(String('Error cleaning up listener:') + " " + String(error));
         }
       });
     };
@@ -584,7 +584,7 @@ const DashboardHome = () => {
 
     const fetchDirectMembers = async () => {
       try {
-        console.log('Fetching direct members for user:', userProfile.uid);
+        console.log(String('Fetching direct members for user:') + " " + String(userProfile.uid));
 
         const documents = await firestoreQueryService.safeQuery(
           'users',
@@ -593,17 +593,17 @@ const DashboardHome = () => {
           null
         );
 
-        console.log('Direct members fetched:', documents.length);
-        setStats(prev => ({ ...prev, directReferrals: documents.length }));
+        console.log(String('Direct members fetched:') + " " + String(documents.length));
+        setStats((prev) => ({ ...prev, directReferrals: documents.length }));
       } catch (error) {
-        console.error('Failed to fetch direct members:', error);
+        console.error(String('Failed to fetch direct members:') + " " + String(error));
         // Don't set error state for this non-critical data
       }
     };
 
     const fetchAvailableEpins = async () => {
       try {
-        console.log('Fetching available E-PINs for user:', userProfile.uid);
+        console.log(String('Fetching available E-PINs for user:') + " " + String(userProfile.uid));
 
         const documents = await firestoreQueryService.safeQuery(
           'epins',
@@ -612,10 +612,10 @@ const DashboardHome = () => {
           null
         );
 
-        console.log('Available E-PINs fetched:', documents.length);
-        setStats(prev => ({ ...prev, availableEpins: documents.length }));
+        console.log(String('Available E-PINs fetched:') + " " + String(documents.length));
+        setStats((prev) => ({ ...prev, availableEpins: documents.length }));
       } catch (error) {
-        console.error('Failed to fetch available E-PINs:', error);
+        console.error(String('Failed to fetch available E-PINs:') + " " + String(error));
         // Don't set error state for this non-critical data
       }
     };
@@ -647,8 +647,8 @@ const DashboardHome = () => {
           <LoadingSpinner />
           <p className="mt-4 text-gray-600">Loading your profile...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (error) {
@@ -658,13 +658,13 @@ const DashboardHome = () => {
           <ErrorMessage message={error} />
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            
             Reload Page
           </button>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Render fallback if user is null
@@ -675,8 +675,8 @@ const DashboardHome = () => {
           <p className="text-lg font-semibold">You are not logged in.</p>
           <p className="text-sm text-gray-500">Please log in to access the dashboard.</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Use localUserProfile if available, otherwise fall back to userProfile from context
@@ -688,21 +688,21 @@ const DashboardHome = () => {
   }
 
   // Debug logging for userProfile data
-  console.log('Dashboard userProfile:', userProfile);
-  console.log('Dashboard displayProfile:', displayProfile);
-  console.log('Profile fields for card:', {
+  console.log(String('Dashboard userProfile:') + " " + String(userProfile));
+  console.log(String('Dashboard displayProfile:') + " " + String(displayProfile));
+  console.log(String('Profile fields for card:') + " " + String({
     userId: userProfile?.userId,
     name: userProfile?.fullName,
     levelStatus: userProfile?.levelStatus,
     rankDate: userProfile?.rankDate,
     joiningDate: userProfile?.joiningDate
-  });
+  }));
 
   // 🔥 Debug line for Firestore data
-  console.log("🔥 userProfile from Firestore:", userProfile);
+  console.log(String("🔥 userProfile from Firestore:") + " " + String(userProfile));
 
   // ✅ Debug line to verify userProfile loaded
-  console.log("✅ userProfile loaded:", userProfile);
+  console.log(String("✅ userProfile loaded:") + " " + String(userProfile));
 
   // Add conditional check wherever userProfile is used
   if (!userProfile) {
@@ -719,8 +719,8 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300"
-          >
+            className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300">
+            
             <ReferralLink userProfile={userProfile} />
 
             {/* Ticker Below */}
@@ -736,21 +736,21 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="rounded-none sm:rounded-xl p-0 m-0 mb-2 sm:mb-4 relative min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300"
-          >
-            {loading ? (
-              <DashboardProfileCardSkeleton />
-            ) : (
-              <DashboardProfileCard
-                userId={userProfile?.userId || 'N/A'}
-                name={userProfile?.fullName || userProfile?.name || 'N/A'}
-                joiningDate={userProfile?.registrationTime || userProfile?.createdAt || 'N/A'}
-                levelStatus={userProfile?.levelStatus || 'N/A'}
-                level={userProfile?.level || 'N/A'}
-                isActivated={userProfile?.isActivated || false}
-                referralCount={userProfile?.referralCount || 0}
-              />
-            )}
+            className="rounded-none sm:rounded-xl p-0 m-0 mb-2 sm:mb-4 relative min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300">
+            
+            {loading ?
+            <DashboardProfileCardSkeleton /> :
+
+            <DashboardProfileCard
+              userId={userProfile?.userId || 'N/A'}
+              name={userProfile?.fullName || userProfile?.name || 'N/A'}
+              joiningDate={userProfile?.registrationTime || userProfile?.createdAt || 'N/A'}
+              levelStatus={userProfile?.levelStatus || 'N/A'}
+              level={userProfile?.level || 'N/A'}
+              isActivated={userProfile?.isActivated || false}
+              referralCount={userProfile?.referralCount || 0} />
+
+            }
           </motion.div>
 
           {/* Dashboard Statistics Section */}
@@ -758,8 +758,8 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="px-4 sm:px-6 lg:px-8 mb-8"
-          >
+            className="px-4 sm:px-6 lg:px-8 mb-8">
+            
             {/* Primary Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
               <motion.div
@@ -768,8 +768,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-blue-500/90 via-indigo-600/90 to-purple-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-blue-500/90 via-indigo-600/90 to-purple-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 {/* Glassmorphism overlay */}
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 {/* Animated background gradient */}
@@ -795,8 +795,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-emerald-500/90 via-teal-600/90 to-cyan-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-emerald-500/90 via-teal-600/90 to-cyan-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 via-teal-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -820,8 +820,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-orange-500/90 via-red-600/90 to-pink-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-orange-500/90 via-red-600/90 to-pink-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 via-red-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -845,8 +845,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.4 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-violet-500/90 via-purple-600/90 to-indigo-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-violet-500/90 via-purple-600/90 to-indigo-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -873,8 +873,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.5 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-green-500/90 via-emerald-600/90 to-teal-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-green-500/90 via-emerald-600/90 to-teal-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-green-400/20 via-emerald-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -898,8 +898,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.6 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-amber-500/90 via-yellow-600/90 to-orange-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-amber-500/90 via-yellow-600/90 to-orange-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 via-yellow-500/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -923,8 +923,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.7 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-rose-500/90 via-pink-600/90 to-red-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-rose-500/90 via-pink-600/90 to-red-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-rose-400/20 via-pink-500/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -948,8 +948,8 @@ const DashboardHome = () => {
                 transition={{ duration: 0.5, delay: 0.8 }}
                 whileHover={{ y: -8, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative bg-gradient-to-br from-slate-500/90 via-gray-600/90 to-zinc-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
-              >
+                className="group relative bg-gradient-to-br from-slate-500/90 via-gray-600/90 to-zinc-700/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl" />
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-400/20 via-gray-500/20 to-zinc-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -976,8 +976,8 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300"
-          >
+            className="rounded-none sm:rounded-xl p-3 sm:p-4 min-w-0 hover:bg-[#eff6ff] hover:shadow-md transition-all duration-300">
+            
             <SocialMediaBar />
           </motion.div>
           {/* Payment Journey Explained Section */}
@@ -985,23 +985,23 @@ const DashboardHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.7 }}
-            className="w-full px-4 py-12 sm:py-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl relative z-10"
-          >
+            className="w-full px-4 py-12 sm:py-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl relative z-10">
+            
             <div className="max-w-2xl mx-auto text-center relative z-20">
               <motion.h2
                 className="text-3xl sm:text-4xl font-black text-gray-900 mb-4"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
+                transition={{ delay: 0.2 }}>
+                
                 Payment Journey Explained
               </motion.h2>
               <motion.p
                 className="text-lg text-gray-600 mb-8"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
+                transition={{ delay: 0.4 }}>
+                
                 Explore how your earnings grow from Star Level to Diamond Level through our helping network.
               </motion.p>
               <motion.button
@@ -1011,24 +1011,24 @@ const DashboardHome = () => {
                   e.stopPropagation();
                   setShowPaymentJourney(true);
                 }}
-                className="pointer-events-auto px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all relative z-50 cursor-pointer"
-              >
+                className="pointer-events-auto px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all relative z-50 cursor-pointer">
+                
                 View Full Journey
               </motion.button>
             </div>
           </motion.div>
 
           {/* Payment Journey Motion Overlay */}
-          {showPaymentJourney && (
-            <PaymentJourneyMotion
-              mode="fullscreen"
-              user={user}
-              onClose={() => setShowPaymentJourney(false)}
-            />
-          )}        </div>
+          {showPaymentJourney &&
+          <PaymentJourneyMotion
+            mode="fullscreen"
+            user={user}
+            onClose={() => setShowPaymentJourney(false)} />
+
+          }        </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default DashboardHome;

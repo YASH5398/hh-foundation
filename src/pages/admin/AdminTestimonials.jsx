@@ -6,22 +6,22 @@ import { Star, MessageSquare, Users, TrendingUp, Search, Filter, CheckCircle, XC
 import { toast } from "react-hot-toast";
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "All Requests", icon: MessageSquare },
-  { value: "pending", label: "Pending Review", icon: Clock },
-  { value: "approved", label: "Approved", icon: CheckCircle },
-  { value: "rejected", label: "Rejected", icon: XCircle },
-];
+{ value: "all", label: "All Requests", icon: MessageSquare },
+{ value: "pending", label: "Pending Review", icon: Clock },
+{ value: "approved", label: "Approved", icon: CheckCircle },
+{ value: "rejected", label: "Rejected", icon: XCircle }];
+
 
 const STATUS_STYLES = {
   approved: "bg-green-900/50 text-green-300 border border-green-700",
   rejected: "bg-red-900/50 text-red-300 border border-red-700",
-  pending: "bg-yellow-900/50 text-yellow-300 border border-yellow-700",
+  pending: "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
 };
 
 const STATUS_BADGES = {
   approved: { icon: CheckCircle, color: "text-green-400", bg: "bg-green-900/20", border: "border-green-700" },
   rejected: { icon: XCircle, color: "text-red-400", bg: "bg-red-900/20", border: "border-red-700" },
-  pending: { icon: Clock, color: "text-yellow-400", bg: "bg-yellow-900/20", border: "border-yellow-700" },
+  pending: { icon: Clock, color: "text-yellow-400", bg: "bg-yellow-900/20", border: "border-yellow-700" }
 };
 
 const AdminTestimonials = () => {
@@ -45,10 +45,10 @@ const AdminTestimonials = () => {
       }
       q = query(q, orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
-      const testimonialData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const testimonialData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setTestimonials(testimonialData);
     } catch (error) {
-      console.error("Error fetching testimonial requests:", error);
+      console.error(String("Error fetching testimonial requests:") + " " + String(error));
       if (error.code === 'permission-denied') {
         toast.error("Permission Denied: Access restricted to Admins.");
       } else {
@@ -65,37 +65,37 @@ const AdminTestimonials = () => {
   }, [filter]);
 
   // Filter and sort testimonials
-  const filteredAndSortedTestimonials = testimonials
-    .filter(testimonial =>
-      searchTerm === "" ||
-      testimonial.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.review?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      let aVal, bVal;
-      switch (sortBy) {
-        case "name":
-          aVal = (a.name || "").toLowerCase();
-          bVal = (b.name || "").toLowerCase();
-          break;
-        case "rating":
-          aVal = a.rating || 0;
-          bVal = b.rating || 0;
-          break;
-        case "submittedAt":
-          aVal = a.createdAt?.seconds || 0;
-          bVal = b.createdAt?.seconds || 0;
-          break;
-        default:
-          return 0;
-      }
-      if (sortOrder === "asc") {
-        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-      } else {
-        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-      }
-    });
+  const filteredAndSortedTestimonials = testimonials.
+  filter((testimonial) =>
+  searchTerm === "" ||
+  testimonial.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  testimonial.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  testimonial.review?.toLowerCase().includes(searchTerm.toLowerCase())
+  ).
+  sort((a, b) => {
+    let aVal, bVal;
+    switch (sortBy) {
+      case "name":
+        aVal = (a.name || "").toLowerCase();
+        bVal = (b.name || "").toLowerCase();
+        break;
+      case "rating":
+        aVal = a.rating || 0;
+        bVal = b.rating || 0;
+        break;
+      case "submittedAt":
+        aVal = a.createdAt?.seconds || 0;
+        bVal = b.createdAt?.seconds || 0;
+        break;
+      default:
+        return 0;
+    }
+    if (sortOrder === "asc") {
+      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+    } else {
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+    }
+  });
 
   // Statistics calculations
   const stats = testimonials.reduce((acc, t) => {
@@ -120,7 +120,7 @@ const AdminTestimonials = () => {
   };
 
   const handleAction = async (id, action) => {
-    setActionLoading(prev => ({ ...prev, [id]: true }));
+    setActionLoading((prev) => ({ ...prev, [id]: true }));
     try {
       const testimonialRef = doc(db, "testimonialRequests", id);
 
@@ -181,16 +181,16 @@ const AdminTestimonials = () => {
       }
 
       // Update local state
-      setTestimonials(prev => prev.map(t =>
-        t.id === id
-          ? { ...t, status: action === "approve" ? "approved" : "rejected" }
-          : t
+      setTestimonials((prev) => prev.map((t) =>
+      t.id === id ?
+      { ...t, status: action === "approve" ? "approved" : "rejected" } :
+      t
       ));
     } catch (error) {
-      console.error("Error processing testimonial request:", error);
+      console.error(String("Error processing testimonial request:") + " " + String(error));
       toast.error("Failed to process testimonial request");
     } finally {
-      setActionLoading(prev => ({ ...prev, [id]: false }));
+      setActionLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -199,15 +199,15 @@ const AdminTestimonials = () => {
     if (selectedTestimonials.length === filteredAndSortedTestimonials.length) {
       setSelectedTestimonials([]);
     } else {
-      setSelectedTestimonials(filteredAndSortedTestimonials.map(t => t.id));
+      setSelectedTestimonials(filteredAndSortedTestimonials.map((t) => t.id));
     }
   };
 
   const handleSelectTestimonial = (id) => {
-    setSelectedTestimonials(prev =>
-      prev.includes(id)
-        ? prev.filter(testimonialId => testimonialId !== id)
-        : [...prev, id]
+    setSelectedTestimonials((prev) =>
+    prev.includes(id) ?
+    prev.filter((testimonialId) => testimonialId !== id) :
+    [...prev, id]
     );
   };
 
@@ -264,7 +264,7 @@ const AdminTestimonials = () => {
           batch.set(notificationRef, notificationData);
         }
       } else if (action === "reject") {
-        selectedTestimonials.forEach(id => {
+        selectedTestimonials.forEach((id) => {
           const testimonialRef = doc(db, "testimonialRequests", id);
           batch.update(testimonialRef, { status: "rejected" });
         });
@@ -272,16 +272,16 @@ const AdminTestimonials = () => {
 
       await batch.commit();
 
-      setTestimonials(prev => prev.map(t =>
-        selectedTestimonials.includes(t.id)
-          ? { ...t, status: action === "approve" ? "approved" : "rejected" }
-          : t
+      setTestimonials((prev) => prev.map((t) =>
+      selectedTestimonials.includes(t.id) ?
+      { ...t, status: action === "approve" ? "approved" : "rejected" } :
+      t
       ));
 
       setSelectedTestimonials([]);
       toast.success(`${selectedTestimonials.length} testimonial requests ${action === "approve" ? "approved" : "rejected"} successfully`);
     } catch (error) {
-      console.error("Error performing bulk action:", error);
+      console.error(String("Error performing bulk action:") + " " + String(error));
       toast.error("Failed to perform bulk action");
     }
   };
@@ -360,8 +360,8 @@ const AdminTestimonials = () => {
                   placeholder="Search by name, user ID, or review..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
+                  className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" />
+                
               </div>
 
               {/* Status Filter */}
@@ -369,13 +369,13 @@ const AdminTestimonials = () => {
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="appearance-none px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 pr-10"
-                >
-                  {STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-slate-800 text-white">
+                  className="appearance-none px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 pr-10">
+                  
+                  {STATUS_OPTIONS.map((opt) =>
+                  <option key={opt.value} value={opt.value} className="bg-slate-800 text-white">
                       {opt.label}
                     </option>
-                  ))}
+                  )}
                 </select>
                 <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
               </div>
@@ -385,8 +385,8 @@ const AdminTestimonials = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 pr-10"
-                >
+                  className="appearance-none px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 pr-10">
+                  
                   <option value="submittedAt" className="bg-slate-800 text-white">Newest First</option>
                   <option value="name" className="bg-slate-800 text-white">Name</option>
                   <option value="rating" className="bg-slate-800 text-white">Rating</option>
@@ -396,32 +396,32 @@ const AdminTestimonials = () => {
             </div>
 
             {/* Bulk Actions */}
-            {selectedTestimonials.length > 0 && (
-              <div className="flex gap-2">
+            {selectedTestimonials.length > 0 &&
+            <div className="flex gap-2">
                 <span className="text-slate-400 text-sm self-center mr-2">
                   {selectedTestimonials.length} selected
                 </span>
                 <button
-                  onClick={() => handleBulkAction('approve')}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg"
-                >
+                onClick={() => handleBulkAction('approve')}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg">
+                
                   <ThumbsUp className="w-4 h-4" />
                   Approve All
                 </button>
                 <button
-                  onClick={() => handleBulkAction('reject')}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg"
-                >
+                onClick={() => handleBulkAction('reject')}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg">
+                
                   <ThumbsDown className="w-4 h-4" />
                   Reject All
                 </button>
               </div>
-            )}
+            }
 
             <button
               onClick={fetchTestimonials}
-              className="flex items-center gap-2 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-slate-300 hover:text-white px-4 py-3 rounded-xl border border-slate-600 hover:border-slate-500 transition-all duration-200 hover:shadow-lg"
-            >
+              className="flex items-center gap-2 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-slate-300 hover:text-white px-4 py-3 rounded-xl border border-slate-600 hover:border-slate-500 transition-all duration-200 hover:shadow-lg">
+              
               <RefreshCw className="w-5 h-5" />
               Refresh
             </button>
@@ -438,8 +438,8 @@ const AdminTestimonials = () => {
                       type="checkbox"
                       checked={selectedTestimonials.length === filteredAndSortedTestimonials.length && filteredAndSortedTestimonials.length > 0}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
+                      className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2" />
+                    
                   </th>
                   <th className="px-6 py-4 font-semibold text-left">User</th>
                   <th className="px-6 py-4 font-semibold text-left">Method</th>
@@ -452,38 +452,38 @@ const AdminTestimonials = () => {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr>
+                {loading ?
+                <tr>
                     <td colSpan={9} className="text-center py-16 text-slate-400 bg-slate-900/30">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         Loading testimonial requests...
                       </div>
                     </td>
-                  </tr>
-                ) : filteredAndSortedTestimonials.length === 0 ? (
-                  <tr>
+                  </tr> :
+                filteredAndSortedTestimonials.length === 0 ?
+                <tr>
                     <td colSpan={9} className="text-center py-16 text-slate-400 bg-slate-900/30">
                       <div className="flex flex-col items-center gap-2">
                         <MessageSquare className="w-8 h-8 text-slate-500" />
                         <p>No testimonial requests found matching your criteria</p>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  filteredAndSortedTestimonials.map(t => {
-                    const isSelected = selectedTestimonials.includes(t.id);
-                    const statusBadge = STATUS_BADGES[t.status];
+                  </tr> :
 
-                    return (
-                      <tr key={t.id} className={`border-b border-slate-700/50 last:border-0 hover:bg-slate-800/30 transition-all duration-200 ${isSelected ? 'bg-blue-900/20 border-blue-700/50' : ''}`}>
+                filteredAndSortedTestimonials.map((t) => {
+                  const isSelected = selectedTestimonials.includes(t.id);
+                  const statusBadge = STATUS_BADGES[t.status];
+
+                  return (
+                    <tr key={t.id} className={`border-b border-slate-700/50 last:border-0 hover:bg-slate-800/30 transition-all duration-200 ${isSelected ? 'bg-blue-900/20 border-blue-700/50' : ''}`}>
                         <td className="px-4 py-4 text-center">
                           <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleSelectTestimonial(t.id)}
-                            className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
-                          />
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectTestimonial(t.id)}
+                          className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2" />
+                        
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -502,48 +502,48 @@ const AdminTestimonials = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          {t.videoLink ? (
-                            <a
-                              href={t.videoLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 transition-colors"
-                            >
+                          {t.videoLink ?
+                        <a
+                          href={t.videoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 transition-colors">
+                          
                               <Eye className="w-4 h-4" />
                               View Video
-                            </a>
-                          ) : (
-                            <span className="text-slate-500 text-sm">No video</span>
-                          )}
+                            </a> :
+
+                        <span className="text-slate-500 text-sm">No video</span>
+                        }
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {t.rating ? (
-                              <>
+                            {t.rating ?
+                          <>
                                 <div className="flex gap-0.5">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`w-4 h-4 ${i < t.rating ? 'text-yellow-400 fill-current' : 'text-slate-600'}`}
-                                    />
-                                  ))}
+                                  {[...Array(5)].map((_, i) =>
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${i < t.rating ? 'text-yellow-400 fill-current' : 'text-slate-600'}`} />
+
+                              )}
                                 </div>
                                 <span className="text-slate-300 text-sm ml-1">({t.rating})</span>
-                              </>
-                            ) : (
-                              <span className="text-slate-500 text-sm">No rating</span>
-                            )}
+                              </> :
+
+                          <span className="text-slate-500 text-sm">No rating</span>
+                          }
                           </div>
                         </td>
                         <td className="px-6 py-4 max-w-xs">
                           <div className="text-white text-sm leading-relaxed">
-                            {t.review ? (
-                              <span title={t.review}>
+                            {t.review ?
+                          <span title={t.review}>
                                 {t.review.length > 100 ? `${t.review.substring(0, 100)}...` : t.review}
-                              </span>
-                            ) : (
-                              <span className="text-slate-500">No review provided</span>
-                            )}
+                              </span> :
+
+                          <span className="text-slate-500">No review provided</span>
+                          }
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-300 text-sm">
@@ -557,51 +557,51 @@ const AdminTestimonials = () => {
                             {statusBadge?.icon && <statusBadge.icon className={`w-3 h-3 ${STATUS_BADGES[t.status]?.color}`} />}
                             <span className={STATUS_BADGES[t.status]?.color}>
                               {t.status === 'approved' ? 'Approved' :
-                                t.status === 'rejected' ? 'Rejected' :
-                                  t.status === 'waiting_video' ? 'Waiting' :
-                                    t.status}
+                            t.status === 'rejected' ? 'Rejected' :
+                            t.status === 'waiting_video' ? 'Waiting' :
+                            t.status}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex gap-2 justify-center">
-                            {t.status === 'waiting_video' && (
-                              <>
+                            {t.status === 'waiting_video' &&
+                          <>
                                 <button
-                                  className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => handleAction(t.id, 'approve')}
-                                  disabled={actionLoading[t.id]}
-                                >
-                                  {actionLoading[t.id] ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="w-4 h-4" />
-                                  )}
+                              className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => handleAction(t.id, 'approve')}
+                              disabled={actionLoading[t.id]}>
+                              
+                                  {actionLoading[t.id] ?
+                              <Loader2 className="w-4 h-4 animate-spin" /> :
+
+                              <CheckCircle className="w-4 h-4" />
+                              }
                                   Approve
                                 </button>
                                 <button
-                                  className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => handleAction(t.id, 'reject')}
-                                  disabled={actionLoading[t.id]}
-                                >
-                                  {actionLoading[t.id] ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <XCircle className="w-4 h-4" />
-                                  )}
+                              className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => handleAction(t.id, 'reject')}
+                              disabled={actionLoading[t.id]}>
+                              
+                                  {actionLoading[t.id] ?
+                              <Loader2 className="w-4 h-4 animate-spin" /> :
+
+                              <XCircle className="w-4 h-4" />
+                              }
                                   Reject
                                 </button>
                               </>
-                            )}
-                            {(t.status === 'approved' || t.status === 'rejected') && (
-                              <span className="text-slate-500 text-sm">Processed</span>
-                            )}
+                          }
+                            {(t.status === 'approved' || t.status === 'rejected') &&
+                          <span className="text-slate-500 text-sm">Processed</span>
+                          }
                           </div>
                         </td>
-                      </tr>
-                    );
-                  })
-                )}
+                      </tr>);
+
+                })
+                }
               </tbody>
             </table>
           </div>
@@ -609,32 +609,32 @@ const AdminTestimonials = () => {
 
         {/* Mobile Cards */}
         <div className="lg:hidden space-y-4">
-          {loading ? (
-            <div className="text-center py-16 text-slate-400 bg-slate-800/50 rounded-2xl">
+          {loading ?
+          <div className="text-center py-16 text-slate-400 bg-slate-800/50 rounded-2xl">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
               Loading testimonials...
-            </div>
-          ) : filteredAndSortedTestimonials.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 bg-slate-800/50 rounded-2xl border border-slate-700">
+            </div> :
+          filteredAndSortedTestimonials.length === 0 ?
+          <div className="text-center py-16 text-slate-400 bg-slate-800/50 rounded-2xl border border-slate-700">
               <MessageSquare className="w-8 h-8 text-slate-500 mx-auto mb-2" />
               <p>No testimonials found matching your criteria</p>
-            </div>
-          ) : (
-            filteredAndSortedTestimonials.map(t => {
-              const isSelected = selectedTestimonials.includes(t.id);
-              const statusBadge = STATUS_BADGES[t.status];
+            </div> :
 
-              return (
-                <div key={t.id} className={`bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl border p-6 transition-all duration-200 ${isSelected ? 'border-blue-500/50 bg-blue-900/10' : 'border-slate-700'}`}>
+          filteredAndSortedTestimonials.map((t) => {
+            const isSelected = selectedTestimonials.includes(t.id);
+            const statusBadge = STATUS_BADGES[t.status];
+
+            return (
+              <div key={t.id} className={`bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl border p-6 transition-all duration-200 ${isSelected ? 'border-blue-500/50 bg-blue-900/10' : 'border-slate-700'}`}>
                   {/* Selection and Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3 flex-1">
                       <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelectTestimonial(t.id)}
-                        className="w-5 h-5 mt-1 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
-                      />
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectTestimonial(t.id)}
+                      className="w-5 h-5 mt-1 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2" />
+                    
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-lg font-semibold text-white">{t.name}</h3>
@@ -645,9 +645,9 @@ const AdminTestimonials = () => {
                             {statusBadge?.icon && <statusBadge.icon className={`w-3 h-3 ${STATUS_BADGES[t.status]?.color}`} />}
                             <span className={STATUS_BADGES[t.status]?.color}>
                               {t.status === 'approved' ? 'Approved' :
-                                t.status === 'rejected' ? 'Rejected' :
-                                  t.status === 'waiting_video' ? 'Waiting' :
-                                    t.status}
+                            t.status === 'rejected' ? 'Rejected' :
+                            t.status === 'waiting_video' ? 'Waiting' :
+                            t.status}
                             </span>
                           </span>
                           <span className="inline-flex items-center px-3 py-1 bg-slate-700/50 text-slate-300 border border-slate-600 rounded-full text-xs font-medium capitalize">
@@ -659,23 +659,23 @@ const AdminTestimonials = () => {
                   </div>
 
                   {/* Rating */}
-                  {t.rating && (
-                    <div className="mb-4">
+                  {t.rating &&
+                <div className="mb-4">
                       <div className="flex items-center gap-2 mb-1">
                         <Star className="w-4 h-4 text-yellow-400" />
                         <span className="text-slate-300 text-sm">Rating</span>
                       </div>
                       <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-5 h-5 ${i < t.rating ? 'text-yellow-400 fill-current' : 'text-slate-600'}`}
-                          />
-                        ))}
+                        {[...Array(5)].map((_, i) =>
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${i < t.rating ? 'text-yellow-400 fill-current' : 'text-slate-600'}`} />
+
+                    )}
                         <span className="text-slate-300 text-sm ml-2">({t.rating}/5)</span>
                       </div>
                     </div>
-                  )}
+                }
 
                   {/* Review */}
                   <div className="mb-4">
@@ -689,19 +689,19 @@ const AdminTestimonials = () => {
                   </div>
 
                   {/* Video Link */}
-                  {t.videoLink && (
-                    <div className="mb-4">
+                  {t.videoLink &&
+                <div className="mb-4">
                       <a
-                        href={t.videoLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-400 hover:text-blue-300 underline transition-colors"
-                      >
+                    href={t.videoLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 underline transition-colors">
+                    
                         <Eye className="w-4 h-4" />
                         View Testimonial Video
                       </a>
                     </div>
-                  )}
+                }
 
                   {/* Timestamp */}
                   <div className="flex items-center gap-2 mb-4 text-slate-400 text-xs">
@@ -711,49 +711,49 @@ const AdminTestimonials = () => {
 
                   {/* Actions */}
                   <div className="flex gap-2 justify-end">
-                    {t.status === 'waiting_video' && (
-                      <>
+                    {t.status === 'waiting_video' &&
+                  <>
                         <button
-                          className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          onClick={() => handleAction(t.id, 'approve')}
-                          disabled={actionLoading[t.id]}
-                        >
-                          {actionLoading[t.id] ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-4 h-4" />
-                          )}
+                      className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleAction(t.id, 'approve')}
+                      disabled={actionLoading[t.id]}>
+                      
+                          {actionLoading[t.id] ?
+                      <Loader2 className="w-4 h-4 animate-spin" /> :
+
+                      <CheckCircle className="w-4 h-4" />
+                      }
                           Approve
                         </button>
                         <button
-                          className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          onClick={() => handleAction(t.id, 'reject')}
-                          disabled={actionLoading[t.id]}
-                        >
-                          {actionLoading[t.id] ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <XCircle className="w-4 h-4" />
-                          )}
+                      className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleAction(t.id, 'reject')}
+                      disabled={actionLoading[t.id]}>
+                      
+                          {actionLoading[t.id] ?
+                      <Loader2 className="w-4 h-4 animate-spin" /> :
+
+                      <XCircle className="w-4 h-4" />
+                      }
                           Reject
                         </button>
                       </>
-                    )}
-                    {(t.status === 'approved' || t.status === 'rejected') && (
-                      <div className="flex items-center gap-2 text-slate-500 text-sm">
+                  }
+                    {(t.status === 'approved' || t.status === 'rejected') &&
+                  <div className="flex items-center gap-2 text-slate-500 text-sm">
                         <CheckCircle className="w-4 h-4" />
                         Processed
                       </div>
-                    )}
+                  }
                   </div>
-                </div>
-              );
-            })
-          )}
+                </div>);
+
+          })
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
-export default AdminTestimonials; 
+export default AdminTestimonials;

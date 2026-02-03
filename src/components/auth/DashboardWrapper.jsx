@@ -6,12 +6,12 @@ import LoadingSpinner from '../common/LoadingSpinner';
 const DashboardWrapper = ({ children }) => {
   const { isBlocked, loading, user, userProfile } = useAuth();
 
-  console.log("🔍 DASHBOARD WRAPPER:", {
+  console.log(String("🔍 DASHBOARD WRAPPER:") + " " + String({
     loading: loading,
     user: !!user,
     userProfile: !!userProfile,
     isBlocked: isBlocked
-  });
+  }));
 
   // CRITICAL: Wait for block check to complete before rendering anything
   if (loading) {
@@ -23,8 +23,8 @@ const DashboardWrapper = ({ children }) => {
           <h3 className="text-xl font-semibold text-gray-700 mb-2 mt-4">Verifying Account Status...</h3>
           <p className="text-gray-500">Please wait while we check your account security.</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // If user is blocked, show full-screen block page instead of dashboard

@@ -12,8 +12,8 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
+  Timestamp } from
+'firebase/firestore';
 import { db } from '../config/firebase';
 
 /**
@@ -32,7 +32,7 @@ export const getDocumentById = async (collectionName, docId) => {
     const snapshot = await getDoc(docRef);
     return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
   } catch (error) {
-    console.error(`Error getting document from ${collectionName}:`, error);
+    console.error(String(`Error getting document from ${collectionName}:`) + " " + String(error));
     throw error;
   }
 };
@@ -53,7 +53,7 @@ export const updateDocumentField = async (collectionName, docId, updates) => {
     });
     return { success: true };
   } catch (error) {
-    console.error(`Error updating document in ${collectionName}:`, error);
+    console.error(String(`Error updating document in ${collectionName}:`) + " " + String(error));
     return { success: false, error: error.message };
   }
 };
@@ -75,7 +75,7 @@ export const setDocument = async (collectionName, docId, data, merge = true) => 
     }, { merge });
     return { success: true };
   } catch (error) {
-    console.error(`Error setting document in ${collectionName}:`, error);
+    console.error(String(`Error setting document in ${collectionName}:`) + " " + String(error));
     return { success: false, error: error.message };
   }
 };
@@ -108,9 +108,9 @@ export const queryDocuments = async (collectionName, conditions = [], orderByFie
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error(`Error querying ${collectionName}:`, error);
+    console.error(String(`Error querying ${collectionName}:`) + " " + String(error));
     throw error;
   }
 };
@@ -144,14 +144,14 @@ export const subscribeToCollection = (collectionName, conditions = [], orderByFi
     }
 
     return onSnapshot(q, (snapshot) => {
-      const documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const documents = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       callback(documents);
     }, (error) => {
-      console.error(`Error subscribing to ${collectionName}:`, error);
+      console.error(String(`Error subscribing to ${collectionName}:`) + " " + String(error));
       callback([]);
     });
   } catch (error) {
-    console.error(`Error setting up subscription for ${collectionName}:`, error);
+    console.error(String(`Error setting up subscription for ${collectionName}:`) + " " + String(error));
     return () => {}; // Return empty unsubscribe function
   }
 };
@@ -164,9 +164,9 @@ export const subscribeToCollection = (collectionName, conditions = [], orderByFi
  */
 export const getUsersByLevel = async (level, limitCount = 10) => {
   return queryDocuments('users', [
-    ['level', '==', level],
-    ['isActivated', '==', true]
-  ], [['referralCount', 'desc']], limitCount);
+  ['level', '==', level],
+  ['isActivated', '==', true]],
+  [['referralCount', 'desc']], limitCount);
 };
 
 /**
@@ -177,9 +177,9 @@ export const getUsersByLevel = async (level, limitCount = 10) => {
  */
 export const searchUsersByName = async (searchTerm, limitCount = 10) => {
   return queryDocuments('users', [
-    ['fullName', '>=', searchTerm],
-    ['fullName', '<=', searchTerm + '\uf8ff']
-  ], [], limitCount);
+  ['fullName', '>=', searchTerm],
+  ['fullName', '<=', searchTerm + '\uf8ff']],
+  [], limitCount);
 };
 
 /**
@@ -189,6 +189,6 @@ export const searchUsersByName = async (searchTerm, limitCount = 10) => {
  */
 export const getTopReferrers = async (limitCount = 10) => {
   return queryDocuments('users', [
-    ['isActivated', '==', true]
-  ], [['referralCount', 'desc']], limitCount);
+  ['isActivated', '==', true]],
+  [['referralCount', 'desc']], limitCount);
 };

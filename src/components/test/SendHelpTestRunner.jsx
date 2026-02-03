@@ -17,9 +17,9 @@ const SendHelpTestRunner = () => {
       console.log('🧪 Running Send Help Eligibility Test...');
       const result = await runSendHelpEligibilityTest();
       setTestResult(result);
-      console.log('✅ Test completed:', result);
+      console.log(String('✅ Test completed:') + " " + String(result));
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      console.error(String('❌ Test failed:') + " " + String(error));
       setTestResult({ success: false, error: error.message });
     } finally {
       setRunning(false);
@@ -52,55 +52,55 @@ const SendHelpTestRunner = () => {
           <button
             onClick={runTest}
             disabled={running}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-semibold flex items-center gap-2"
-          >
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-semibold flex items-center gap-2">
+            
             {running ? 'Running...' : 'Run Test'}
           </button>
 
           <button
             onClick={runTestAndLogConsole}
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
-          >
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold">
+            
             Run Test (Console Logs)
           </button>
         </div>
 
-        {testResult && (
-          <div className={`border rounded-lg p-4 ${
-            testResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-          }`}>
+        {testResult &&
+        <div className={`border rounded-lg p-4 ${
+        testResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`
+        }>
             <h4 className={`font-semibold mb-2 ${
-              testResult.success ? 'text-green-800' : 'text-red-800'
-            }`}>
+          testResult.success ? 'text-green-800' : 'text-red-800'}`
+          }>
               {testResult.success ? '✅ Test Passed' : '❌ Test Failed'}
             </h4>
 
-            {testResult.success ? (
-              <div className="space-y-2 text-sm text-green-700">
+            {testResult.success ?
+          <div className="space-y-2 text-sm text-green-700">
                 <p><strong>Total Receivers Found:</strong> {testResult.totalReceivers}</p>
                 <p><strong>Eligible Receivers:</strong> {testResult.eligibleReceivers}</p>
                 <p><strong>Ineligible Receivers:</strong> {testResult.ineligibleReceivers}</p>
-                {testResult.topReceiver && (
-                  <p><strong>Top Receiver:</strong> {testResult.topReceiver.userId} (Level: {testResult.topReceiver.level})</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2 text-sm text-red-700">
+                {testResult.topReceiver &&
+            <p><strong>Top Receiver:</strong> {testResult.topReceiver.userId} (Level: {testResult.topReceiver.level})</p>
+            }
+              </div> :
+
+          <div className="space-y-2 text-sm text-red-700">
                 <p><strong>Error:</strong> {testResult.error}</p>
-                {testResult.totalReceivers !== undefined && (
-                  <p><strong>Receivers Found:</strong> {testResult.totalReceivers}</p>
-                )}
+                {testResult.totalReceivers !== undefined &&
+            <p><strong>Receivers Found:</strong> {testResult.totalReceivers}</p>
+            }
               </div>
-            )}
+          }
           </div>
-        )}
+        }
 
         <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
           <strong>Instructions:</strong> Update TEST_CONFIG in sendHelpEligibilityTest.js with real inactive user credentials before running. Check browser console for detailed logs.
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default SendHelpTestRunner;

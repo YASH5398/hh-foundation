@@ -27,7 +27,7 @@ export const useEscalation = () => {
       const history = await agentService.getEscalationHistory(user.uid, limit);
       setEscalationHistory(history);
     } catch (error) {
-      console.error('Error fetching escalation history:', error);
+      console.error(String('Error fetching escalation history:') + " " + String(error));
       toast.error('Failed to fetch escalation history');
     } finally {
       setLoadingHistory(false);
@@ -42,10 +42,10 @@ export const useEscalation = () => {
 
     try {
       const pendingRequests = await agentService.getEscalationHistory(user.uid, 100);
-      const pendingCount = pendingRequests.filter(req => req.status === 'pending').length;
+      const pendingCount = pendingRequests.filter((req) => req.status === 'pending').length;
       setPendingRequestsCount(pendingCount);
     } catch (error) {
-      console.error('Error fetching pending requests count:', error);
+      console.error(String('Error fetching pending requests count:') + " " + String(error));
     }
   }, [user?.uid]);
 
@@ -68,17 +68,17 @@ export const useEscalation = () => {
     try {
       // Validate input data
       const { userId, userEmail, issue } = escalationData;
-      
+
       if (!userId?.trim()) {
         toast.error('User ID is required');
         return false;
       }
-      
+
       if (!userEmail?.trim()) {
         toast.error('User email is required');
         return false;
       }
-      
+
       if (!issue?.trim()) {
         toast.error('Issue description is required');
         return false;
@@ -100,21 +100,21 @@ export const useEscalation = () => {
       };
 
       const documentId = await agentService.createEscalationRequest(requestData);
-      
+
       if (documentId) {
         toast.success('Escalation request submitted successfully!');
-        
+
         // Refresh escalation history and pending count
         await fetchEscalationHistory();
         await fetchPendingRequestsCount();
-        
+
         return true;
       } else {
         toast.error('Failed to submit escalation request');
         return false;
       }
     } catch (error) {
-      console.error('Error submitting escalation:', error);
+      console.error(String('Error submitting escalation:') + " " + String(error));
       toast.error(error.message || 'Failed to submit escalation request');
       return false;
     } finally {

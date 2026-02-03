@@ -6,67 +6,67 @@ import { db } from '../../config/firebase';
 
 // Mock data for upcoming payments (fallback)
 const mockPayments = [
-  {
-    id: 'HH001234',
-    name: 'Rajesh Kumar',
-    level: 'Gold',
-    status: 'Pending',
-    amount: '₹14,700',
-    timeLeft: '2h 15m',
-    avatar: 'RK',
-    progress: 75
-  },
-  {
-    id: 'HH001567',
-    name: 'Priya Sharma',
-    level: 'Silver',
-    status: 'Active',
-    amount: '₹2,100',
-    timeLeft: '4h 30m',
-    avatar: 'PS',
-    progress: 60
-  },
-  {
-    id: 'HH001890',
-    name: 'Amit Patel',
-    level: 'Platinum',
-    status: 'Processing',
-    amount: '₹1,02,900',
-    timeLeft: '1h 45m',
-    avatar: 'AP',
-    progress: 90
-  },
-  {
-    id: 'HH002123',
-    name: 'Sunita Devi',
-    level: 'Star',
-    status: 'Pending',
-    amount: '₹300',
-    timeLeft: '6h 20m',
-    avatar: 'SD',
-    progress: 45
-  },
-  {
-    id: 'HH002456',
-    name: 'Vikash Singh',
-    level: 'Diamond',
-    status: 'Active',
-    amount: '₹7,20,300',
-    timeLeft: '3h 10m',
-    avatar: 'VS',
-    progress: 85
-  },
-  {
-    id: 'HH002789',
-    name: 'Meera Joshi',
-    level: 'Gold',
-    status: 'Processing',
-    amount: '₹14,700',
-    timeLeft: '5h 55m',
-    avatar: 'MJ',
-    progress: 70
-  }
-];
+{
+  id: 'HH001234',
+  name: 'Rajesh Kumar',
+  level: 'Gold',
+  status: 'Pending',
+  amount: '₹14,700',
+  timeLeft: '2h 15m',
+  avatar: 'RK',
+  progress: 75
+},
+{
+  id: 'HH001567',
+  name: 'Priya Sharma',
+  level: 'Silver',
+  status: 'Active',
+  amount: '₹2,100',
+  timeLeft: '4h 30m',
+  avatar: 'PS',
+  progress: 60
+},
+{
+  id: 'HH001890',
+  name: 'Amit Patel',
+  level: 'Platinum',
+  status: 'Processing',
+  amount: '₹1,02,900',
+  timeLeft: '1h 45m',
+  avatar: 'AP',
+  progress: 90
+},
+{
+  id: 'HH002123',
+  name: 'Sunita Devi',
+  level: 'Star',
+  status: 'Pending',
+  amount: '₹300',
+  timeLeft: '6h 20m',
+  avatar: 'SD',
+  progress: 45
+},
+{
+  id: 'HH002456',
+  name: 'Vikash Singh',
+  level: 'Diamond',
+  status: 'Active',
+  amount: '₹7,20,300',
+  timeLeft: '3h 10m',
+  avatar: 'VS',
+  progress: 85
+},
+{
+  id: 'HH002789',
+  name: 'Meera Joshi',
+  level: 'Gold',
+  status: 'Processing',
+  amount: '₹14,700',
+  timeLeft: '5h 55m',
+  avatar: 'MJ',
+  progress: 70
+}];
+
 
 const levelIcons = {
   Star: Star,
@@ -105,7 +105,7 @@ export default function UpcomingPayments() {
   const fetchUpcomingPayments = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch real users where isActivated=true and isReceivingHeld=false
       const usersQuery = query(
         collection(db, 'users'),
@@ -114,20 +114,20 @@ export default function UpcomingPayments() {
         orderBy('joinedAt', 'desc'),
         limit(3) // Get 3 real users (about 50% of total 6 payments)
       );
-      
+
       const querySnapshot = await getDocs(usersQuery);
       const realUsers = [];
-      
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const levelAmounts = {
           'Star': '₹300',
-          'Silver': '₹600', 
+          'Silver': '₹600',
           'Gold': '₹2,000',
           'Platinum': '₹20,000',
           'Diamond': '₹2,00,000'
         };
-        
+
         realUsers.push({
           id: data.userId || doc.id,
           name: data.fullName || 'Anonymous User',
@@ -135,18 +135,18 @@ export default function UpcomingPayments() {
           status: 'Active',
           amount: levelAmounts[data.level] || '₹300',
           timeLeft: `${Math.floor(Math.random() * 8) + 1}h ${Math.floor(Math.random() * 60)}m`,
-          avatar: (data.fullName || 'AU').split(' ').map(n => n[0]).join('').toUpperCase(),
+          avatar: (data.fullName || 'AU').split(' ').map((n) => n[0]).join('').toUpperCase(),
           progress: Math.floor(Math.random() * 40) + 60, // 60-100% progress
           isReal: true
         });
       });
-      
+
       // Combine real users with dummy data
       const combinedPayments = [...realUsers, ...mockPayments.slice(0, 6 - realUsers.length)];
-      
+
       setPayments(combinedPayments);
     } catch (error) {
-      console.error('Error fetching upcoming payments:', error);
+      console.error(String('Error fetching upcoming payments:') + " " + String(error));
       // If Firestore fails, use only dummy data
       setPayments(mockPayments);
     } finally {
@@ -157,7 +157,7 @@ export default function UpcomingPayments() {
   // Auto-play carousel
   useEffect(() => {
     if (!isAutoPlaying) return;
-    
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % payments.length);
     }, 3000);
@@ -208,8 +208,8 @@ export default function UpcomingPayments() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
-        >
+          className="text-center mb-16">
+          
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Live
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Payments</span>
@@ -225,8 +225,8 @@ export default function UpcomingPayments() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
-        >
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -265,23 +265,23 @@ export default function UpcomingPayments() {
         </motion.div>
 
         {/* Carousel Container */}
-        <div 
+        <div
           className="relative"
           onMouseEnter={() => setIsAutoPlaying(false)}
-          onMouseLeave={() => setIsAutoPlaying(true)}
-        >
+          onMouseLeave={() => setIsAutoPlaying(true)}>
+          
           {/* Navigation Buttons */}
           <button
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all duration-300 hover:scale-110"
-          >
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all duration-300 hover:scale-110">
+            
             <ChevronLeft className="w-6 h-6 text-gray-600" />
           </button>
           
           <button
             onClick={nextSlide}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all duration-300 hover:scale-110"
-          >
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all duration-300 hover:scale-110">
+            
             <ChevronRight className="w-6 h-6 text-gray-600" />
           </button>
 
@@ -298,8 +298,8 @@ export default function UpcomingPayments() {
                     exit={{ opacity: 0, x: -100 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     whileHover={{ y: -10, scale: 1.02 }}
-                    className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300"
-                  >
+                    className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                    
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -342,8 +342,8 @@ export default function UpcomingPayments() {
                           initial={{ width: 0 }}
                           animate={{ width: `${payment.progress}%` }}
                           transition={{ duration: 1, delay: 0.5 }}
-                          className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full"
-                        ></motion.div>
+                          className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full">
+                        </motion.div>
                       </div>
                     </div>
 
@@ -356,11 +356,11 @@ export default function UpcomingPayments() {
                       <motion.div
                         animate={{ scale: [1, 1.1, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="w-3 h-3 bg-green-500 rounded-full"
-                      ></motion.div>
+                        className="w-3 h-3 bg-green-500 rounded-full">
+                      </motion.div>
                     </div>
-                  </motion.div>
-                );
+                  </motion.div>);
+
               })}
             </AnimatePresence>
           </div>
@@ -368,15 +368,15 @@ export default function UpcomingPayments() {
 
         {/* Pagination Dots */}
         <div className="flex justify-center mt-8 gap-2">
-          {payments.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === currentIndex ? 'bg-blue-600 w-8' : 'bg-gray-300 hover:bg-gray-400'
-              }`}
-            />
-          ))}
+          {payments.map((_, index) =>
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+            index === currentIndex ? 'bg-blue-600 w-8' : 'bg-gray-300 hover:bg-gray-400'}`
+            } />
+
+          )}
         </div>
 
         {/* CTA Section */}
@@ -385,8 +385,8 @@ export default function UpcomingPayments() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           viewport={{ once: true }}
-          className="text-center mt-16"
-        >
+          className="text-center mt-16">
+          
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
               Want to See More Live Activities?
@@ -397,14 +397,14 @@ export default function UpcomingPayments() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 mx-auto"
-            >
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 mx-auto">
+              
               <Eye className="w-5 h-5" />
               See All After Login
             </motion.button>
           </div>
         </motion.div>
       </div>
-    </section>
-  );
+    </section>);
+
 }

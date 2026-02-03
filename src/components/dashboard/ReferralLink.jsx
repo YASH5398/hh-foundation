@@ -11,8 +11,8 @@ import {
   validatePassword,
   cleanupAuthUser,
   getRegistrationErrorMessage,
-  requiresCleanup
-} from '../../utils/registrationUtils';
+  requiresCleanup } from
+'../../utils/registrationUtils';
 import { useAuth } from '../../context/AuthContext';
 
 const Signup = () => {
@@ -88,7 +88,7 @@ const Signup = () => {
         }
       } catch (error) {
         if (isCancelled) return;
-        console.error("Error verifying sponsor:", error);
+        console.error(String("Error verifying sponsor:") + " " + String(error));
         setSponsorInfo({
           isVerifying: false,
           isLocked: false,
@@ -99,7 +99,7 @@ const Signup = () => {
     };
 
     verifySponsor();
-    return () => { isCancelled = true; };
+    return () => {isCancelled = true;};
   }, [searchParams]);
 
   const handleChange = (e) => {
@@ -158,7 +158,7 @@ const Signup = () => {
       // For now, to keep per instruction, we leave this section as an empty spot to fill out.
 
     } catch (error) {
-      console.error('❌ Registration error:', error);
+      console.error(String('❌ Registration error:') + " " + String(error));
       const errorMessage = getRegistrationErrorMessage(error);
       toast.error(errorMessage);
 
@@ -186,8 +186,8 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">Email*</label>
@@ -198,8 +198,8 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">Phone Number*</label>
@@ -209,8 +209,8 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">WhatsApp Number</label>
@@ -219,8 +219,8 @@ const Signup = () => {
             value={form.whatsappNumber}
             onChange={handleChange}
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">Sponsor ID*</label>
@@ -230,17 +230,17 @@ const Signup = () => {
             onChange={sponsorInfo.isLocked ? undefined : handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading || sponsorInfo.isLocked}
-          />
-          {sponsorInfo.isVerifying && (
-            <p className="text-blue-500 mt-1 text-sm">Verifying Sponsor ID...</p>
-          )}
-          {sponsorInfo.name && (
-            <p className="text-green-600 mt-1 text-sm">Sponsor: {sponsorInfo.name}</p>
-          )}
-          {sponsorInfo.error && (
-            <p className="text-red-600 mt-1 text-sm">{sponsorInfo.error}</p>
-          )}
+            disabled={loading || sponsorInfo.isLocked} />
+          
+          {sponsorInfo.isVerifying &&
+          <p className="text-blue-500 mt-1 text-sm">Verifying Sponsor ID...</p>
+          }
+          {sponsorInfo.name &&
+          <p className="text-green-600 mt-1 text-sm">Sponsor: {sponsorInfo.name}</p>
+          }
+          {sponsorInfo.error &&
+          <p className="text-red-600 mt-1 text-sm">{sponsorInfo.error}</p>
+          }
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">EPIN*</label>
@@ -250,8 +250,8 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">Password*</label>
@@ -262,8 +262,8 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         <div>
           <label className="block mb-1 text-sm font-medium">Confirm Password*</label>
@@ -274,15 +274,15 @@ const Signup = () => {
             onChange={handleChange}
             required
             className="w-full p-2 border rounded"
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </div>
         {/* Payment methods, bank details, UPI details could go here as needed */}
         <button
           type="submit"
           disabled={loading || sponsorInfo.isVerifying}
-          className="w-full bg-blue-600 disabled:bg-gray-400 text-white py-2 rounded font-semibold"
-        >
+          className="w-full bg-blue-600 disabled:bg-gray-400 text-white py-2 rounded font-semibold">
+          
           {loading ? 'Registering...' : 'Sign Up'}
         </button>
       </form>
@@ -292,8 +292,7 @@ const Signup = () => {
           Log in
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 export default Signup;
-

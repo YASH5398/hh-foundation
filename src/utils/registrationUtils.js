@@ -82,30 +82,30 @@ export const getCurrentUserUid = async (timeout = 10000) => {
 export const waitForCompleteAuthState = async (uid, timeout = 20000) => {
   return new Promise((resolve, reject) => {
     let resolved = false;
-    
+
     const checkAuth = () => {
       const currentUser = auth.currentUser;
       if (currentUser && currentUser.uid === uid) {
         // Additional check: ensure user has a valid token
-        currentUser.getIdToken(true)
-          .then(() => {
-            if (!resolved) {
-              resolved = true;
-              console.log('✅ Complete authentication confirmed:', { 
-                uid: currentUser.uid, 
-                email: currentUser.email,
-                emailVerified: currentUser.emailVerified 
-              });
-              resolve();
-            }
-          })
-          .catch(error => {
-            console.error('❌ Token refresh failed:', error);
-            if (!resolved) {
-              resolved = true;
-              reject(new Error('Failed to get valid authentication token'));
-            }
-          });
+        currentUser.getIdToken(true).
+        then(() => {
+          if (!resolved) {
+            resolved = true;
+            console.log(String('✅ Complete authentication confirmed:') + " " + String({
+              uid: currentUser.uid,
+              email: currentUser.email,
+              emailVerified: currentUser.emailVerified
+            }));
+            resolve();
+          }
+        }).
+        catch((error) => {
+          console.error(String('❌ Token refresh failed:') + " " + String(error));
+          if (!resolved) {
+            resolved = true;
+            reject(new Error('Failed to get valid authentication token'));
+          }
+        });
       }
     };
 
@@ -141,12 +141,12 @@ export const refreshAuthToken = async (uid) => {
   if (!currentUser || currentUser.uid !== uid) {
     throw new Error('Authentication state invalid - cannot refresh token');
   }
-  
+
   try {
     await currentUser.getIdToken(true);
     console.log('✅ Authentication token refreshed successfully');
   } catch (error) {
-    console.error('❌ Failed to refresh authentication token:', error);
+    console.error(String('❌ Failed to refresh authentication token:') + " " + String(error));
     throw new Error('Failed to refresh authentication token');
   }
 };
@@ -177,7 +177,7 @@ export const cleanupAuthUser = async (uid) => {
       console.log('✅ Firebase Auth user deleted successfully');
     }
   } catch (error) {
-    console.error('❌ Failed to delete Firebase Auth user:', error);
+    console.error(String('❌ Failed to delete Firebase Auth user:') + " " + String(error));
   }
 };
 
@@ -204,18 +204,24 @@ export const getRegistrationErrorMessage = (error) => {
       default:
         return error.message || 'Registration failed';
     }
-  } else if (error.message) {
-    if (error.message.includes('Authentication timeout')) {
+  }
+
+  // Treat error.message as unsafe input - normalize before any string operations
+  const safeMessage = typeof error.message === 'string' ? error.message : '';
+
+  if (safeMessage) {
+    // Use ONLY safeMessage for all string method calls
+    if (safeMessage.includes('Authentication timeout')) {
       return 'Authentication timeout. Please try again.';
-    } else if (error.message.includes('Authentication state verification failed')) {
+    } else if (safeMessage.includes('Authentication state verification failed')) {
       return 'Authentication verification failed. Please try again.';
-    } else if (error.message.includes('Authentication state lost')) {
+    } else if (safeMessage.includes('Authentication state lost')) {
       return 'Authentication state lost. Please try again.';
     } else {
-      return error.message;
+      return safeMessage;
     }
   }
-  
+
   return 'Something went wrong during registration';
 };
 
@@ -225,9 +231,12 @@ export const getRegistrationErrorMessage = (error) => {
  * @returns {boolean} True if cleanup is needed
  */
 export const requiresCleanup = (error) => {
-  return error.code === 'permission-denied' || 
-         error.code === 'unavailable' || 
-         error.message?.includes('Authentication') ||
-         error.message?.includes('Firestore') ||
-         error.message?.includes('timeout');
-}; 
+  // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+  const safeMessage = typeof error?.message === "string" ? error.message : "";
+
+  return error.code === 'permission-denied' ||
+  error.code === 'unavailable' ||
+  safeMessage.includes('Authentication') ||
+  safeMessage.includes('Firestore') ||
+  safeMessage.includes('timeout');
+};

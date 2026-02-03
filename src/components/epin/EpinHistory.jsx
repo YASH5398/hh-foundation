@@ -25,14 +25,14 @@ const EpinHistory = () => {
           orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(historyQuery);
-        const historyData = snapshot.docs.map(doc => ({
+        const historyData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
           createdAt: doc.data().createdAt?.toDate()
         }));
         setHistory(historyData);
       } catch (error) {
-        console.error('Error fetching E-PIN history:', error);
+        console.error(String('Error fetching E-PIN history:') + " " + String(error));
         toast.error('Failed to load E-PIN history');
       } finally {
         setLoading(false);
@@ -75,16 +75,16 @@ const EpinHistory = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-20"
-        >
+          className="flex flex-col items-center justify-center py-20">
+          
           <div className="relative">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200"></div>
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-600 absolute top-0 left-0"></div>
           </div>
           <p className="text-gray-600 mt-4 font-medium">Loading E-PIN history...</p>
         </motion.div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -93,8 +93,8 @@ const EpinHistory = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
+          className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
+          
           <FiArrowLeft className="text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Back</span>
         </button>
@@ -104,15 +104,15 @@ const EpinHistory = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="space-y-8"
-      >
+        className="space-y-8">
+        
         {/* Header */}
         <div className="text-center">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-3"
-          >
+            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-3">
+            
             E-PIN History
           </motion.h1>
           <p className="text-gray-600 text-lg">Track your E-PIN request history</p>
@@ -123,8 +123,8 @@ const EpinHistory = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 overflow-hidden"
-        >
+          className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 overflow-hidden">
+          
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl mr-4">
@@ -134,16 +134,16 @@ const EpinHistory = () => {
             </div>
           </div>
 
-          {history.length === 0 ? (
-            <div className="text-center py-16">
+          {history.length === 0 ?
+          <div className="text-center py-16">
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                 <FiPackage className="text-gray-500 text-2xl" />
               </div>
               <h3 className="text-xl font-semibold text-gray-700 mb-2">No History Found</h3>
               <p className="text-gray-500">You haven't made any E-PIN requests yet.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> :
+
+          <div className="overflow-x-auto">
               {/* Desktop Table */}
               <div className="hidden md:block">
                 <table className="w-full">
@@ -174,17 +174,17 @@ const EpinHistory = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {history.map((item, index) => {
-                      const statusConfig = getStatusConfig(item.status);
-                      const StatusIcon = statusConfig.icon;
-                      
-                      return (
-                        <motion.tr
-                          key={item.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="hover:bg-gray-50/50 transition-colors duration-200"
-                        >
+                    const statusConfig = getStatusConfig(item.status);
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <motion.tr
+                        key={item.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="hover:bg-gray-50/50 transition-colors duration-200">
+                        
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
                               {formatDate(item.createdAt, { includeTime: true })}
@@ -212,9 +212,9 @@ const EpinHistory = () => {
                               {statusConfig.label}
                             </span>
                           </td>
-                        </motion.tr>
-                      );
-                    })}
+                        </motion.tr>);
+
+                  })}
                   </tbody>
                 </table>
               </div>
@@ -222,17 +222,17 @@ const EpinHistory = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4 p-4">
                 {history.map((item, index) => {
-                  const statusConfig = getStatusConfig(item.status);
-                  const StatusIcon = statusConfig.icon;
-                  
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm"
-                    >
+                const statusConfig = getStatusConfig(item.status);
+                const StatusIcon = statusConfig.icon;
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                    
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium text-gray-900">
                           {formatDate(item.createdAt)}
@@ -264,22 +264,22 @@ const EpinHistory = () => {
                           </div>
                         </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
+                    </motion.div>);
+
+              })}
               </div>
             </div>
-          )}
+          }
         </motion.div>
 
         {/* Summary Stats */}
-        {history.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
+        {history.length > 0 &&
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
             <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
@@ -297,7 +297,7 @@ const EpinHistory = () => {
                   <p className="text-indigo-100 text-sm">Successful requests</p>
                 </div>
                 <div className="text-3xl font-bold">
-                  {history.filter(item => item.status === 'approved').length}
+                  {history.filter((item) => item.status === 'approved').length}
                 </div>
               </div>
             </div>
@@ -309,15 +309,15 @@ const EpinHistory = () => {
                   <p className="text-amber-100 text-sm">Awaiting approval</p>
                 </div>
                 <div className="text-3xl font-bold">
-                  {history.filter(item => item.status === 'pending').length}
+                  {history.filter((item) => item.status === 'pending').length}
                 </div>
               </div>
             </div>
           </motion.div>
-        )}
+        }
       </motion.div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default EpinHistory;

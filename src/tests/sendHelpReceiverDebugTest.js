@@ -18,7 +18,7 @@ export async function runSendHelpReceiverDebugTest() {
     console.log('📊 Step 1: Fetching ALL users from Firestore...');
     const allUsersQuery = query(collection(db, 'users'));
     const allUsersSnap = await getDocs(allUsersQuery);
-    const allUsers = allUsersSnap.docs.map(doc => ({
+    const allUsers = allUsersSnap.docs.map((doc) => ({
       uid: doc.id,
       ...doc.data()
     }));
@@ -31,24 +31,24 @@ export async function runSendHelpReceiverDebugTest() {
     console.log('| UID | Full Name | Level Status | Activated | Blocked |');
     console.log('==========================================');
 
-    allUsers.forEach(user => {
+    allUsers.forEach((user) => {
       const uid = user.uid.substring(0, 8) + '...';
       const name = (user.fullName || 'Unknown').substring(0, 15);
       const level = user.levelStatus || 'N/A';
       const activated = user.isActivated ? '✅' : '❌';
-      const blocked = (user.isBlocked || user.isOnHold) ? '🚫' : '✅';
+      const blocked = user.isBlocked || user.isOnHold ? '🚫' : '✅';
 
       console.log(`| ${uid} | ${name.padEnd(15)} | ${level.padEnd(12)} | ${activated} | ${blocked} |`);
     });
     console.log('==========================================');
 
     // 3. Filter activated users
-    const activatedUsers = allUsers.filter(user => user.isActivated === true);
+    const activatedUsers = allUsers.filter((user) => user.isActivated === true);
     console.log(`\n🎯 ACTIVATED USERS: ${activatedUsers.length}`);
 
     // 4. Group by level
     const usersByLevel = {};
-    activatedUsers.forEach(user => {
+    activatedUsers.forEach((user) => {
       const level = user.levelStatus || 'Unknown';
       if (!usersByLevel[level]) {
         usersByLevel[level] = [];
@@ -57,7 +57,7 @@ export async function runSendHelpReceiverDebugTest() {
     });
 
     console.log('\n📈 USERS BY LEVEL:');
-    Object.keys(usersByLevel).forEach(level => {
+    Object.keys(usersByLevel).forEach((level) => {
       console.log(`  ${level}: ${usersByLevel[level].length} users`);
     });
 
@@ -70,13 +70,13 @@ export async function runSendHelpReceiverDebugTest() {
     );
 
     const starSnap = await getDocs(starQuery);
-    const starUsers = starSnap.docs.map(doc => ({
+    const starUsers = starSnap.docs.map((doc) => ({
       uid: doc.id,
       ...doc.data()
     }));
 
     console.log(`  Query returned: ${starUsers.length} users`);
-    starUsers.forEach(user => {
+    starUsers.forEach((user) => {
       console.log(`    - ${user.userId} (${user.fullName})`);
     });
 
@@ -118,7 +118,7 @@ export async function runSendHelpReceiverDebugTest() {
     };
 
   } catch (error) {
-    console.error('❌ TEST FAILED:', error);
+    console.error(String('❌ TEST FAILED:') + " " + String(error));
     return { success: false, error: error.message };
   }
 }
@@ -129,9 +129,9 @@ export async function runSendHelpReceiverDebugTest() {
 export async function runTestAndLog() {
   const result = await runSendHelpReceiverDebugTest();
 
-  console.log('\n' + '='.repeat(50));
+  console.log(String('\n' + '='.repeat(50)));
   console.log('TEST SUMMARY');
-  console.log('='.repeat(50));
+  console.log(String('='.repeat(50)));
 
   if (result.success) {
     console.log('✅ TEST PASSED');
@@ -144,7 +144,7 @@ export async function runTestAndLog() {
     console.log(`   Reason: ${result.reason || result.error}`);
   }
 
-  console.log('='.repeat(50));
+  console.log(String('='.repeat(50)));
   return result;
 }
 

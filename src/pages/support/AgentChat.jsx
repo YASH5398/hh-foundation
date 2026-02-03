@@ -25,13 +25,13 @@ const AgentChat = () => {
   };
 
   // Connecting Loader Component
-  const ConnectingLoader = () => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="flex flex-col items-center justify-center py-8 space-y-4"
-    >
+  const ConnectingLoader = () =>
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    className="flex flex-col items-center justify-center py-8 space-y-4">
+    
       <div className="relative">
         <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -42,17 +42,17 @@ const AgentChat = () => {
         <h3 className="text-lg font-semibold text-gray-800 mb-1">Connecting to agent...</h3>
         <p className="text-gray-600 text-sm">Please wait while we find an available agent</p>
       </div>
-    </motion.div>
-  );
+    </motion.div>;
+
 
   // Agent Typing Indicator Component
-  const AgentTypingIndicator = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="flex items-start space-x-3 mb-4"
-    >
+  const AgentTypingIndicator = () =>
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    className="flex items-start space-x-3 mb-4">
+    
       <div className="flex-shrink-0">
         <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
           {agentInfo?.agentName?.charAt(0) || 'A'}
@@ -61,12 +61,12 @@ const AgentChat = () => {
       <div className="bg-white text-gray-800 rounded-2xl rounded-bl-md shadow-sm px-4 py-3">
         <div className="flex space-x-1">
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
         </div>
       </div>
-    </motion.div>
-  );
+    </motion.div>;
+
 
   useEffect(() => {
     scrollToBottom();
@@ -84,15 +84,15 @@ const AgentChat = () => {
           where('userId', '==', user.uid),
           where('status', 'in', ['waiting', 'connected'])
         );
-        
+
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
           // Found existing active chat room
           const existingChatRoom = querySnapshot.docs[0];
           setChatRoom({ id: existingChatRoom.id, ...existingChatRoom.data() });
           setChatStatus(existingChatRoom.data().status);
-          
+
           if (existingChatRoom.data().agentId && existingChatRoom.data().agentName) {
             setAgentInfo({
               id: existingChatRoom.data().agentId,
@@ -104,7 +104,7 @@ const AgentChat = () => {
           setChatStatus('waiting');
         }
       } catch (error) {
-        console.error('Error checking existing chat room:', error);
+        console.error(String('Error checking existing chat room:') + " " + String(error));
       }
     };
 
@@ -121,7 +121,7 @@ const AgentChat = () => {
         const data = doc.data();
         setChatRoom({ id: doc.id, ...data });
         setChatStatus(data.status);
-        
+
         if (data.agentId && data.agentName) {
           setAgentInfo({
             id: data.agentId,
@@ -142,7 +142,7 @@ const AgentChat = () => {
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map(doc => ({
+      const chatMessages = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
@@ -172,10 +172,10 @@ const AgentChat = () => {
       const docRef = await addDoc(collection(db, 'agentChats'), chatRoomData);
       setChatRoom({ id: docRef.id, ...chatRoomData });
       setChatStatus('waiting');
-      
+
       toast.success('Request sent! Waiting for an available agent...');
     } catch (error) {
-      console.error('Error requesting agent:', error);
+      console.error(String('Error requesting agent:') + " " + String(error));
       toast.error('Failed to request agent');
     } finally {
       setIsLoading(false);
@@ -207,7 +207,7 @@ const AgentChat = () => {
 
       await addDoc(collection(db, 'agentChats', chatRoom.id, 'messages'), messageData);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error(String('Error sending message:') + " " + String(error));
       toast.error('Failed to send message');
     } finally {
       setIsLoading(false);
@@ -259,8 +259,8 @@ const AgentChat = () => {
   const statusDisplay = getStatusDisplay();
   const StatusIcon = statusDisplay.icon;
 
-  const ConnectingLoaderUI = () => (
-    <div className="flex flex-col items-center justify-center py-16">
+  const ConnectingLoaderUI = () =>
+  <div className="flex flex-col items-center justify-center py-16">
       <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
         <FiHeadphones className="w-8 h-8 text-white" />
       </div>
@@ -273,8 +273,8 @@ const AgentChat = () => {
         <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
         <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
       </div>
-    </div>
-  );
+    </div>;
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -283,8 +283,8 @@ const AgentChat = () => {
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <button
             onClick={() => navigate('/dashboard/support')}
-            className="p-2 hover:bg-green-700 rounded-full transition-colors flex-shrink-0"
-          >
+            className="p-2 hover:bg-green-700 rounded-full transition-colors flex-shrink-0">
+            
             <FiArrowLeft className="w-5 h-5" />
           </button>
 
@@ -315,13 +315,13 @@ const AgentChat = () => {
         <div className="max-w-4xl mx-auto space-y-4">
           {/* Show connecting loader when requesting agent */}
           <AnimatePresence>
-            {isConnecting && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="text-center py-12"
-              >
+            {isConnecting &&
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="text-center py-12">
+              
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse shadow-lg">
                   <FiHeadphones className="w-8 h-8 text-white" />
                 </div>
@@ -335,18 +335,18 @@ const AgentChat = () => {
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               </motion.div>
-            )}
+            }
           </AnimatePresence>
 
           {/* Show waiting message when no chat room exists */}
-          {!chatRoom && !isConnecting && (
-            <div className="text-center py-12">
+          {!chatRoom && !isConnecting &&
+          <div className="text-center py-12">
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
-              >
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              
                 <FiHeadphones className="w-8 h-8 text-white" />
               </motion.div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">Connect with Live Support</h3>
@@ -354,25 +354,25 @@ const AgentChat = () => {
                 Get instant help from our support team. Click below to start a conversation.
               </p>
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={requestAgent}
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-semibold text-lg transition-colors shadow-lg"
-              >
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={requestAgent}
+              className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full font-semibold text-lg transition-colors shadow-lg">
+              
                 Start Chat
               </motion.button>
             </div>
-          )}
+          }
 
           {/* Show waiting message when chat room exists but no agent connected */}
-          {chatRoom && chatStatus === 'waiting' && messages.length === 0 && (
-            <div className="text-center py-12">
+          {chatRoom && chatStatus === 'waiting' && messages.length === 0 &&
+          <div className="text-center py-12">
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse shadow-lg"
-              >
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse shadow-lg">
+              
                 <FiClock className="w-8 h-8 text-white" />
               </motion.div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">Waiting for agent...</h3>
@@ -380,7 +380,7 @@ const AgentChat = () => {
                 An agent will join the chat shortly. Please be patient.
               </p>
             </div>
-          )}
+          }
 
           {/* Messages */}
           <AnimatePresence mode="popLayout">
@@ -398,58 +398,58 @@ const AgentChat = () => {
                     delay: index * 0.05,
                     layout: { duration: 0.2 }
                   }}
-                  className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!isUser && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  
+                  {!isUser &&
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                       <FiHeadphones className="w-4 h-4 text-white" />
                     </div>
-                  )}
+                  }
 
                   <div className={`max-w-[75%] sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg px-4 py-3 rounded-2xl shadow-sm ${
-                    isUser
-                      ? 'bg-green-500 text-white rounded-br-md'
-                      : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'
-                  }`}>
+                  isUser ?
+                  'bg-green-500 text-white rounded-br-md' :
+                  'bg-white text-gray-800 rounded-bl-md border border-gray-100'}`
+                  }>
                     <p className="text-sm sm:text-base leading-relaxed break-words">{message.text}</p>
                     <p className={`text-xs mt-2 ${
-                      isUser ? 'text-green-100' : 'text-gray-500'
-                    }`}>
+                    isUser ? 'text-green-100' : 'text-gray-500'}`
+                    }>
                       {formatTime(message.timestamp)}
                     </p>
                   </div>
 
-                  {isUser && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  {isUser &&
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                       <FiUser className="w-4 h-4 text-white" />
                     </div>
-                  )}
-                </motion.div>
-              );
+                  }
+                </motion.div>);
+
             })}
           </AnimatePresence>
 
           {/* Agent Typing Indicator */}
           <AnimatePresence>
-            {agentTyping && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-end gap-3 justify-start"
-              >
+            {agentTyping &&
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-end gap-3 justify-start">
+              
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                   <FiHeadphones className="w-4 h-4 text-white" />
                 </div>
                 <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
                 </div>
               </motion.div>
-            )}
+            }
           </AnimatePresence>
 
           <div ref={messagesEndRef} />
@@ -468,8 +468,8 @@ const AgentChat = () => {
                 placeholder={chatRoom ? "Type a message..." : "Start a conversation..."}
                 className="w-full resize-none outline-none text-gray-800 placeholder-gray-500 bg-transparent max-h-20"
                 rows={1}
-                disabled={isLoading || isConnecting || chatStatus === 'ended'}
-              />
+                disabled={isLoading || isConnecting || chatStatus === 'ended'} />
+              
             </div>
 
             <motion.button
@@ -477,15 +477,15 @@ const AgentChat = () => {
               whileTap={{ scale: 0.95 }}
               onClick={handleSendMessage}
               disabled={!newMessage.trim() || isLoading || isConnecting || chatStatus === 'ended'}
-              className="w-12 h-12 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0"
-            >
+              className="w-12 h-12 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-full flex items-center justify-center transition-colors shadow-lg flex-shrink-0">
+              
               <FiSend className="w-5 h-5 text-white" />
             </motion.button>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default AgentChat;

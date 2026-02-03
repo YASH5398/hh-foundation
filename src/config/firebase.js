@@ -24,8 +24,8 @@ import {
   runTransaction,
   arrayUnion,
   or,
-  Timestamp
-} from "firebase/firestore";
+  Timestamp } from
+"firebase/firestore";
 
 // ✅ Firebase config for HH Foundation (can be overridden at runtime by `window.__FIREBASE_CONFIG__`)
 const defaultFirebaseConfig = {
@@ -51,12 +51,12 @@ if (typeof window !== 'undefined' && window.__FIREBASE_CONFIG__) {
 }
 
 console.log('🔍 FIREBASE INIT: ===== FIREBASE CONFIGURATION =====');
-console.log('🔍 FIREBASE INIT: Project ID:', firebaseConfig.projectId);
-console.log('🔍 FIREBASE INIT: Auth Domain:', firebaseConfig.authDomain);
-console.log('🔍 FIREBASE INIT: App ID:', firebaseConfig.appId);
-console.log('🔍 FIREBASE INIT: Storage Bucket:', firebaseConfig.storageBucket);
-console.log('🔍 FIREBASE INIT: Messaging Sender ID:', firebaseConfig.messagingSenderId);
-console.log('🔍 FIREBASE INIT: Runtime override used?', typeof window !== 'undefined' && !!window.__FIREBASE_CONFIG__);
+console.log(String('🔍 FIREBASE INIT: Project ID:') + " " + String(firebaseConfig.projectId));
+console.log(String('🔍 FIREBASE INIT: Auth Domain:') + " " + String(firebaseConfig.authDomain));
+console.log(String('🔍 FIREBASE INIT: App ID:') + " " + String(firebaseConfig.appId));
+console.log(String('🔍 FIREBASE INIT: Storage Bucket:') + " " + String(firebaseConfig.storageBucket));
+console.log(String('🔍 FIREBASE INIT: Messaging Sender ID:') + " " + String(firebaseConfig.messagingSenderId));
+console.log(String('🔍 FIREBASE INIT: Runtime override used?') + " " + String(typeof window !== 'undefined' && !!window.__FIREBASE_CONFIG__));
 console.log('🔍 FIREBASE INIT: =====================================');
 
 // ✅ Initialize Firebase - SINGLE AUTH INSTANCE ONLY
@@ -64,9 +64,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 console.log('🔍 FIREBASE INIT: Firebase app initialized successfully');
-console.log('🔍 FIREBASE INIT: App name:', app.name);
-console.log('🔍 FIREBASE INIT: App options.projectId:', app.options.projectId);
-console.log('🔍 FIREBASE INIT: App options.authDomain:', app.options.authDomain);
+console.log(String('🔍 FIREBASE INIT: App name:') + " " + String(app.name));
+console.log(String('🔍 FIREBASE INIT: App options.projectId:') + " " + String(app.options.projectId));
+console.log(String('🔍 FIREBASE INIT: App options.authDomain:') + " " + String(app.options.authDomain));
 
 // Export app options for debugging
 if (typeof window !== 'undefined') {
@@ -77,14 +77,14 @@ if (typeof window !== 'undefined') {
 // ✅ Enable Firebase Auth persistence (browserLocalPersistence)
 // This ensures the session is restored on page refresh
 if (typeof window !== 'undefined') {
-  setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-      console.log('✅ Firebase Auth persistence enabled (browserLocalPersistence)');
-    })
-    .catch((error) => {
-      console.error('❌ Failed to enable Firebase Auth persistence:', error);
-      // Non-fatal error - auth will still work without persistence
-    });
+  setPersistence(auth, browserLocalPersistence).
+  then(() => {
+    console.log('✅ Firebase Auth persistence enabled (browserLocalPersistence)');
+  }).
+  catch((error) => {
+    console.error(String('❌ Failed to enable Firebase Auth persistence:') + " " + String(error));
+    // Non-fatal error - auth will still work without persistence
+  });
 }
 
 // Prefer initializeFirestore with long-polling auto-detection to reduce WebChannel/proxy issues
@@ -106,7 +106,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       console.warn('⚠️ Firebase Messaging requires a secure context (HTTPS or localhost)');
     }
   } catch (error) {
-    console.error('❌ Firebase Messaging initialization failed:', error);
+    console.error(String('❌ Firebase Messaging initialization failed:') + " " + String(error));
     messaging = null;
   }
 } else {
@@ -139,5 +139,4 @@ export {
   runTransaction,
   arrayUnion,
   or,
-  Timestamp
-};
+  Timestamp };

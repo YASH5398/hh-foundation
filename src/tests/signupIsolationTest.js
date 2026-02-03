@@ -114,19 +114,22 @@ export async function runSignupIsolationTest() {
     console.error("================================");
 
     // Log detailed error information
-    console.error("Error Code:", error.code);
-    console.error("Error Message:", error.message);
-    console.error("Error Stack:", error.stack);
+    console.error(String("Error Code:") + " " + String(error.code));
+    console.error(String("Error Message:") + " " + String(error.message));
+    console.error(String("Error Stack:") + " " + String(error.stack));
 
     // Determine which step failed
     let failedStep = "unknown";
-    if (error.message.includes("auth/")) {
+    // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+    const safeMessage = typeof error?.message === "string" ? error.message : "";
+
+    if (safeMessage.includes("auth/")) {
       failedStep = "Firebase Auth (createUserWithEmailAndPassword)";
-    } else if (error.message.includes("permission-denied")) {
+    } else if (safeMessage.includes("permission-denied")) {
       failedStep = "Firestore Permission (setDoc/getDoc)";
     } else if (error.code === "unavailable") {
       failedStep = "Firestore Service Unavailable";
-    } else if (error.message.includes("network")) {
+    } else if (safeMessage.includes("network")) {
       failedStep = "Network Connection";
     }
 
@@ -143,7 +146,7 @@ export async function runSignupIsolationTest() {
         console.log("✅ Cleanup completed");
       }
     } catch (cleanupError) {
-      console.error("❌ Cleanup failed:", cleanupError.message);
+      console.error(String("❌ Cleanup failed:") + " " + String(cleanupError.message));
     }
 
     console.error("");

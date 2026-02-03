@@ -5,11 +5,11 @@ import { db, auth } from "../../config/firebase";
 
 const gradientCard = "rounded-xl shadow-lg px-6 py-6 text-center text-white font-bold text-lg bg-gradient-to-br border-2 border-white hover:scale-105 transition-transform duration-200";
 const gradients = [
-  "from-blue-600 via-blue-400 to-indigo-600",
-  "from-green-500 via-green-400 to-green-700",
-  "from-yellow-400 via-yellow-500 to-yellow-600",
-  "from-red-500 via-pink-500 to-pink-600"
-];
+"from-blue-600 via-blue-400 to-indigo-600",
+"from-green-500 via-green-400 to-green-700",
+"from-yellow-400 via-yellow-500 to-yellow-600",
+"from-red-500 via-pink-500 to-pink-600"];
+
 
 export default function DirectReferrals() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -19,9 +19,9 @@ export default function DirectReferrals() {
 
   useEffect(() => {
     console.log("DirectReferral useEffect triggered");
-    console.log("User object:", user);
-    console.log("User profile:", userProfile);
-    console.log("User userId:", userProfile?.userId);
+    console.log(String("User object:") + " " + String(user));
+    console.log(String("User profile:") + " " + String(userProfile));
+    console.log(String("User userId:") + " " + String(userProfile?.userId));
 
     if (!userProfile?.userId) {
       console.log("No userProfile.userId found, skipping fetch");
@@ -31,7 +31,7 @@ export default function DirectReferrals() {
     }
 
     console.log("DirectReferral fetch start");
-    console.log("Sponsor ID:", userProfile.userId);
+    console.log(String("Sponsor ID:") + " " + String(userProfile.userId));
 
     setLoading(true);
     setError("");
@@ -42,14 +42,14 @@ export default function DirectReferrals() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
 
-      console.log("Fetched referrals:", items.length, items);
+      console.log(String("Fetched referrals:") + " " + String(items.length) + " " + String(items));
 
       setReferrals(items);
       setLoading(false);
     }, (error) => {
-      console.error("DirectReferral fetch error:", error);
+      console.error(String("DirectReferral fetch error:") + " " + String(error));
       setError("❌ Failed to load direct referrals.");
       setLoading(false);
     });
@@ -59,17 +59,17 @@ export default function DirectReferrals() {
 
   // Stats
   const total = referrals.length;
-  const active = referrals.filter(r => r.isActivated).length;
-  const blocked = referrals.filter(r => r.isBlocked).length;
-  const pending = referrals.filter(r => !r.isActivated && !r.isBlocked).length;
+  const active = referrals.filter((r) => r.isActivated).length;
+  const blocked = referrals.filter((r) => r.isBlocked).length;
+  const pending = referrals.filter((r) => !r.isActivated && !r.isBlocked).length;
 
   if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
         <div className="w-10 h-10 border-4 border-purple-300 border-t-transparent rounded-full animate-spin mb-2"></div>
         <div className="text-gray-600 mt-2">Loading...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!userProfile?.userId) {
@@ -103,13 +103,13 @@ export default function DirectReferrals() {
                 </tr>
               </thead>
               <tbody>
-                {referrals.length === 0 ? (
-                  <tr>
+                {referrals.length === 0 ?
+                <tr>
                     <td colSpan={8} className="text-center py-6 text-gray-800 font-bold">No direct referrals found.</td>
-                  </tr>
-                ) : (
-                  referrals.map((r, idx) => (
-                    <tr key={r.id} className="border-b last:border-0 text-gray-800">
+                  </tr> :
+
+                referrals.map((r, idx) =>
+                <tr key={r.id} className="border-b last:border-0 text-gray-800">
                       <td className="px-4 py-2">
                         <span className="bg-purple-600 text-white px-3 py-1 rounded font-semibold tracking-wide inline-block">
                           {idx + 1}
@@ -127,27 +127,27 @@ export default function DirectReferrals() {
                         {r.registrationTime ? new Date(r.registrationTime.toDate ? r.registrationTime.toDate() : r.registrationTime).toLocaleString() : 'N/A'}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        {r.isActivated ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-green-500 text-white rounded-full" aria-label="Active">
+                        {r.isActivated ?
+                    <span className="inline-flex items-center justify-center w-6 h-6 bg-green-500 text-white rounded-full" aria-label="Active">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                          </span>
-                        ) : null}
+                          </span> :
+                    null}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        {!r.isActivated ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full" aria-label="Inactive">
+                        {!r.isActivated ?
+                    <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full" aria-label="Inactive">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12h12" /></svg>
-                          </span>
-                        ) : null}
+                          </span> :
+                    null}
                       </td>
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }

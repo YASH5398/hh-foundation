@@ -15,17 +15,17 @@ const FCMHandler = ({ children }) => {
       try {
         // Request notification permission and get FCM token
         const hasPermission = await messagingService.requestPermission();
-        
+
         if (hasPermission) {
           const token = await messagingService.getToken();
-          
+
           if (token) {
             // Store token in backend
             try {
               const response = await fetch(`http://localhost:3001/api/user/${user.uid}/token`, {
                 method: 'POST',
                 headers: {
-                  'Content-Type': 'application/json',
+                  'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ token })
               });
@@ -36,7 +36,7 @@ const FCMHandler = ({ children }) => {
                 console.error('Failed to store FCM token');
               }
             } catch (error) {
-              console.error('Error storing FCM token:', error);
+              console.error(String('Error storing FCM token:') + " " + String(error));
             }
 
             // Also update user document with FCM token for backward compatibility
@@ -47,24 +47,24 @@ const FCMHandler = ({ children }) => {
                 lastTokenUpdate: new Date()
               });
             } catch (error) {
-              console.error('Error updating user document with FCM token:', error);
+              console.error(String('Error updating user document with FCM token:') + " " + String(error));
             }
           }
         }
       } catch (error) {
-        console.error('Error initializing FCM:', error);
+        console.error(String('Error initializing FCM:') + " " + String(error));
       }
     };
 
     const setupMessageListener = () => {
       // Setup foreground message listener
       const unsubscribe = messagingService.onForegroundMessage((payload) => {
-        console.log('Foreground message received:', payload);
-        
+        console.log(String('Foreground message received:') + " " + String(payload));
+
         // Show toast notification for foreground messages
         if (payload.notification) {
           const isChat = payload.data?.type === 'chat' || payload.data?.chatId;
-          
+
           toast.success(
             `${payload.notification.title}: ${payload.notification.body}`,
             {
@@ -73,7 +73,7 @@ const FCMHandler = ({ children }) => {
               onClick: () => {
                 // Handle notification click - could navigate to chat
                 if (isChat && payload.data?.chatId) {
-                  console.log('Navigate to chat:', payload.data.chatId);
+                  console.log(String('Navigate to chat:') + " " + String(payload.data.chatId));
                   // You can add navigation logic here
                 }
               }
@@ -89,7 +89,7 @@ const FCMHandler = ({ children }) => {
     if (user) {
       initializeFCM();
       const unsubscribe = setupMessageListener();
-      
+
       // Cleanup listener on unmount
       return () => {
         if (unsubscribe) {

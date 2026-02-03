@@ -44,26 +44,26 @@ const UserHelpTracker = () => {
       const userIdValue = userData.userId;
 
       const [
-        sendHelpByUid,
-        sendHelpById,
-        receiveHelpByUid,
-        receiveHelpById
-      ] = await Promise.all([
-        getDocs(query(collection(db, 'sendHelp'), where('senderUid', '==', userUid))),
-        userIdValue ? getDocs(query(collection(db, 'sendHelp'), where('senderId', '==', userIdValue))) : Promise.resolve({ docs: [] }),
-        getDocs(query(collection(db, 'receiveHelp'), where('receiverUid', '==', userUid))),
-        userIdValue ? getDocs(query(collection(db, 'receiveHelp'), where('receiverId', '==', userIdValue))) : Promise.resolve({ docs: [] })
-      ]);
+      sendHelpByUid,
+      sendHelpById,
+      receiveHelpByUid,
+      receiveHelpById] =
+      await Promise.all([
+      getDocs(query(collection(db, 'sendHelp'), where('senderUid', '==', userUid))),
+      userIdValue ? getDocs(query(collection(db, 'sendHelp'), where('senderId', '==', userIdValue))) : Promise.resolve({ docs: [] }),
+      getDocs(query(collection(db, 'receiveHelp'), where('receiverUid', '==', userUid))),
+      userIdValue ? getDocs(query(collection(db, 'receiveHelp'), where('receiverId', '==', userIdValue))) : Promise.resolve({ docs: [] })]
+      );
 
       const sendHelpMap = new Map();
-      [...sendHelpByUid.docs, ...sendHelpById.docs].forEach(doc => {
+      [...sendHelpByUid.docs, ...sendHelpById.docs].forEach((doc) => {
         if (!sendHelpMap.has(doc.id)) {
           sendHelpMap.set(doc.id, { id: doc.id, ...doc.data() });
         }
       });
 
       const receiveHelpMap = new Map();
-      [...receiveHelpByUid.docs, ...receiveHelpById.docs].forEach(doc => {
+      [...receiveHelpByUid.docs, ...receiveHelpById.docs].forEach((doc) => {
         if (!receiveHelpMap.has(doc.id)) {
           receiveHelpMap.set(doc.id, { id: doc.id, ...doc.data() });
         }
@@ -77,7 +77,7 @@ const UserHelpTracker = () => {
       setSearched(true);
 
     } catch (err) {
-      console.error('Error fetching help data:', err);
+      console.error(String('Error fetching help data:') + " " + String(err));
       setError('Failed to fetch data. Please check permissions or try again.');
     } finally {
       setLoading(false);
@@ -119,12 +119,12 @@ const UserHelpTracker = () => {
     return <FiClock />;
   };
 
-  const DetailRow = ({ label, value }) => (
-    <div className="flex justify-between py-2 border-b border-slate-700/30">
+  const DetailRow = ({ label, value }) =>
+  <div className="flex justify-between py-2 border-b border-slate-700/30">
       <span className="text-sm font-medium text-slate-400">{label}:</span>
       <span className="text-sm text-white font-semibold">{value || 'N/A'}</span>
-    </div>
-  );
+    </div>;
+
 
   const maskPhone = (phone) => {
     if (!phone) return 'N/A';
@@ -201,8 +201,8 @@ const UserHelpTracker = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-6"
-      >
+        className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-6">
+        
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -216,59 +216,59 @@ const UserHelpTracker = () => {
                 onChange={(e) => setUserId(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="e.g., HH123456"
-                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all outline-none"
-              />
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all outline-none" />
+              
             </div>
           </div>
           <div className="flex items-end">
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
-            >
-              {loading ? (
-                <>
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20">
+              
+              {loading ?
+              <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   <span>Searching...</span>
-                </>
-              ) : (
-                <>
+                </> :
+
+              <>
                   <FiSearch className="w-5 h-5" />
                   <span>Search</span>
                 </>
-              )}
+              }
             </button>
           </div>
         </div>
 
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start space-x-3"
-          >
+        {error &&
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start space-x-3">
+          
             <FiAlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
             <p className="text-red-400 text-sm">{error}</p>
           </motion.div>
-        )}
+        }
       </motion.div>
 
-      {searched && !error && (sendHelpData.length > 0 || receiveHelpData.length > 0) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl overflow-hidden"
-        >
+      {searched && !error && (sendHelpData.length > 0 || receiveHelpData.length > 0) &&
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl overflow-hidden">
+        
           <div className="flex border-b border-slate-800/50">
             <button
-              onClick={() => setActiveTab('send')}
-              className={`flex-1 px-6 py-4 font-medium transition-all ${
-                activeTab === 'send'
-                  ? 'text-blue-400 bg-blue-500/10 border-b-2 border-blue-500'
-                  : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
-              }`}
-            >
+            onClick={() => setActiveTab('send')}
+            className={`flex-1 px-6 py-4 font-medium transition-all ${
+            activeTab === 'send' ?
+            'text-blue-400 bg-blue-500/10 border-b-2 border-blue-500' :
+            'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'}`
+            }>
+            
               <div className="flex items-center justify-center space-x-2">
                 <FiSend className="w-5 h-5" />
                 <span>Send Help History</span>
@@ -278,13 +278,13 @@ const UserHelpTracker = () => {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('receive')}
-              className={`flex-1 px-6 py-4 font-medium transition-all ${
-                activeTab === 'receive'
-                  ? 'text-green-400 bg-green-500/10 border-b-2 border-green-500'
-                  : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
-              }`}
-            >
+            onClick={() => setActiveTab('receive')}
+            className={`flex-1 px-6 py-4 font-medium transition-all ${
+            activeTab === 'receive' ?
+            'text-green-400 bg-green-500/10 border-b-2 border-green-500' :
+            'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'}`
+            }>
+            
               <div className="flex items-center justify-center space-x-2">
                 <FiDownload className="w-5 h-5" />
                 <span>Receive Help History</span>
@@ -296,21 +296,21 @@ const UserHelpTracker = () => {
           </div>
 
           <div className="p-6">
-            {activeTab === 'send' && (
-              <div className="space-y-4">
-                {sendHelpData.length === 0 ? (
-                  <div className="text-center py-12">
+            {activeTab === 'send' &&
+          <div className="space-y-4">
+                {sendHelpData.length === 0 ?
+            <div className="text-center py-12">
                     <FiSend className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No Send Help records found</p>
-                  </div>
-                ) : (
-                  sendHelpData.map((record) => (
-                    <motion.div
-                      key={record.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/30 transition-all"
-                    >
+                  </div> :
+
+            sendHelpData.map((record) =>
+            <motion.div
+              key={record.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/30 transition-all">
+              
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
                         <h3 className="text-lg font-bold text-white">Send Help Record</h3>
                         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${getStatusColor(record.status)}`}>
@@ -350,26 +350,26 @@ const UserHelpTracker = () => {
                         {renderPaymentMethods(record.paymentDetails)}
                       </div>
                     </motion.div>
-                  ))
-                )}
+            )
+            }
               </div>
-            )}
+          }
 
-            {activeTab === 'receive' && (
-              <div className="space-y-4">
-                {receiveHelpData.length === 0 ? (
-                  <div className="text-center py-12">
+            {activeTab === 'receive' &&
+          <div className="space-y-4">
+                {receiveHelpData.length === 0 ?
+            <div className="text-center py-12">
                     <FiDownload className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No Receive Help records found</p>
-                  </div>
-                ) : (
-                  receiveHelpData.map((record) => (
-                    <motion.div
-                      key={record.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-6 hover:border-green-500/30 transition-all"
-                    >
+                  </div> :
+
+            receiveHelpData.map((record) =>
+            <motion.div
+              key={record.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-6 hover:border-green-500/30 transition-all">
+              
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
                         <h3 className="text-lg font-bold text-white">Receive Help Record</h3>
                         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${getStatusColor(record.status)}`}>
@@ -409,26 +409,26 @@ const UserHelpTracker = () => {
                         {renderPaymentMethods(record.paymentDetails)}
                       </div>
                     </motion.div>
-                  ))
-                )}
+            )
+            }
               </div>
-            )}
+          }
           </div>
         </motion.div>
-      )}
+      }
 
-      {searched && !error && sendHelpData.length === 0 && receiveHelpData.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-12 text-center"
-        >
+      {searched && !error && sendHelpData.length === 0 && receiveHelpData.length === 0 &&
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-12 text-center">
+        
           <FiAlertCircle className="w-16 h-16 text-slate-600 mx-auto mb-4" />
           <p className="text-slate-400 text-lg">No Send/Receive Help records found for this User ID</p>
         </motion.div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default UserHelpTracker;

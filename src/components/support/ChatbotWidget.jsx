@@ -43,7 +43,7 @@ const ChatbotWidget = ({ isOpen, onClose }) => {
         'https://us-central1-hh-foundation.cloudfunctions.net/handleChatbotMessage',
         {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
           },
@@ -60,22 +60,22 @@ const ChatbotWidget = ({ isOpen, onClose }) => {
         setMessages((prev) => [...prev, { sender: 'bot', text: data.reply }]);
       } else {
         setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'bot',
-            text: data.reply || 'Sorry, something went wrong. Please try again.'
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages((prev) => [
         ...prev,
         {
           sender: 'bot',
-          text: 'Unable to connect to support. Please check your connection and try again.'
-        }
-      ]);
+          text: data.reply || 'Sorry, something went wrong. Please try again.'
+        }]
+        );
+      }
+    } catch (error) {
+      console.error(String('Error sending message:') + " " + String(error));
+      setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'bot',
+        text: 'Unable to connect to support. Please check your connection and try again.'
+      }]
+      );
     } finally {
       setLoading(false);
     }
@@ -100,8 +100,8 @@ const ChatbotWidget = ({ isOpen, onClose }) => {
       </div>
 
       <div className="chatbot-messages">
-        {messages.length === 0 && (
-          <div className="chatbot-welcome">
+        {messages.length === 0 &&
+        <div className="chatbot-welcome">
             <p>Hi! I am here to help. Ask me about:</p>
             <ul>
               <li>E-PIN issues</li>
@@ -112,25 +112,25 @@ const ChatbotWidget = ({ isOpen, onClose }) => {
               <li>Support tickets and tasks</li>
             </ul>
           </div>
-        )}
+        }
 
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`message message-${msg.sender}`}>
+        {messages.map((msg, idx) =>
+        <div key={idx} className={`message message-${msg.sender}`}>
             <div className="message-bubble">
               <p>{msg.text}</p>
             </div>
           </div>
-        ))}
+        )}
 
-        {loading && (
-          <div className="message message-bot">
+        {loading &&
+        <div className="message message-bot">
             <div className="message-bubble typing">
               <span></span>
               <span></span>
               <span></span>
             </div>
           </div>
-        )}
+        }
 
         <div ref={messagesEndRef} />
       </div>
@@ -142,14 +142,14 @@ const ChatbotWidget = ({ isOpen, onClose }) => {
           onKeyPress={handleKeyPress}
           placeholder="Type your question here..."
           disabled={loading}
-          rows="2"
-        />
+          rows="2" />
+        
         <button onClick={sendMessage} disabled={loading || !userInput.trim()}>
           {loading ? 'Sending...' : 'Send'}
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default ChatbotWidget;

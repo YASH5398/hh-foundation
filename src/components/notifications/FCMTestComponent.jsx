@@ -23,7 +23,7 @@ const FCMTestComponent = () => {
 
     // Set up message listener for foreground notifications
     const handleMessage = (payload) => {
-      console.log('📨 Foreground message received:', payload);
+      console.log(String('📨 Foreground message received:') + " " + String(payload));
       const newMessage = {
         id: Date.now(),
         title: payload.notification?.title || 'New Message',
@@ -31,8 +31,8 @@ const FCMTestComponent = () => {
         data: payload.data || {},
         timestamp: new Date().toLocaleTimeString()
       };
-      setMessages(prev => [newMessage, ...prev]);
-      
+      setMessages((prev) => [newMessage, ...prev]);
+
       // Show toast notification
       toast.success(`📨 ${newMessage.title}: ${newMessage.body}`);
     };
@@ -54,9 +54,9 @@ const FCMTestComponent = () => {
 
     setIsLoading(true);
     try {
-      console.log('🔄 Requesting FCM token for user:', user.uid);
+      console.log(String('🔄 Requesting FCM token for user:') + " " + String(user.uid));
       const success = await fcmService.initializeForUser(user.uid);
-      
+
       if (success && fcmService.token) {
         setFcmToken(fcmService.token);
         setPermissionStatus('granted');
@@ -64,7 +64,7 @@ const FCMTestComponent = () => {
       } else {
         const currentPermission = fcmService.getPermissionStatus();
         setPermissionStatus(currentPermission);
-        
+
         if (currentPermission === 'denied') {
           toast.error('❌ Notifications are blocked. Use the "Enable Notifications" button above.');
         } else {
@@ -72,7 +72,7 @@ const FCMTestComponent = () => {
         }
       }
     } catch (error) {
-      console.error('Error getting FCM token:', error);
+      console.error(String('Error getting FCM token:') + " " + String(error));
       toast.error('❌ Error getting FCM token');
     } finally {
       setIsLoading(false);
@@ -84,7 +84,7 @@ const FCMTestComponent = () => {
     try {
       const permission = await fcmService.forceRequestPermission();
       setPermissionStatus(permission);
-      
+
       if (permission === 'granted') {
         toast.success('✅ Notification permission granted!');
         // Auto-initialize FCM after permission granted
@@ -97,7 +97,7 @@ const FCMTestComponent = () => {
         toast.error('❌ Notifications not supported in this browser');
       }
     } catch (error) {
-      console.error('Error requesting permission:', error);
+      console.error(String('Error requesting permission:') + " " + String(error));
       toast.error('❌ Error requesting permission');
     } finally {
       setIsLoading(false);
@@ -107,7 +107,7 @@ const FCMTestComponent = () => {
   const handleTokenGenerated = (token) => {
     setFcmToken(token);
     setPermissionStatus('granted');
-    console.log('📱 FCM token received from NotificationPermissionManager:', token.substring(0, 20) + '...');
+    console.log(String('📱 FCM token received from NotificationPermissionManager:') + " " + String(token.substring(0, 20) + '...'));
   };
 
   const copyTokenToClipboard = () => {
@@ -127,8 +127,8 @@ const FCMTestComponent = () => {
       <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
         <h3 className="text-lg font-semibold text-yellow-800 mb-2">Authentication Required</h3>
         <p className="text-yellow-700">Please log in to test FCM functionality.</p>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -137,11 +137,11 @@ const FCMTestComponent = () => {
       
       {/* Notification Permission Manager */}
       <div className="mb-6">
-        <NotificationPermissionManager 
+        <NotificationPermissionManager
           user={user}
           onTokenGenerated={handleTokenGenerated}
-          showDebugInfo={true}
-        />
+          showDebugInfo={true} />
+        
       </div>
 
       {/* Support Status */}
@@ -166,39 +166,39 @@ const FCMTestComponent = () => {
           <button
             onClick={handleRequestPermission}
             disabled={isLoading || !isSupported}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            
             {isLoading ? '⏳ Loading...' : '🔔 Force Request Permission'}
           </button>
           
           <button
             onClick={handleGetToken}
             disabled={isLoading || !isSupported || !user}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            
             {isLoading ? '⏳ Loading...' : '🎫 Get FCM Token'}
           </button>
           
           <button
             onClick={copyTokenToClipboard}
             disabled={!fcmToken}
-            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
+            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            
             📋 Copy Token
           </button>
           
           <button
             onClick={clearMessages}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+            
             🗑️ Clear Messages
           </button>
         </div>
       </div>
 
       {/* FCM Token Display */}
-      {fcmToken && (
-        <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+      {fcmToken &&
+      <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
           <h3 className="text-lg font-semibold mb-2 text-green-800">🎫 FCM Token</h3>
           <div className="bg-white p-3 rounded border break-all text-sm font-mono">
             {fcmToken}
@@ -207,7 +207,7 @@ const FCMTestComponent = () => {
             This token can be used to send push notifications to this device.
           </p>
         </div>
-      )}
+      }
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -227,18 +227,18 @@ const FCMTestComponent = () => {
           <h3 className="text-xl font-bold text-gray-800">📨 Received Messages ({messages.length})</h3>
           <button
             onClick={clearMessages}
-            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-          >
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">
+            
             Clear All
           </button>
         </div>
         
-        {messages.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No messages received yet</p>
-        ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {messages.map((message, index) => (
-              <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+        {messages.length === 0 ?
+        <p className="text-gray-500 text-center py-8">No messages received yet</p> :
+
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+            {messages.map((message, index) =>
+          <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-semibold text-blue-600">
                     {message.notification?.title || 'No Title'}
@@ -250,21 +250,21 @@ const FCMTestComponent = () => {
                 <p className="text-sm text-gray-700 mb-2">
                   {message.notification?.body || 'No Body'}
                 </p>
-                {message.data && Object.keys(message.data).length > 0 && (
-                  <div className="mt-2">
+                {message.data && Object.keys(message.data).length > 0 &&
+            <div className="mt-2">
                     <span className="text-xs font-semibold text-gray-600">Data:</span>
                     <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-x-auto">
                       {JSON.stringify(message.data, null, 2)}
                     </pre>
                   </div>
-                )}
+            }
               </div>
-            ))}
+          )}
           </div>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default FCMTestComponent;

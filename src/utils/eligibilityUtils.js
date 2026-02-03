@@ -14,7 +14,7 @@
 const normalizeLevel = (userData) => {
   // Priority: level field first, then levelStatus for backward compatibility
   const levelValue = userData?.level || userData?.levelStatus;
-  
+
   if (!levelValue) return 'Star';
 
   // If already a string, return as-is
@@ -45,7 +45,7 @@ const normalizeLevel = (userData) => {
 export const checkReceiveHelpEligibility = (userDoc) => {
   // Development logging
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 ELIGIBILITY CHECK:', {
+    console.log(String('🔍 ELIGIBILITY CHECK:') + " " + String({
       uid: userDoc?.uid,
       isActivated: userDoc?.isActivated,
       isBlocked: userDoc?.isBlocked,
@@ -53,14 +53,14 @@ export const checkReceiveHelpEligibility = (userDoc) => {
       isReceivingHeld: userDoc?.isReceivingHeld,
       helpVisibility: userDoc?.helpVisibility,
       level: normalizeLevel(userDoc)
-    });
+    }));
   }
 
   // Check if user document exists
   if (!userDoc) {
     const reason = 'User document not found';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -69,7 +69,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (userDoc.isActivated !== true) {
     const reason = 'User account needs to be activated to receive help';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -78,7 +78,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (userDoc.isBlocked === true) {
     const reason = 'User account is currently blocked from receiving help';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -86,7 +86,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (userDoc.isOnHold === true) {
     const reason = 'User account is temporarily on hold';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -94,7 +94,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (userDoc.isReceivingHeld === true) {
     const reason = 'User receiving privileges are currently held';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -103,7 +103,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (userDoc.helpVisibility === false) {
     const reason = 'User help visibility is disabled';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }
@@ -113,7 +113,7 @@ export const checkReceiveHelpEligibility = (userDoc) => {
   if (!userLevel) {
     const reason = 'User account level is not properly set';
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ RECEIVE_HELP_BLOCKED:', reason);
+      console.log(String('❌ RECEIVE_HELP_BLOCKED:') + " " + String(reason));
     }
     return { eligible: false, reason };
   }

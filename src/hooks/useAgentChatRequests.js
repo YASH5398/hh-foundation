@@ -21,7 +21,7 @@ export const useAgentChatRequests = (isAgent = false) => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({
+      const requests = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate()
@@ -30,7 +30,7 @@ export const useAgentChatRequests = (isAgent = false) => {
       setPendingRequests(requests);
       setLoading(false);
     }, (error) => {
-      console.error('Error listening to chat requests:', error);
+      console.error(String('Error listening to chat requests:') + " " + String(error));
       setLoading(false);
     });
 

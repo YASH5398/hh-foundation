@@ -24,7 +24,7 @@ const ChatList = ({ isOpen, onClose }) => {
         setChats(userChats);
         setFilteredChats(userChats);
       } catch (error) {
-        console.error('Error loading chats:', error);
+        console.error(String('Error loading chats:') + " " + String(error));
       } finally {
         setLoading(false);
       }
@@ -40,14 +40,14 @@ const ChatList = ({ isOpen, onClose }) => {
     const unsubscribes = [];
 
     chats.forEach((chat) => {
-      const otherUserId = chat.participants.find(p => p !== user.uid);
+      const otherUserId = chat.participants.find((p) => p !== user.uid);
       if (otherUserId) {
         const unsubscribe = FirebaseChatService.subscribeToUnreadCount(
           otherUserId,
           user.uid,
           user.uid,
           (count) => {
-            setUnreadCounts(prev => ({
+            setUnreadCounts((prev) => ({
               ...prev,
               [chat.id]: count
             }));
@@ -58,7 +58,7 @@ const ChatList = ({ isOpen, onClose }) => {
     });
 
     return () => {
-      unsubscribes.forEach(unsubscribe => {
+      unsubscribes.forEach((unsubscribe) => {
         if (unsubscribe) unsubscribe();
       });
     };
@@ -70,18 +70,18 @@ const ChatList = ({ isOpen, onClose }) => {
 
     // Apply search filter
     if (searchQuery.trim()) {
-      filtered = filtered.filter(chat =>
-        chat.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter((chat) =>
+      chat.otherUserName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     // Apply status filter
     switch (filter) {
       case 'unread':
-        filtered = filtered.filter(chat => unreadCounts[chat.id] > 0);
+        filtered = filtered.filter((chat) => unreadCounts[chat.id] > 0);
         break;
       case 'recent':
-        filtered = filtered.filter(chat => {
+        filtered = filtered.filter((chat) => {
           const lastMessageTime = chat.lastMessage?.timestamp;
           if (!lastMessageTime) return false;
           const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -139,7 +139,7 @@ const ChatList = ({ isOpen, onClose }) => {
 
   // Handle chat selection
   const handleChatSelect = (chat) => {
-    const otherUserId = chat.participants.find(p => p !== user.uid);
+    const otherUserId = chat.participants.find((p) => p !== user.uid);
     setSelectedChat({
       receiverId: otherUserId,
       senderId: user.uid,
@@ -165,23 +165,23 @@ const ChatList = ({ isOpen, onClose }) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={onClose}
-      >
+        onClick={onClose}>
+        
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           className="bg-white rounded-2xl shadow-2xl w-full max-w-md h-[90vh] sm:h-[600px] flex flex-col overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
+          onClick={(e) => e.stopPropagation()}>
+          
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Chats</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-blue-700 rounded-full transition-colors"
-              >
+                className="p-2 hover:bg-blue-700 rounded-full transition-colors">
+                
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -194,97 +194,97 @@ const ChatList = ({ isOpen, onClose }) => {
                 placeholder="Search chats..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-blue-600 bg-opacity-50 text-white placeholder-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:bg-opacity-70"
-              />
+                className="w-full pl-10 pr-4 py-2 bg-blue-600 bg-opacity-50 text-white placeholder-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:bg-opacity-70" />
+              
             </div>
 
             {/* Filter Tabs */}
             <div className="flex space-x-1 mt-3">
               {[
-                { key: 'all', label: 'All', icon: MessageCircle },
-                { key: 'unread', label: 'Unread', icon: Users },
-                { key: 'recent', label: 'Recent', icon: Clock }
-              ].map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    filter === key
-                      ? 'bg-white text-blue-600'
-                      : 'bg-blue-600 bg-opacity-50 text-blue-100 hover:bg-opacity-70'
-                  }`}
-                >
+              { key: 'all', label: 'All', icon: MessageCircle },
+              { key: 'unread', label: 'Unread', icon: Users },
+              { key: 'recent', label: 'Recent', icon: Clock }].
+              map(({ key, label, icon: Icon }) =>
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                filter === key ?
+                'bg-white text-blue-600' :
+                'bg-blue-600 bg-opacity-50 text-blue-100 hover:bg-opacity-70'}`
+                }>
+                
                   <Icon className="w-3 h-3" />
                   <span>{label}</span>
-                  {key === 'unread' && Object.values(unreadCounts).reduce((sum, count) => sum + count, 0) > 0 && (
-                    <span className="bg-red-500 text-white text-xs rounded-full px-1 min-w-[16px] h-4 flex items-center justify-center">
+                  {key === 'unread' && Object.values(unreadCounts).reduce((sum, count) => sum + count, 0) > 0 &&
+                <span className="bg-red-500 text-white text-xs rounded-full px-1 min-w-[16px] h-4 flex items-center justify-center">
                       {Object.values(unreadCounts).reduce((sum, count) => sum + count, 0)}
                     </span>
-                  )}
+                }
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Chat List */}
           <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
+            {loading ?
+            <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+              </div> :
+            filteredChats.length === 0 ?
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 p-8">
                 <MessageCircle className="w-16 h-16 text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium mb-2">
                   {searchQuery ? 'No chats found' : 'No chats yet'}
                 </h3>
                 <p className="text-sm text-center">
-                  {searchQuery
-                    ? 'Try searching with a different name'
-                    : 'Start a conversation from the Send Help section'
-                  }
+                  {searchQuery ?
+                'Try searching with a different name' :
+                'Start a conversation from the Send Help section'
+                }
                 </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {filteredChats.map((chat) => {
-                  const unreadCount = unreadCounts[chat.id] || 0;
-                  const lastMessage = chat.lastMessage;
+              </div> :
 
-                  return (
-                    <motion.div
-                      key={chat.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleChatSelect(chat)}
-                    >
+            <div className="divide-y divide-gray-100">
+                {filteredChats.map((chat) => {
+                const unreadCount = unreadCounts[chat.id] || 0;
+                const lastMessage = chat.lastMessage;
+
+                return (
+                  <motion.div
+                    key={chat.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleChatSelect(chat)}>
+                    
                       <div className="flex items-center space-x-3">
                         {/* Avatar */}
                         <div className="relative">
                           <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
                             <img
-                              src={chat.otherUserAvatar || '/images/default-avatar.png'}
-                              alt={chat.otherUserName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = '/images/default-avatar.png';
-                              }}
-                            />
+                            src={chat.otherUserAvatar || '/images/default-avatar.png'}
+                            alt={chat.otherUserName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = '/images/default-avatar.png';
+                            }} />
+                          
                           </div>
-                          {unreadCount > 0 && (
-                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] h-5 flex items-center justify-center">
+                          {unreadCount > 0 &&
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] h-5 flex items-center justify-center">
                               {unreadCount > 99 ? '99+' : unreadCount}
                             </div>
-                          )}
+                        }
                         </div>
 
                         {/* Chat Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <h3 className={`font-medium truncate ${
-                              unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
+                          unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'}`
+                          }>
                               {chat.otherUserName || 'Unknown User'}
                             </h3>
                             <div className="flex items-center space-x-1">
@@ -297,23 +297,23 @@ const ChatList = ({ isOpen, onClose }) => {
 
                           <div className="flex items-center justify-between">
                             <p className={`text-sm truncate ${
-                              unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'
-                            }`}>
+                          unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`
+                          }>
                               {lastMessage?.type === 'image' ? '📷 Image' : lastMessage?.message || 'No messages yet'}
                             </p>
                           </div>
                         </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
+                    </motion.div>);
+
+              })}
               </div>
-            )}
+            }
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
-  );
+    </AnimatePresence>);
+
 };
 
 export default ChatList;

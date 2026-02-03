@@ -7,8 +7,8 @@ import {
   signInWithEmailPassword,
   signOutUser,
   createUserAccount,
-  getAuthErrorMessage
-} from "../utils/authUtils";
+  getAuthErrorMessage } from
+"../utils/authUtils";
 import { getReceiveEligibility } from "../services/helpService";
 
 const AuthContext = createContext();
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (error) {
-        console.error("Auth persistence error:", error);
+        console.error(String("Auth persistence error:") + " " + String(error));
       }
     };
     initAuth();
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
     console.log("🔍 AUTH CONTEXT: Setting up auth listener...");
 
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      console.log("🔍 AUTH STATE CHANGED:", authUser ? "LOGGED IN" : "LOGGED OUT", authUser?.uid);
+      console.log(String("🔍 AUTH STATE CHANGED:") + " " + String(authUser ? "LOGGED IN" : "LOGGED OUT") + " " + String(authUser?.uid));
 
       if (authUser) {
         // User logged in
@@ -72,11 +72,11 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async () => {
       setProfileLoading(true);
-      console.log("🔍 AUTH CONTEXT: Fetching profile for:", user.uid);
+      console.log(String("🔍 AUTH CONTEXT: Fetching profile for:") + " " + String(user.uid));
 
       try {
         const profile = await getUserProfile(user.uid);
-        console.log("🔍 AUTH CONTEXT: Profile fetched successfully:", profile?.role);
+        console.log(String("🔍 AUTH CONTEXT: Profile fetched successfully:") + " " + String(profile?.role));
         setUserProfile(profile || null); // null if doc missing
 
         // Fetch eligibility/block status
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
         }
 
       } catch (error) {
-        console.error("Profile fetch failed:", error);
+        console.error(String("Profile fetch failed:") + " " + String(error));
         setUserProfile(undefined); // undefined means "error/unknown" not "missing"
       } finally {
         setProfileLoading(false);
@@ -185,6 +185,6 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
-    </AuthContext.Provider>
-  );
+    </AuthContext.Provider>);
+
 };

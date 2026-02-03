@@ -56,14 +56,14 @@ const UpcomingPay = () => {
         where('senderUid', '==', user.id)
       );
       const sendHelpSnapshot = await getDocs(sendHelpQuery);
-      const sendHelpRecords = sendHelpSnapshot.docs.map(doc => doc.data());
+      const sendHelpRecords = sendHelpSnapshot.docs.map((doc) => doc.data());
 
       const receiveHelpQuery = query(
         collection(db, 'receiveHelp'),
         where('receiverUid', '==', user.id)
       );
       const receiveHelpSnapshot = await getDocs(receiveHelpQuery);
-      const receiveHelpRecords = receiveHelpSnapshot.docs.map(doc => doc.data());
+      const receiveHelpRecords = receiveHelpSnapshot.docs.map((doc) => doc.data());
 
       const lastReceivedQuery = query(
         collection(db, 'receiveHelp'),
@@ -86,13 +86,13 @@ const UpcomingPay = () => {
       const analysisResult = analyzePaymentStatus(user, sendHelpRecords, receiveHelpRecords);
       setAnalysis({
         ...analysisResult,
-        totalReceived: receiveHelpRecords.filter(r => r.status === 'verified').length,
-        totalSent: sendHelpRecords.filter(s => s.status === 'verified').length,
+        totalReceived: receiveHelpRecords.filter((r) => r.status === 'verified').length,
+        totalSent: sendHelpRecords.filter((s) => s.status === 'verified').length,
         lastReceivedDate: lastReceived?.createdAt,
         lastSentDate: lastSent?.createdAt
       });
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error(String('Error fetching user data:') + " " + String(error));
       toast.error('Failed to fetch user data');
     } finally {
       setLoading(false);
@@ -129,9 +129,9 @@ const UpcomingPay = () => {
       };
     }
 
-    const verifiedReceived = Array.isArray(receiveHelp) ? receiveHelp.filter(r => r?.status === 'verified').length : 0;
-    const verifiedSent = Array.isArray(sendHelp) ? sendHelp.filter(s => s?.status === 'verified').length : 0;
-    const pendingSent = Array.isArray(sendHelp) ? sendHelp.filter(s => s?.status === 'pending').length : 0;
+    const verifiedReceived = Array.isArray(receiveHelp) ? receiveHelp.filter((r) => r?.status === 'verified').length : 0;
+    const verifiedSent = Array.isArray(sendHelp) ? sendHelp.filter((s) => s?.status === 'verified').length : 0;
+    const pendingSent = Array.isArray(sendHelp) ? sendHelp.filter((s) => s?.status === 'pending').length : 0;
 
     const nextPaymentAmount = levelConfig.amount || 0;
     const expectedCount = verifiedReceived + 1;
@@ -163,10 +163,10 @@ const UpcomingPay = () => {
 
     const levelOrder = ['star', 'silver', 'gold', 'platinum', 'diamond'];
     const currentLevelIndex = levelOrder.indexOf(level);
-    const nextLevel = currentLevelIndex >= 0 && currentLevelIndex < levelOrder.length - 1 
-      ? levelOrder[currentLevelIndex + 1] 
-      : null;
-    
+    const nextLevel = currentLevelIndex >= 0 && currentLevelIndex < levelOrder.length - 1 ?
+    levelOrder[currentLevelIndex + 1] :
+    null;
+
     if (verifiedReceived >= totalExpected && nextLevel) {
       const upgradeAmount = LEVEL_AMOUNTS[nextLevel] || 0;
       blockingReasons.push(`Upgrade to ${nextLevel} pending`);
@@ -183,11 +183,11 @@ const UpcomingPay = () => {
       actionRequired.push('Nothing pending – payment will arrive automatically');
     }
 
-    const unlockCondition = verifiedReceived < totalExpected
-      ? `Complete ${verifiedSent} of ${totalExpected} payments at ${level} level`
-      : nextLevel
-      ? `Upgrade to ${nextLevel} level`
-      : 'All payments completed';
+    const unlockCondition = verifiedReceived < totalExpected ?
+    `Complete ${verifiedSent} of ${totalExpected} payments at ${level} level` :
+    nextLevel ?
+    `Upgrade to ${nextLevel} level` :
+    'All payments completed';
 
     return {
       isEligible,
@@ -220,15 +220,15 @@ const UpcomingPay = () => {
         <div className="flex items-center gap-2 text-green-400">
           <FiCheckCircle className="w-6 h-6" />
           <span className="text-lg font-semibold">Yes</span>
-        </div>
-      );
+        </div>);
+
     }
     return (
       <div className="flex items-center gap-2 text-red-400">
         <FiXCircle className="w-6 h-6" />
         <span className="text-lg font-semibold">No</span>
-      </div>
-    );
+      </div>);
+
   };
 
   const formatDate = (timestamp) => {
@@ -265,37 +265,37 @@ const UpcomingPay = () => {
                 onChange={(e) => setUserId(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="Enter User ID"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              
             </div>
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 font-medium"
-            >
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 font-medium">
+              
               <FiSearch /> {loading ? 'Searching...' : 'Search'}
             </button>
           </div>
         </div>
 
-        {userData && analysis && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            {analysis.error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+        {userData && analysis &&
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6">
+          
+            {analysis.error &&
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
                 <h2 className="text-xl font-semibold text-red-400 mb-4 flex items-center gap-2">
                   <FiAlertCircle /> Unable to Calculate Upcoming Payment
                 </h2>
                 <p className="text-red-300 mb-2">Reason: {analysis.blockingReasons?.[0] || 'Unknown error'}</p>
                 <p className="text-red-200 text-sm">Action: {analysis.actionRequired?.[0] || 'Contact admin'}</p>
               </div>
-            )}
+          }
 
-            {!analysis.error && (
-              <>
+            {!analysis.error &&
+          <>
                 <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-6">
                   <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                     <FiUser /> User Basic Info
@@ -342,41 +342,41 @@ const UpcomingPay = () => {
                   </div>
                 </div>
 
-                {analysis.blockingReasons && analysis.blockingReasons.length > 0 && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+                {analysis.blockingReasons && analysis.blockingReasons.length > 0 &&
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
                     <h2 className="text-xl font-semibold text-red-400 mb-4 flex items-center gap-2">
                       <FiAlertCircle /> Payment Blocked - Reasons
                     </h2>
                     <ul className="space-y-2">
-                      {analysis.blockingReasons.map((reason, index) => (
-                        <li key={index} className="text-red-300 flex items-start gap-2">
+                      {analysis.blockingReasons.map((reason, index) =>
+                <li key={index} className="text-red-300 flex items-start gap-2">
                           <span className="text-red-400 mt-1">•</span>
                           <span>{reason}</span>
                         </li>
-                      ))}
+                )}
                     </ul>
                   </div>
-                )}
+            }
 
                 <div className={`rounded-xl border p-6 ${
-                  analysis.isEligible
-                    ? 'bg-green-500/10 border-green-500/30'
-                    : 'bg-yellow-500/10 border-yellow-500/30'
-                }`}>
+            analysis.isEligible ?
+            'bg-green-500/10 border-green-500/30' :
+            'bg-yellow-500/10 border-yellow-500/30'}`
+            }>
                   <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${
-                    analysis.isEligible ? 'text-green-400' : 'text-yellow-400'
-                  }`}>
+              analysis.isEligible ? 'text-green-400' : 'text-yellow-400'}`
+              }>
                     <FiCheckCircle /> Action Required
                   </h2>
                   <ul className="space-y-2">
-                    {analysis.actionRequired && analysis.actionRequired.map((action, index) => (
-                      <li key={index} className={`flex items-start gap-2 font-medium ${
-                        analysis.isEligible ? 'text-green-300' : 'text-yellow-300'
-                      }`}>
+                    {analysis.actionRequired && analysis.actionRequired.map((action, index) =>
+                <li key={index} className={`flex items-start gap-2 font-medium ${
+                analysis.isEligible ? 'text-green-300' : 'text-yellow-300'}`
+                }>
                         <span className={analysis.isEligible ? 'text-green-400' : 'text-yellow-400'}>→</span>
                         <span>{action}</span>
                       </li>
-                    ))}
+                )}
                   </ul>
                 </div>
 
@@ -402,19 +402,19 @@ const UpcomingPay = () => {
                   </div>
                 </div>
               </>
-            )}
+          }
           </motion.div>
-        )}
+        }
 
-        {!userData && !loading && (
-          <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-12 text-center">
+        {!userData && !loading &&
+        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-12 text-center">
             <FiSearch className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">Enter a User ID to view payment analysis</p>
           </div>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default UpcomingPay;

@@ -10,7 +10,7 @@ export const getUsers = (onUpdate = () => {}, onError = () => {}) => {
   // Add basic filtering to prevent unfiltered access
   const q = query(usersCollectionRef, where('isActivated', '!=', null));
   const unsubscribe = onSnapshot(q, (snapshot) => {
-    const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    const users = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     onUpdate(users, null);
   }, onError);
 
@@ -26,7 +26,7 @@ export const getUserById = async (id) => {
       return { success: false, message: 'User not found', data: null };
     }
   } catch (error) {
-    console.error('Error getting user by ID:', error);
+    console.error(String('Error getting user by ID:') + " " + String(error));
     return { success: false, message: error.message, data: null };
   }
 };
@@ -42,7 +42,7 @@ export const getUserByUserId = async (userId) => {
       return { success: false, message: 'User not found', data: null };
     }
   } catch (error) {
-    console.error('Error getting user by userId:', error);
+    console.error(String('Error getting user by userId:') + " " + String(error));
     return { success: false, message: error.message, data: null };
   }
 };
@@ -52,7 +52,7 @@ export const updateUser = async (id, userData) => {
     const result = await setDocument('users', id, { ...userData, uid: id }, true);
     return result.success ? { success: true, message: 'User updated successfully' } : result;
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error(String('Error updating user:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -62,7 +62,7 @@ export const updateUserField = async (id, field, value) => {
     const result = await updateDocumentField('users', id, { [field]: value });
     return result.success ? { success: true, message: 'User field updated successfully' } : result;
   } catch (error) {
-    console.error('Error updating user field:', error);
+    console.error(String('Error updating user field:') + " " + String(error));
     return { success: false, message: error.message };
   }
 };
@@ -70,12 +70,12 @@ export const updateUserField = async (id, field, value) => {
 export const getUsersByLevel = async (level, limitCount = 10) => {
   try {
     const users = await queryDocuments('users', [
-      ['level', '==', level],
-      ['isActivated', '==', true]
-    ], [['referralCount', 'desc']], limitCount);
+    ['level', '==', level],
+    ['isActivated', '==', true]],
+    [['referralCount', 'desc']], limitCount);
     return { success: true, data: users };
   } catch (error) {
-    console.error('Error getting users by level:', error);
+    console.error(String('Error getting users by level:') + " " + String(error));
     return { success: false, message: error.message, data: [] };
   }
 };
@@ -83,12 +83,12 @@ export const getUsersByLevel = async (level, limitCount = 10) => {
 export const searchUsers = async (searchTerm) => {
   try {
     const users = await queryDocuments('users', [
-      ['fullName', '>=', searchTerm],
-      ['fullName', '<=', searchTerm + '\uf8ff']
-    ], [], 10);
+    ['fullName', '>=', searchTerm],
+    ['fullName', '<=', searchTerm + '\uf8ff']],
+    [], 10);
     return { success: true, data: users };
   } catch (error) {
-    console.error('Error searching users:', error);
+    console.error(String('Error searching users:') + " " + String(error));
     return { success: false, message: error.message, data: [] };
   }
 };
@@ -96,11 +96,11 @@ export const searchUsers = async (searchTerm) => {
 export const getTopReferrers = async (limitCount = 10) => {
   try {
     const users = await queryDocuments('users', [
-      ['isActivated', '==', true]
-    ], [['referralCount', 'desc']], limitCount);
+    ['isActivated', '==', true]],
+    [['referralCount', 'desc']], limitCount);
     return { success: true, data: users };
   } catch (error) {
-    console.error('Error getting top referrers:', error);
+    console.error(String('Error getting top referrers:') + " " + String(error));
     return { success: false, message: error.message, data: [] };
   }
 };
@@ -127,7 +127,7 @@ export async function getSocialTasks(uid) {
 
 export async function updateSocialTask(uid, taskKey, username = '') {
   const userUid = auth.currentUser?.uid;
-  if (!userUid || (uid && uid !== userUid)) {
+  if (!userUid || uid && uid !== userUid) {
     console.warn('User not authenticated or UID mismatch. Aborting task update.');
     return;
   }
@@ -140,10 +140,13 @@ export async function updateSocialTask(uid, taskKey, username = '') {
       [`taskDetails.${taskKey}`]: Timestamp.now(),
       [`usernames.${taskKey}`]: username,
       taskScore: increment(1),
-      completedAt: Timestamp.now(),
+      completedAt: Timestamp.now()
     });
   } catch (error) {
-    if (error.code === 'not-found' || error.message?.includes('No document to update')) {
+    // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+    const safeMessage = typeof error?.message === "string" ? error.message : "";
+
+    if (error.code === 'not-found' || safeMessage.includes('No document to update')) {
       // If document does not exist, create it
       await setDoc(ref, {
         uid: userUid,
@@ -151,10 +154,10 @@ export async function updateSocialTask(uid, taskKey, username = '') {
         [`taskDetails.${taskKey}`]: Timestamp.now(),
         [`usernames.${taskKey}`]: username,
         taskScore: 1,
-        completedAt: Timestamp.now(),
+        completedAt: Timestamp.now()
       }, { merge: true });
     } else {
-      console.error('Failed to update task:', error);
+      console.error(String('Failed to update task:') + " " + String(error));
       throw error;
     }
   }
@@ -168,7 +171,7 @@ export async function updateTelegramTask() {
   }
 
   const uid = currentUser.uid;
-  console.log('Updating telegram task for UID:', uid);
+  console.log(String('Updating telegram task for UID:') + " " + String(uid));
   const ref = doc(db, 'socialTasks', uid);
   try {
     await updateDoc(ref, {
@@ -176,7 +179,7 @@ export async function updateTelegramTask() {
       telegram: true,
       taskScore: increment(1),
       'taskDetails.telegram': Timestamp.now(),
-      completedAt: Timestamp.now(),
+      completedAt: Timestamp.now()
     });
   } catch (err) {
     if (err.code === 'not-found') {
@@ -186,14 +189,14 @@ export async function updateTelegramTask() {
           telegram: true,
           taskScore: 1,
           'taskDetails.telegram': Timestamp.now(),
-          completedAt: Timestamp.now(),
+          completedAt: Timestamp.now()
         }, { merge: true });
       } catch (createErr) {
-        console.error('Failed to create telegram task document:', createErr);
+        console.error(String('Failed to create telegram task document:') + " " + String(createErr));
         throw createErr;
       }
     } else {
-      console.error('Failed to update telegram task:', err);
+      console.error(String('Failed to update telegram task:') + " " + String(err));
       throw err;
     }
   }

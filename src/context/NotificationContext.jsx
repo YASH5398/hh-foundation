@@ -9,8 +9,8 @@ import {
   getUserData,
   markAsRead as markNotificationAsRead,
   markAllAsRead as markAllNotificationsAsRead,
-  deleteNotification as deleteNotificationById
-} from '../services/notificationService';
+  deleteNotification as deleteNotificationById } from
+'../services/notificationService';
 import soundService from '../services/soundService';
 import { createAdminNotificationData, createActivityNotificationData } from '../utils/createNotificationData';
 
@@ -50,7 +50,7 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    console.log('NotificationContext: Fetching notifications for user:', user.uid);
+    console.log(String('NotificationContext: Fetching notifications for user:') + " " + String(user.uid));
     setLoading(true);
 
     const fetchNotifications = async () => {
@@ -64,20 +64,20 @@ export const NotificationProvider = ({ children }) => {
         );
 
         const snapshot = await getDocs(userQuery);
-        const notificationsList = snapshot.docs.map(doc => ({
+        const notificationsList = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data()
         }));
 
-        console.log('NotificationContext: Fetched notifications:', notificationsList.length);
+        console.log(String('NotificationContext: Fetched notifications:') + " " + String(notificationsList.length));
 
         setNotifications(notificationsList);
-        const currentUnreadCount = notificationsList.filter(n => !n.isRead).length;
-        console.log('NotificationContext: Unread count:', currentUnreadCount);
+        const currentUnreadCount = notificationsList.filter((n) => !n.isRead).length;
+        console.log(String('NotificationContext: Unread count:') + " " + String(currentUnreadCount));
         setUnreadCount(currentUnreadCount);
         setLoading(false);
       } catch (error) {
-        console.error('NotificationContext: Error fetching notifications:', error);
+        console.error(String('NotificationContext: Error fetching notifications:') + " " + String(error));
         setLoading(false);
       }
     };
@@ -91,7 +91,7 @@ export const NotificationProvider = ({ children }) => {
       await markNotificationAsRead(notificationId);
       // The real-time listener will update the state automatically
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error(String('Error marking notification as read:') + " " + String(error));
     }
   };
 
@@ -102,7 +102,7 @@ export const NotificationProvider = ({ children }) => {
         await markAllNotificationsAsRead(user.uid);
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error(String('Error marking all notifications as read:') + " " + String(error));
     }
   };
 
@@ -112,7 +112,7 @@ export const NotificationProvider = ({ children }) => {
       await deleteNotificationById(notificationId);
       // The real-time listener will update the state automatically
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error(String('Error deleting notification:') + " " + String(error));
     }
   };
 
@@ -120,7 +120,7 @@ export const NotificationProvider = ({ children }) => {
   const toggleDropdown = async () => {
     const wasOpen = isDropdownOpen;
     setIsDropdownOpen(!isDropdownOpen);
-    
+
     // When opening dropdown, mark all unread notifications as read
     if (!wasOpen && unreadCount > 0) {
       await markAllAsRead();
@@ -151,7 +151,7 @@ export const NotificationProvider = ({ children }) => {
       }
 
       const notificationType = type || 'admin';
-      
+
       // Handle different target types for admin notifications
       if (targetType === 'all') {
         // Send to all users - will be handled by service
@@ -199,7 +199,7 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('Invalid target configuration');
       }
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error(String('Error sending notification:') + " " + String(error));
       return { success: false, error: error.message };
     }
   };
@@ -228,7 +228,7 @@ export const NotificationProvider = ({ children }) => {
       await createNotification(notificationData);
       return { success: true };
     } catch (error) {
-      console.error('Error sending activity notification:', error);
+      console.error(String('Error sending activity notification:') + " " + String(error));
       return { success: false, error: error.message };
     }
   };
@@ -255,8 +255,8 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={value}>
       {children}
-    </NotificationContext.Provider>
-  );
+    </NotificationContext.Provider>);
+
 };
 
 export default NotificationContext;

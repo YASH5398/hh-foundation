@@ -132,7 +132,7 @@ export async function runSignupFullFlowTest() {
       createdAt: serverTimestamp()
     };
 
-    console.log("🔍 STEP 3: User data payload:", userData);
+    console.log("🔍 STEP 3: User data payload: " + String(userData));
     await setDoc(userDocRef, userData);
     console.log("✅ STEP 3: Full user document created successfully");
     results.userDocCreation = true;
@@ -261,20 +261,22 @@ export async function runSignupFullFlowTest() {
       stack: error.stack
     });
 
-    console.error("Error Code:", error.code);
-    console.error("Error Message:", error.message);
-    console.error("Error Stack:", error.stack);
+    console.error("Error Code: " + String(error.code));
+    console.error("Error Message: " + String(error.message));
+    console.error("Error Stack: " + String(error.stack));
 
     // Determine which step failed
     let failedStep = "unknown";
+    // Safely handle error.message to prevent TypeError: Cannot read properties of undefined (reading 'indexOf')
+    const safeMessage = typeof error?.message === "string" ? error.message : "";
 
-    if (error.message.includes("auth/")) {
+    if (safeMessage.includes("auth/")) {
       failedStep = "Firebase Auth";
-    } else if (error.message.includes("permission-denied")) {
+    } else if (safeMessage.includes("permission-denied")) {
       failedStep = "Firestore Permissions";
-    } else if (error.message.includes("epin") || error.message.includes("E-PIN")) {
+    } else if (safeMessage.includes("epin") || safeMessage.includes("E-PIN")) {
       failedStep = "E-PIN Logic";
-    } else if (error.message.includes("Missing required fields")) {
+    } else if (safeMessage.includes("Missing required fields")) {
       failedStep = "Field Verification";
     }
 
@@ -296,7 +298,7 @@ export async function runSignupFullFlowTest() {
         console.log("   ✅ Auth user deleted");
       }
     } catch (cleanupError) {
-      console.error("   ❌ Cleanup failed:", cleanupError.message);
+      console.error("   ❌ Cleanup failed: " + String(cleanupError?.message || cleanupError));
     }
 
     console.error("\n📊 PARTIAL TEST RESULTS:");

@@ -26,14 +26,14 @@ export const useAgentProfile = () => {
     try {
       setError(null);
       const profileData = await agentService.getAgentProfile(user.uid);
-      
+
       if (profileData) {
         setAgentProfile(profileData);
       } else {
         setError('Agent profile not found');
       }
     } catch (err) {
-      console.error('Error fetching agent profile:', err);
+      console.error(String('Error fetching agent profile:') + " " + String(err));
       setError(err.message || 'Failed to fetch agent profile');
     } finally {
       setLoading(false);
@@ -54,7 +54,7 @@ export const useAgentProfile = () => {
    * @param {Object} updates - Profile updates
    */
   const updateLocalProfile = (updates) => {
-    setAgentProfile(prev => prev ? { ...prev, ...updates } : null);
+    setAgentProfile((prev) => prev ? { ...prev, ...updates } : null);
   };
 
   // Fetch profile on mount and when user changes

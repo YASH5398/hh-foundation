@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import {
   FiAlertTriangle, FiUser, FiClock, FiDollarSign, FiActivity,
   FiEye, FiFilter, FiRefreshCw, FiDownload, FiSearch,
-  FiCalendar, FiTrendingUp, FiAlertCircle, FiShield, FiX
-} from 'react-icons/fi';
+  FiCalendar, FiTrendingUp, FiAlertCircle, FiShield, FiX } from
+'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   collection, query, where, orderBy, limit, getDocs,
-  doc, getDoc, Timestamp
-} from 'firebase/firestore';
+  doc, getDoc, Timestamp } from
+'firebase/firestore';
 import { db } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { formatDate } from '../../utils/formatDate';
@@ -26,59 +26,59 @@ const SuspiciousActivityDetection = () => {
 
   // Activity types for filtering
   const activityTypes = [
-    { value: 'all', label: 'All Activities' },
-    { value: 'multiple_logins', label: 'Multiple Logins' },
-    { value: 'rapid_transactions', label: 'Rapid Transactions' },
-    { value: 'unusual_patterns', label: 'Unusual Patterns' },
-    { value: 'account_changes', label: 'Account Changes' },
-    { value: 'suspicious_referrals', label: 'Suspicious Referrals' }
-  ];
+  { value: 'all', label: 'All Activities' },
+  { value: 'multiple_logins', label: 'Multiple Logins' },
+  { value: 'rapid_transactions', label: 'Rapid Transactions' },
+  { value: 'unusual_patterns', label: 'Unusual Patterns' },
+  { value: 'account_changes', label: 'Account Changes' },
+  { value: 'suspicious_referrals', label: 'Suspicious Referrals' }];
+
 
   // Risk levels
   const riskLevels = [
-    { value: 'all', label: 'All Risk Levels' },
-    { value: 'high', label: 'High Risk', color: 'red' },
-    { value: 'medium', label: 'Medium Risk', color: 'yellow' },
-    { value: 'low', label: 'Low Risk', color: 'green' }
-  ];
+  { value: 'all', label: 'All Risk Levels' },
+  { value: 'high', label: 'High Risk', color: 'red' },
+  { value: 'medium', label: 'Medium Risk', color: 'yellow' },
+  { value: 'low', label: 'Low Risk', color: 'green' }];
+
 
   // Date range options
   const dateRanges = [
-    { value: '1d', label: 'Last 24 Hours' },
-    { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' },
-    { value: '90d', label: 'Last 90 Days' }
-  ];
+  { value: '1d', label: 'Last 24 Hours' },
+  { value: '7d', label: 'Last 7 Days' },
+  { value: '30d', label: 'Last 30 Days' },
+  { value: '90d', label: 'Last 90 Days' }];
+
 
   // Load suspicious activities
   const loadSuspiciousActivities = async () => {
     setLoading(true);
     try {
       const activities = [];
-      
+
       // Get date range
       const now = new Date();
       const daysBack = parseInt(filters.dateRange.replace('d', ''));
-      const startDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+      const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
       // Detect multiple logins from different locations
       await detectMultipleLogins(activities, startDate);
-      
+
       // Detect rapid transactions
       await detectRapidTransactions(activities, startDate);
-      
+
       // Detect unusual patterns
       await detectUnusualPatterns(activities, startDate);
-      
+
       // Detect suspicious account changes
       await detectAccountChanges(activities, startDate);
-      
+
       // Detect suspicious referral patterns
       await detectSuspiciousReferrals(activities, startDate);
 
       // Filter activities based on selected filters
       const filteredActivities = filterActivities(activities);
-      
+
       // Sort by risk level and timestamp
       filteredActivities.sort((a, b) => {
         const riskOrder = { high: 3, medium: 2, low: 1 };
@@ -90,7 +90,7 @@ const SuspiciousActivityDetection = () => {
 
       setSuspiciousActivities(filteredActivities);
     } catch (error) {
-      console.error('Error loading suspicious activities:', error);
+      console.error(String('Error loading suspicious activities:') + " " + String(error));
       toast.error('Failed to load suspicious activities');
     } finally {
       setLoading(false);
@@ -106,10 +106,10 @@ const SuspiciousActivityDetection = () => {
         collection(db, 'users'),
         where('lastLoginAt', '>=', Timestamp.fromDate(startDate))
       );
-      
+
       const usersSnapshot = await getDocs(usersQuery);
-      
-      usersSnapshot.forEach(doc => {
+
+      usersSnapshot.forEach((doc) => {
         const userData = doc.data();
         // Simulate detection of multiple logins
         if (userData.loginCount && userData.loginCount > 10) {
@@ -130,7 +130,7 @@ const SuspiciousActivityDetection = () => {
         }
       });
     } catch (error) {
-      console.error('Error detecting multiple logins:', error);
+      console.error(String('Error detecting multiple logins:') + " " + String(error));
     }
   };
 
@@ -143,25 +143,25 @@ const SuspiciousActivityDetection = () => {
         where('createdAt', '>=', Timestamp.fromDate(startDate)),
         orderBy('createdAt', 'desc')
       );
-      
+
       const sendHelpSnapshot = await getDocs(sendHelpQuery);
       const userTransactions = {};
-      
-      sendHelpSnapshot.forEach(doc => {
+
+      sendHelpSnapshot.forEach((doc) => {
         const data = doc.data();
         const userId = data.senderId;
-        
+
         if (!userTransactions[userId]) {
           userTransactions[userId] = [];
         }
-        
+
         userTransactions[userId].push({
           timestamp: data.createdAt,
           amount: data.amount,
           type: 'sendHelp'
         });
       });
-      
+
       // Analyze transaction patterns
       for (const [userId, transactions] of Object.entries(userTransactions)) {
         if (transactions.length >= 5) {
@@ -170,11 +170,11 @@ const SuspiciousActivityDetection = () => {
           const firstTransaction = sortedTransactions[0].timestamp.toDate();
           const lastTransaction = sortedTransactions[sortedTransactions.length - 1].timestamp.toDate();
           const timeDiff = (lastTransaction - firstTransaction) / (1000 * 60 * 60); // hours
-          
+
           if (timeDiff < 24 && transactions.length >= 5) {
             const userDoc = await getDoc(doc(db, 'users', userId));
             const userData = userDoc.exists() ? userDoc.data() : {};
-            
+
             activities.push({
               id: `rapid_trans_${userId}_${Date.now()}`,
               type: 'rapid_transactions',
@@ -194,7 +194,7 @@ const SuspiciousActivityDetection = () => {
         }
       }
     } catch (error) {
-      console.error('Error detecting rapid transactions:', error);
+      console.error(String('Error detecting rapid transactions:') + " " + String(error));
     }
   };
 
@@ -205,12 +205,12 @@ const SuspiciousActivityDetection = () => {
         collection(db, 'users'),
         where('createdAt', '>=', Timestamp.fromDate(startDate))
       );
-      
+
       const usersSnapshot = await getDocs(usersQuery);
-      
-      usersSnapshot.forEach(doc => {
+
+      usersSnapshot.forEach((doc) => {
         const userData = doc.data();
-        
+
         // Detect users with unusual referral patterns
         if (userData.referralCount && userData.referralCount > 20) {
           activities.push({
@@ -228,7 +228,7 @@ const SuspiciousActivityDetection = () => {
             }
           });
         }
-        
+
         // Detect accounts with missing critical information
         if (!userData.phone || !userData.bankName || !userData.accountNumber) {
           activities.push({
@@ -249,7 +249,7 @@ const SuspiciousActivityDetection = () => {
         }
       });
     } catch (error) {
-      console.error('Error detecting unusual patterns:', error);
+      console.error(String('Error detecting unusual patterns:') + " " + String(error));
     }
   };
 
@@ -262,15 +262,15 @@ const SuspiciousActivityDetection = () => {
         collection(db, 'users'),
         where('updatedAt', '>=', Timestamp.fromDate(startDate))
       );
-      
+
       const usersSnapshot = await getDocs(usersQuery);
-      
-      usersSnapshot.forEach(doc => {
+
+      usersSnapshot.forEach((doc) => {
         const userData = doc.data();
-        
+
         if (userData.updatedAt && userData.createdAt) {
           const accountAge = (userData.updatedAt.toDate() - userData.createdAt.toDate()) / (1000 * 60 * 60 * 24);
-          
+
           // Flag accounts that were updated very recently after creation
           if (accountAge < 1) {
             activities.push({
@@ -291,7 +291,7 @@ const SuspiciousActivityDetection = () => {
         }
       });
     } catch (error) {
-      console.error('Error detecting account changes:', error);
+      console.error(String('Error detecting account changes:') + " " + String(error));
     }
   };
 
@@ -302,23 +302,23 @@ const SuspiciousActivityDetection = () => {
         collection(db, 'users'),
         where('createdAt', '>=', Timestamp.fromDate(startDate))
       );
-      
+
       const usersSnapshot = await getDocs(usersQuery);
       const sponsorCounts = {};
-      
-      usersSnapshot.forEach(doc => {
+
+      usersSnapshot.forEach((doc) => {
         const userData = doc.data();
         if (userData.sponsorId) {
           sponsorCounts[userData.sponsorId] = (sponsorCounts[userData.sponsorId] || 0) + 1;
         }
       });
-      
+
       // Flag sponsors with unusually high referral rates
       for (const [sponsorId, count] of Object.entries(sponsorCounts)) {
         if (count > 10) {
           const sponsorDoc = await getDoc(doc(db, 'users', sponsorId));
           const sponsorData = sponsorDoc.exists() ? sponsorDoc.data() : {};
-          
+
           activities.push({
             id: `suspicious_referral_${sponsorId}_${Date.now()}`,
             type: 'suspicious_referrals',
@@ -336,20 +336,20 @@ const SuspiciousActivityDetection = () => {
         }
       }
     } catch (error) {
-      console.error('Error detecting suspicious referrals:', error);
+      console.error(String('Error detecting suspicious referrals:') + " " + String(error));
     }
   };
 
   // Calculate profile completeness
   const calculateProfileCompleteness = (userData) => {
     const requiredFields = ['fullName', 'email', 'phone', 'bankName', 'accountNumber', 'ifscCode'];
-    const completedFields = requiredFields.filter(field => userData[field]);
-    return Math.round((completedFields.length / requiredFields.length) * 100);
+    const completedFields = requiredFields.filter((field) => userData[field]);
+    return Math.round(completedFields.length / requiredFields.length * 100);
   };
 
   // Filter activities based on current filters
   const filterActivities = (activities) => {
-    return activities.filter(activity => {
+    return activities.filter((activity) => {
       if (filters.activityType !== 'all' && activity.type !== filters.activityType) {
         return false;
       }
@@ -363,22 +363,22 @@ const SuspiciousActivityDetection = () => {
   // Get risk level color
   const getRiskLevelColor = (riskLevel) => {
     switch (riskLevel) {
-      case 'high': return 'text-red-400 bg-red-500/20 border border-red-500/30';
-      case 'medium': return 'text-yellow-400 bg-yellow-500/20 border border-yellow-500/30';
-      case 'low': return 'text-green-400 bg-green-500/20 border border-green-500/30';
-      default: return 'text-slate-400 bg-slate-500/20 border border-slate-500/30';
+      case 'high':return 'text-red-400 bg-red-500/20 border border-red-500/30';
+      case 'medium':return 'text-yellow-400 bg-yellow-500/20 border border-yellow-500/30';
+      case 'low':return 'text-green-400 bg-green-500/20 border border-green-500/30';
+      default:return 'text-slate-400 bg-slate-500/20 border border-slate-500/30';
     }
   };
 
   // Get activity type icon
   const getActivityTypeIcon = (type) => {
     switch (type) {
-      case 'multiple_logins': return <FiUser className="w-4 h-4" />;
-      case 'rapid_transactions': return <FiDollarSign className="w-4 h-4" />;
-      case 'unusual_patterns': return <FiActivity className="w-4 h-4" />;
-      case 'account_changes': return <FiShield className="w-4 h-4" />;
-      case 'suspicious_referrals': return <FiTrendingUp className="w-4 h-4" />;
-      default: return <FiAlertTriangle className="w-4 h-4" />;
+      case 'multiple_logins':return <FiUser className="w-4 h-4" />;
+      case 'rapid_transactions':return <FiDollarSign className="w-4 h-4" />;
+      case 'unusual_patterns':return <FiActivity className="w-4 h-4" />;
+      case 'account_changes':return <FiShield className="w-4 h-4" />;
+      case 'suspicious_referrals':return <FiTrendingUp className="w-4 h-4" />;
+      default:return <FiAlertTriangle className="w-4 h-4" />;
     }
   };
 
@@ -392,16 +392,16 @@ const SuspiciousActivityDetection = () => {
   // Export activities
   const exportActivities = () => {
     const csvContent = [
-      ['Type', 'User', 'Email', 'Risk Level', 'Description', 'Timestamp'],
-      ...suspiciousActivities.map(activity => [
-        activity.type,
-        activity.userName,
-        activity.userEmail,
-        activity.riskLevel,
-        activity.description,
-        formatDate(activity.timestamp, { includeTime: true })
-      ])
-    ].map(row => row.join(',')).join('\n');
+    ['Type', 'User', 'Email', 'Risk Level', 'Description', 'Timestamp'],
+    ...suspiciousActivities.map((activity) => [
+    activity.type,
+    activity.userName,
+    activity.userEmail,
+    activity.riskLevel,
+    activity.description,
+    formatDate(activity.timestamp, { includeTime: true })]
+    )].
+    map((row) => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -433,16 +433,16 @@ const SuspiciousActivityDetection = () => {
           <button
             onClick={exportActivities}
             disabled={suspiciousActivities.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
-          >
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2">
+            
             <FiDownload className="w-4 h-4" />
             <span>Export</span>
           </button>
           <button
             onClick={loadSuspiciousActivities}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
-          >
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2">
+            
             <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
@@ -458,38 +458,38 @@ const SuspiciousActivityDetection = () => {
           
           <select
             value={filters.activityType}
-            onChange={(e) => setFilters(prev => ({ ...prev, activityType: e.target.value }))}
-            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {activityTypes.map(type => (
-              <option key={type.value} value={type.value}>
+            onChange={(e) => setFilters((prev) => ({ ...prev, activityType: e.target.value }))}
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            
+            {activityTypes.map((type) =>
+            <option key={type.value} value={type.value}>
                 {type.label}
               </option>
-            ))}
+            )}
           </select>
           
           <select
             value={filters.riskLevel}
-            onChange={(e) => setFilters(prev => ({ ...prev, riskLevel: e.target.value }))}
-            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {riskLevels.map(level => (
-              <option key={level.value} value={level.value}>
+            onChange={(e) => setFilters((prev) => ({ ...prev, riskLevel: e.target.value }))}
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            
+            {riskLevels.map((level) =>
+            <option key={level.value} value={level.value}>
                 {level.label}
               </option>
-            ))}
+            )}
           </select>
           
           <select
             value={filters.dateRange}
-            onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {dateRanges.map(range => (
-              <option key={range.value} value={range.value}>
+            onChange={(e) => setFilters((prev) => ({ ...prev, dateRange: e.target.value }))}
+            className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            
+            {dateRanges.map((range) =>
+            <option key={range.value} value={range.value}>
                 {range.label}
               </option>
-            ))}
+            )}
           </select>
           
           <div className="flex items-center space-x-2 text-sm text-slate-400">
@@ -499,27 +499,27 @@ const SuspiciousActivityDetection = () => {
       </div>
 
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50">
-        {loading ? (
-          <div className="p-8 text-center">
+        {loading ?
+        <div className="p-8 text-center">
             <FiRefreshCw className="h-8 w-8 text-slate-500 mx-auto mb-4 animate-spin" />
             <p className="text-slate-400">Detecting suspicious activities...</p>
-          </div>
-        ) : suspiciousActivities.length === 0 ? (
-          <div className="p-8 text-center">
+          </div> :
+        suspiciousActivities.length === 0 ?
+        <div className="p-8 text-center">
             <FiShield className="h-12 w-12 text-green-500 mx-auto mb-4" />
             <p className="text-slate-400">No suspicious activities detected</p>
             <p className="text-sm text-slate-500">All user activities appear normal</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-700/50">
-            {suspiciousActivities.map((activity) => (
-              <motion.div
-                key={activity.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 hover:bg-slate-700/30 transition-colors cursor-pointer"
-                onClick={() => handleActivityClick(activity)}
-              >
+          </div> :
+
+        <div className="divide-y divide-slate-700/50">
+            {suspiciousActivities.map((activity) =>
+          <motion.div
+            key={activity.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 hover:bg-slate-700/30 transition-colors cursor-pointer"
+            onClick={() => handleActivityClick(activity)}>
+            
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 flex-1">
                     <div className="flex-shrink-0">
@@ -556,39 +556,39 @@ const SuspiciousActivityDetection = () => {
                   
                   <div className="flex items-center space-x-2 ml-4">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleActivityClick(activity);
-                      }}
-                      className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                      title="View Details"
-                    >
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleActivityClick(activity);
+                  }}
+                  className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                  title="View Details">
+                  
                       <FiEye className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               </motion.div>
-            ))}
+          )}
           </div>
-        )}
+        }
       </div>
 
       <AnimatePresence>
-        {showDetails && selectedActivity && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => setShowDetails(false)}
-          >
+        {showDetails && selectedActivity &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setShowDetails(false)}>
+          
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-800 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-slate-800 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white flex items-center">
@@ -596,9 +596,9 @@ const SuspiciousActivityDetection = () => {
                     <span className="ml-2">Activity Details</span>
                   </h2>
                   <button
-                    onClick={() => setShowDetails(false)}
-                    className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors"
-                  >
+                  onClick={() => setShowDetails(false)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors">
+                  
                     <FiX className="w-6 h-6" />
                   </button>
                 </div>
@@ -630,8 +630,8 @@ const SuspiciousActivityDetection = () => {
                     <p className="text-white">{selectedActivity.description}</p>
                   </div>
                   
-                  {selectedActivity.details && (
-                    <div>
+                  {selectedActivity.details &&
+                <div>
                       <label className="text-sm font-medium text-slate-400">Additional Details</label>
                       <div className="bg-slate-700/50 rounded-lg p-4 mt-2">
                         <pre className="text-sm text-slate-300 whitespace-pre-wrap">
@@ -639,24 +639,24 @@ const SuspiciousActivityDetection = () => {
                         </pre>
                       </div>
                     </div>
-                  )}
+                }
                 </div>
                 
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
-                    onClick={() => setShowDetails(false)}
-                    className="px-4 py-2 text-white bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
-                  >
+                  onClick={() => setShowDetails(false)}
+                  className="px-4 py-2 text-white bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
+                  
                     Close
                   </button>
                 </div>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
 export default SuspiciousActivityDetection;
