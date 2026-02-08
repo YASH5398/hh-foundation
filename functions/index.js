@@ -17,7 +17,12 @@ const handleChatbotMessage = require('./chatbot/handleChatbotMessage');
 
 admin.initializeApp();
 
-setGlobalOptions({ region: 'us-central1' });
+setGlobalOptions({
+  region: 'us-central1',
+  memory: '128MiB',
+  cpu: 1,
+  maxInstances: 2
+});
 
 const db = admin.firestore();
 
@@ -179,42 +184,233 @@ const releaseReceiverSlotIfNeeded = async (tx, { receiveRef, sendRef, receiverUi
 
 // Callable: receiver eligibility for UI gating (server truth)
 exports.getReceiveEligibility = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const uid = request.auth.uid;
-  const userRef = db.collection('users').doc(uid);
-  const userSnap = await userRef.get();
-  if (!userSnap.exists) {
-    throw new HttpsError('not-found', 'User not found');
-  }
-  const userData = userSnap.data();
-  const eligible = isReceiverEligibleStrict(userData);
-  const reasonCode = eligible ? null : getReceiverIneligibilityReason(userData);
-
-  // Simplified block type mapping - REMOVED conflicting flags
-  const blockType = !eligible ? (
-    reasonCode === 'receiving_held' ? 'isReceivingHeld' :
-      reasonCode === 'blocked' ? 'isBlocked' :
-        reasonCode === 'on_hold' ? 'isOnHold' :
-          null
-  ) : null;
-
-  return {
-    success: true,
-    message: eligible ? 'User is eligible to receive help' : `User is not eligible: ${reasonCode}`,
-    data: {
-      isEligible: eligible,
-      reasonCode,
-      blockType,
-      flags: {
-        isOnHold: userData?.isOnHold === true,
-        isReceivingHeld: userData?.isReceivingHeld === true,
-        isBlocked: userData?.isBlocked === true
-        // REMOVED: upgradeRequired, sponsorPaymentPending, paymentBlocked
-      },
-      activeReceiveCount: userData?.activeReceiveCount || 0,
-      levelAllowedLimit: getTotalHelpsByLevel(userData?.level || userData?.levelStatus)
+  try {
+    // Basic null safety for request and auth
+    if (!request || !request.auth || !request.auth.uid) {
+      return { eligible: false, reason: "invalid_state" };
     }
-  };
+
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      return { eligible: false, reason: "invalid_state" };
+    }
+
+    const userData = userSnap.data();
+    if (!userData) {
+      return { eligible: false, reason: "invalid_state" };
+    }
+
+    // 1. Early Guard: if user is already blocked or on hold
+    if (userData.isBlocked === true || userData.isOnHold === true) {
+      return { eligible: false, reason: "blocked", success: true };
+    }
+
+    // 2. TIMEOUT CHECKS (Proactive & Authoritative)
+    const now = Date.now();
+
+    // 2.A RECEIVER ELIGIBILITY 24H TIMEOUT (Step 4 Fallback)
+    const receiverEligibleAt = userData.receiverEligibleAt;
+    if (userData.isEligibleReceiver === true && receiverEligibleAt) {
+      let eligibleAtMs = 0;
+      if (typeof receiverEligibleAt.toMillis === 'function') eligibleAtMs = receiverEligibleAt.toMillis();
+      else if (typeof receiverEligibleAt === 'number') eligibleAtMs = receiverEligibleAt;
+      else if (receiverEligibleAt.seconds) eligibleAtMs = receiverEligibleAt.seconds * 1000;
+      else if (receiverEligibleAt._seconds) eligibleAtMs = receiverEligibleAt._seconds * 1000;
+
+      const deadlineMs = eligibleAtMs + (24 * 60 * 60 * 1000); // 24 Hours
+      if (now > deadlineMs) {
+        try {
+          console.warn(`🚨 [getReceiveEligibility] 24H ELIGIBILITY TIMEOUT: Blocking ${uid}`);
+          // HARD ASSERTION WRITE
+          await userRef.set({
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "receiver_eligibility_timeout",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          // READ-BACK VERIFICATION
+          const vSnap = await userRef.get();
+          if (vSnap.data()?.isBlocked !== true) throw new Error("BLOCK_WRITE_FAILED");
+
+          return { eligible: false, reason: "receiver_eligibility_timeout", success: true };
+        } catch (err) {
+          console.error("BLOCK FAILED (24H TIMEOUT):", uid, err);
+          throw new HttpsError('internal', `Block failed: ${err.message}`);
+        }
+      }
+    }
+
+    // 2.1 RECEIVER SIDE TIMEOUT (Redundant Protection)
+    try {
+      const activeReceiveSnap = await db.collection('receiveHelp')
+        .where('receiverUid', '==', uid)
+        .where('status', 'in', [
+          HELP_STATUSES.ASSIGNED,
+          HELP_STATUSES.PAYMENT_REQUESTED,
+          HELP_STATUSES.PAYMENT_DONE
+        ])
+        .get();
+
+      if (!activeReceiveSnap.empty) {
+        for (const receiveDoc of activeReceiveSnap.docs) {
+          const rData = receiveDoc.data();
+          const helpDeadline = rData.nextTimeoutAtMs || rData.paymentDeadline;
+          if (helpDeadline) {
+            let deadlineMs = 0;
+            if (typeof helpDeadline.toMillis === 'function') deadlineMs = helpDeadline.toMillis();
+            else if (typeof helpDeadline === 'number') deadlineMs = helpDeadline;
+            else if (helpDeadline.seconds) deadlineMs = helpDeadline.seconds * 1000;
+            else if (helpDeadline._seconds) deadlineMs = helpDeadline._seconds * 1000;
+
+            if (deadlineMs > 0 && now > deadlineMs) {
+              const blockedUid = rData.receiverUid; // STRICT EXTRACTION
+              console.warn(`🚨 [getReceiveEligibility] TIMEOUT DETECTED: Blocking receiver UID: ${blockedUid}`);
+
+              const targetUserRef = admin.firestore().doc(`users/${blockedUid}`);
+
+              // HARD ASSERTION WRITE (Non-transactional for reliability)
+              await targetUserRef.set({
+                isBlocked: true,
+                isOnHold: true,
+                blockReason: "receiver_payment_timeout",
+                blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }, { merge: true });
+
+              // READ-BACK VERIFICATION
+              const verifySnap = await targetUserRef.get();
+              if (verifySnap.data()?.isBlocked !== true) {
+                console.error(`BLOCK_VERIFICATION_FAILED for UID: ${blockedUid}`);
+                throw new Error("BLOCK_WRITE_FAILED");
+              }
+
+              return {
+                eligible: false,
+                reason: "receiver_payment_timeout",
+                success: true
+              };
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("BLOCK FAILED FOR USER (RECEIVER):", uid, error);
+      throw new HttpsError('internal', `Block failed: ${error.message}`);
+    }
+
+    // 2.2 SENDER SIDE TIMEOUT (Original Logic)
+    const paymentDeadline = userData.paymentDeadline;
+    if (paymentDeadline !== undefined && paymentDeadline !== null) {
+      let deadlineMs = 0;
+      try {
+        if (typeof paymentDeadline.toMillis === 'function') deadlineMs = paymentDeadline.toMillis();
+        else if (typeof paymentDeadline === 'number') deadlineMs = paymentDeadline;
+        else if (paymentDeadline.seconds) deadlineMs = paymentDeadline.seconds * 1000;
+        else if (paymentDeadline._seconds) deadlineMs = paymentDeadline._seconds * 1000;
+      } catch (e) {
+        console.error(`[getReceiveEligibility] Error parsing deadline for ${uid}:`, e.message);
+      }
+
+      if (deadlineMs > 0 && now > deadlineMs) {
+        try {
+          // HARD ASSERTION WRITE
+          await userRef.set({
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "send_help_timeout",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+            blockedHelpRef: userData.blockedHelpRef || userData.activeHelpId || null
+          }, { merge: true });
+
+          // READ-BACK VERIFICATION
+          const verifySnap = await userRef.get();
+          if (verifySnap.data()?.isBlocked !== true) {
+            throw new Error("BLOCK_WRITE_FAILED");
+          }
+
+          return { eligible: false, reason: "timeout_blocked", success: true };
+        } catch (error) {
+          console.error("BLOCK FAILED FOR USER (SENDER):", uid, error);
+          throw new HttpsError('internal', `Block failed: ${error.message}`);
+        }
+      }
+    }
+
+    // Main eligibility check
+    const eligible = isReceiverEligibleStrict(userData);
+    const reasonCode = eligible ? null : getReceiverIneligibilityReason(userData);
+
+    // FIX: Users with not_activated state must be treated as BLOCKED accounts globally
+    if (reasonCode === "not_activated") {
+      try {
+        console.warn(`🚨 [getReceiveEligibility] Auto-blocking not_activated user: ${uid}`);
+
+        // HARD ASSERTION WRITE
+        await userRef.set({
+          isBlocked: true,
+          isOnHold: true,
+          blockReason: "not_activated",
+          blockedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // READ-BACK VERIFICATION
+        const verifySnap = await userRef.get();
+        if (verifySnap.data()?.isBlocked !== true) {
+          throw new Error("BLOCK_WRITE_FAILED");
+        }
+      } catch (error) {
+        console.error("BLOCK FAILED FOR USER (NOT_ACTIVATED):", uid, error);
+        // We don't throw here to allow standard response, but it will be blocked on next visit
+      }
+    }
+
+    // Simplified block type mapping for backward compatibility
+    const blockType = !eligible ? (
+      reasonCode === 'receiving_held' ? 'isReceivingHeld' :
+        reasonCode === 'blocked' ? 'isBlocked' :
+          reasonCode === 'on_hold' ? 'isOnHold' :
+            reasonCode === 'not_activated' ? 'isBlocked' : // Map not_activated to isBlocked type
+              null
+    ) : null;
+
+    // 5. UPDATE ELIGIBILITY START TIME (Step 2)
+    // If eligible and first time, mark the start of the 24h window
+    if (eligible && userData.isEligibleReceiver !== true) {
+      console.log(`[getReceiveEligibility] User ${uid} now marked as ELIGIBLE RECEIVER. 24h timer started.`);
+      await userRef.set({
+        isEligibleReceiver: true,
+        receiverEligibleAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    // Return combined response to satisfy new requirements and maintain compatibility
+    return {
+      eligible: eligible,
+      reason: reasonCode,
+      success: true,
+      message: eligible ? 'User is eligible to receive help' : `User is not eligible: ${reasonCode}`,
+      data: {
+        isEligible: eligible,
+        reasonCode,
+        blockType,
+        flags: {
+          isOnHold: userData.isOnHold === true,
+          isReceivingHeld: userData.isReceivingHeld === true,
+          isBlocked: userData.isBlocked === true
+        },
+        activeReceiveCount: userData.activeReceiveCount || 0,
+        levelAllowedLimit: getTotalHelpsByLevel(userData.level || userData.levelStatus)
+      }
+    };
+
+  } catch (error) {
+    // 4. Ensure the function NEVER throws
+    console.error(`[getReceiveEligibility] Safe fail for ${request?.auth?.uid}:`, error.message);
+    return { eligible: false, reason: "internal_safe_fail" };
+  }
 });
 
 // Callable: start assignment (server-side matching, transactional, race-safe)
@@ -288,8 +484,8 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
     if (senderSnapForGuard.exists) {
       const sData = senderSnapForGuard.data();
       const sLevel = normalizeLevelName(sData.level || sData.levelStatus);
-      if (sLevel === 'Star' && sData.starSendHelpDone === true) {
-        console.warn(`[startHelpAssignment] BLOCKED: Star user ${senderUid} attempted re-assignment after activation (starSendHelpDone=true)`);
+      if (sLevel === 'Star' && (sData.starSendHelpDone === true || sData.isActivated === true)) {
+        console.warn(`[startHelpAssignment] BLOCKED: Star user ${senderUid} attempted re-assignment after activation (starSendHelpDone=${sData.starSendHelpDone}, isActivated=${sData.isActivated})`);
         return {
           state: 'ALREADY_ACTIVATED',
           success: false,
@@ -346,8 +542,15 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       if ((sender?.userId || null) !== senderId) {
         throw new HttpsError('failed-precondition', 'senderId does not match user document');
       }
-      if (sender?.isBlocked === true || sender?.isOnHold === true || sender?.paymentBlocked === true) {
-        throw new HttpsError('failed-precondition', sender?.blockReason || 'Sender is blocked/on hold');
+
+      // DEADLOCK FIX: Allow UPGRADE/SPONSOR_PAYMENT even if blocked/on-hold
+      const assignmentType = payload?.assignmentType || 'STANDARD';
+      const isUpgradeOrSponsor = assignmentType === 'UPGRADE' || assignmentType === 'SPONSOR_PAYMENT';
+
+      if (!isUpgradeOrSponsor) {
+        if (sender?.isBlocked === true || sender?.isOnHold === true || sender?.paymentBlocked === true) {
+          throw new HttpsError('failed-precondition', sender?.blockReason || 'Sender is blocked/on hold');
+        }
       }
 
       const senderLevel = normalizeLevelName(sender.level || sender.levelStatus);
@@ -355,7 +558,13 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       const activeSendQuery = db
         .collection('sendHelp')
         .where('senderUid', '==', senderUid)
-        .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE]);
+        .where('status', 'in', [
+          HELP_STATUSES.ASSIGNED,
+          HELP_STATUSES.PAYMENT_REQUESTED,
+          HELP_STATUSES.PAYMENT_DONE,
+          'Pending',
+          'Processing'
+        ]);
 
       let activeSendSnap;
       try {
@@ -365,7 +574,14 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
       }
 
       console.log('[startHelpAssignment] activeSend.count', { senderUid, count: activeSendSnap.size });
-      if (!activeSendSnap.empty) {
+
+      // Filter out any that might be inadvertently closed
+      const trulyActive = activeSendSnap.docs.filter(d => {
+        const data = d.data();
+        return data.status !== 'completed' && data.status !== 'cancelled' && data.status !== 'timeout';
+      });
+
+      if (trulyActive.length > 0) {
         throw new HttpsError('failed-precondition', 'Sender already has an active help');
       }
 
@@ -508,10 +724,39 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
           senderLevel
         });
 
-        return {
-          success: false,
-          reason: 'NO_ELIGIBLE_RECEIVER'
-        };
+        // BOOTSTRAP FIX: If no receiver found, try System Account fallback
+        // Only valid for Star level (first user scenario)
+        if (senderLevel === 'Star') {
+          console.log('[startHelpAssignment] attempting_bootstrap_fallback');
+          const systemQuery = db.collection('users')
+            .where('isSystemAccount', '==', true)
+            .limit(1);
+
+          let systemSnap;
+          try {
+            systemSnap = await tx.get(systemQuery);
+          } catch (e) {
+            console.error('Bootstrap fallback query failed', e);
+          }
+
+          if (systemSnap && !systemSnap.empty) {
+            const sysUser = systemSnap.docs[0];
+            chosenReceiverRef = sysUser.ref;
+            chosenReceiver = sysUser.data();
+            chosenReceiverUid = sysUser.id;
+            console.log('[startHelpAssignment] BOOTSTRAP_SUCCESS_SYSTEM_ACCOUNT', { uid: chosenReceiverUid });
+          } else {
+            return {
+              success: false,
+              reason: 'NO_ELIGIBLE_RECEIVER'
+            };
+          }
+        } else {
+          return {
+            success: false,
+            reason: 'NO_ELIGIBLE_RECEIVER'
+          };
+        }
       }
 
       // RE-VALIDATE receiver in transaction before assignment (check for concurrent modifications)
@@ -1262,6 +1507,241 @@ exports.processHelpTimeouts = onSchedule('every 1 minutes', async () => {
   await Promise.allSettled(promises);
 });
 
+// MANDATORY BACKEND ENFORCER: Auto-block receivers on deadline expiry
+// This removes all dependency on frontend triggers/actions.
+exports.enforceReceiverPaymentTimeouts = onSchedule('every 1 minutes', async (event) => {
+  const now = Date.now();
+  console.log('[enforceReceiverPaymentTimeouts] Starting authoritative timeout check...');
+
+  try {
+    // Query all active help assignments that are NOT confirmed/completed
+    const activeSnap = await db.collection('receiveHelp')
+      .where('status', 'in', [
+        HELP_STATUSES.ASSIGNED,
+        HELP_STATUSES.PAYMENT_REQUESTED,
+        HELP_STATUSES.PAYMENT_DONE
+      ])
+      .get();
+
+    if (activeSnap.empty) {
+      console.log('[enforceReceiverPaymentTimeouts] No active helps to process.');
+      return;
+    }
+
+    const tasks = activeSnap.docs.map(async (doc) => {
+      const r = doc.data();
+      const helpId = doc.id;
+      const receiverUid = r.receiverUid;
+
+      // Deadline authority: nextTimeoutAtMs or paymentDeadline
+      const deadline = r.nextTimeoutAtMs || r.paymentDeadline;
+      if (!deadline) return;
+
+      let deadlineMs = 0;
+      // Handle multiple timestamp formats (Firestore Timestamp, number, etc.)
+      if (typeof deadline.toMillis === 'function') {
+        deadlineMs = deadline.toMillis();
+      } else if (typeof deadline === 'number') {
+        deadlineMs = deadline;
+      } else if (deadline.seconds) {
+        deadlineMs = deadline.seconds * 1000;
+      } else if (deadline._seconds) {
+        deadlineMs = deadline._seconds * 1000;
+      }
+
+      if (deadlineMs > 0 && now > deadlineMs) {
+        const blockedUid = receiverUid; // Already extracted from r.receiverUid
+        console.warn(`🚨 [enforceReceiverPaymentTimeouts] TIMEOUT DETECTED: Help ${helpId}. Blocking receiver UID: ${blockedUid}`);
+
+        try {
+          const targetUserRef = admin.firestore().doc(`users/${blockedUid}`);
+
+          // PHASE 1: HARD BLOCK WRITE (No transaction, no batch, maximum reliability)
+          await targetUserRef.set({
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "receiver_payment_timeout",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          // PHASE 2: READ-BACK VERIFICATION
+          const verifySnap = await targetUserRef.get();
+          if (verifySnap.data()?.isBlocked !== true) {
+            console.error(`BLOCK_VERIFICATION_FAILED for UID: ${blockedUid}`);
+            throw new Error("BLOCK_WRITE_FAILED");
+          }
+
+          // PHASE 3: METADATA UPDATES (Status transitions)
+          await db.runTransaction(async (tx) => {
+            const receiveRef = db.collection('receiveHelp').doc(helpId);
+            const sendRef = db.collection('sendHelp').doc(helpId);
+            const [rSnap, sSnap] = await Promise.all([tx.get(receiveRef), tx.get(sendRef)]);
+
+            const terminalPatch = {
+              status: "TIMEOUT_BLOCKED",
+              timeoutReason: "receiver_payment_timeout",
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (rSnap.exists) tx.update(receiveRef, terminalPatch);
+            if (sSnap.exists) tx.update(sendRef, terminalPatch);
+
+            await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid });
+          });
+
+          console.log(`[enforceReceiverPaymentTimeouts] Successfully blocked and updated help state for ${receiverUid}`);
+
+        } catch (error) {
+          console.error("BLOCK FAILED FOR USER:", receiverUid, error);
+          // Let it throw to be visible in scheduled function logs
+          throw error;
+        }
+      }
+    });
+
+    await Promise.allSettled(tasks);
+    console.log('[enforceReceiverPaymentTimeouts] Finished processing helps.');
+
+  } catch (error) {
+    console.error('[enforceReceiverPaymentTimeouts] CRITICAL FAILURE:', error);
+  }
+});
+
+// STEP 3: 24-HOUR ELIGIBILITY ENFORCER
+// Auto-blocks users who stay in the Send Help pool for > 24 hours.
+exports.enforceReceiverEligibilityTimeout = onSchedule('every 15 minutes', async (event) => {
+  const now = Date.now();
+  console.log('[enforceReceiverEligibilityTimeout] Starting 24h eligibility check...');
+
+  try {
+    // Query users: Eligible but NOT blocked
+    const snap = await db.collection('users')
+      .where('isEligibleReceiver', '==', true)
+      .where('isBlocked', '==', false)
+      .get();
+
+    if (snap.empty) return;
+
+    const blockingTasks = snap.docs.map(async (doc) => {
+      const uData = doc.data();
+      const uid = doc.id;
+      const receiverEligibleAt = uData.receiverEligibleAt;
+
+      if (!receiverEligibleAt) return;
+
+      let eligibleAtMs = 0;
+      if (typeof receiverEligibleAt.toMillis === 'function') eligibleAtMs = receiverEligibleAt.toMillis();
+      else if (typeof receiverEligibleAt === 'number') eligibleAtMs = receiverEligibleAt;
+      else if (receiverEligibleAt.seconds) eligibleAtMs = receiverEligibleAt.seconds * 1000;
+      else if (receiverEligibleAt._seconds) eligibleAtMs = receiverEligibleAt._seconds * 1000;
+
+      const deadlineMs = eligibleAtMs + (24 * 60 * 60 * 1000); // 24 Hours
+
+      if (now > deadlineMs) {
+        console.warn(`🚨 [enforceReceiverEligibilityTimeout] 24H EXPIRED: Blocking user ${uid}`);
+        try {
+          const userRef = db.collection('users').doc(uid);
+
+          // HARD ASSERTION WRITE
+          await userRef.set({
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "receiver_eligibility_timeout",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          // READ-BACK VERIFICATION
+          const vSnap = await userRef.get();
+          if (vSnap.data()?.isBlocked !== true) {
+            console.error(`BLOCK_VERIFICATION_FAILED for UID: ${uid}`);
+            throw new Error("BLOCK_WRITE_FAILED");
+          }
+        } catch (error) {
+          console.error(`BLOCK FAILED for ${uid}:`, error);
+        }
+      }
+    });
+
+    await Promise.allSettled(blockingTasks);
+    console.log('[enforceReceiverEligibilityTimeout] Finished check.');
+  } catch (err) {
+    console.error('[enforceReceiverEligibilityTimeout] CRITICAL FAILURE:', err);
+  }
+});
+
+// TEMPORARY ONE-TIME BACKFILL: Block old users whose 24h window expired
+exports.backfillAndBlockOldReceivers = httpsOnCall(async (request) => {
+  // Only allow admins or manual trigger from console (if auth is enforced, use a secret or admin check)
+  // For this temporary setup, we follow the user's logic exactly.
+  const now = Date.now();
+  console.log('[backfillAndBlockOldReceivers] STARTING BACKFILL...');
+
+  try {
+    const snap = await db.collection('users')
+      .where('helpVisibility', '==', true)
+      .where('isBlocked', '==', false)
+      .get();
+
+    if (snap.empty) {
+      console.log('[backfillAndBlockOldReceivers] No candidates found.');
+      return { ok: true, message: 'No candidates' };
+    }
+
+    const tasks = snap.docs.map(async (doc) => {
+      const u = doc.data();
+      const uid = doc.id;
+
+      // 1. Determine Start Time
+      const startTime = u.receiverEligibleAt || u.registrationTime || u.createdAt;
+      if (!startTime) return;
+
+      let startMs = 0;
+      if (typeof startTime.toMillis === 'function') startMs = startTime.toMillis();
+      else if (typeof startTime === 'number') startMs = startTime;
+      else if (startTime.seconds) startMs = startTime.seconds * 1000;
+      else if (startTime._seconds) startMs = startTime._seconds * 1000;
+
+      const deadlineMs = startMs + (24 * 60 * 60 * 1000); // 24 Hours
+
+      // 2. Check if deadline passed AND payout/activation not done
+      // (Using isActivated as the authoritative 'payment completed' check for the first timer)
+      if (now > deadlineMs && u.isActivated !== true) {
+        console.warn(`🚨 [backfillAndBlockOldReceivers] BACKFILL BLOCKED USER: ${uid}`);
+
+        try {
+          const userRef = db.collection('users').doc(uid);
+
+          // PHASE 1: HARD BLOCK WRITE
+          await userRef.set({
+            isEligibleReceiver: true,
+            receiverEligibleAt: u.receiverEligibleAt || startTime, // Ensure field exists
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "receiver_eligibility_timeout",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          // PHASE 2: VERIFICATION
+          const verify = await userRef.get();
+          if (verify.data()?.isBlocked !== true) {
+            throw new Error(`BLOCK_VERIFICATION_FAILED for ${uid}`);
+          }
+          console.log(`[backfillAndBlockOldReceivers] Successfully blocked legacy user ${uid}`);
+        } catch (err) {
+          console.error(`[backfillAndBlockOldReceivers] FAILED to block ${uid}:`, err);
+        }
+      }
+    });
+
+    await Promise.allSettled(tasks);
+    console.log('[backfillAndBlockOldReceivers] BACKFILL COMPLETE.');
+    return { ok: true, processed: snap.size };
+  } catch (error) {
+    console.error('[backfillAndBlockOldReceivers] CRITICAL ERROR:', error);
+    throw new HttpsError('internal', error.message);
+  }
+});
+
 exports.resumeBlockedReceives = httpsOnCall(async (request) => {
   assertAuth(request);
   const callerUid = request.auth.uid;
@@ -1566,30 +2046,31 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
           tx.update(senderRef, senderUpdate);
         }
 
-        // NEW: Star level business rule - mark help as 'completed' 
-        // This prevents the confirmed help from appearing as "active" in the UI
-        if (senderLvl === 'Star') {
-          console.log(`[onReceiveHelpStatusProcessed] Star level detected for sender ${after.senderUid}, setting status to completed`);
-          const starProcessedPatch = {
-            status: 'completed',
-            completedAt: admin.firestore.FieldValue.serverTimestamp(),
-            completedBy: 'system_star_auto_transition',
-            incomeProcessed: true,
-            incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          };
-          tx.update(receiveRef, starProcessedPatch);
-          tx.update(sendRef, starProcessedPatch);
-          console.log(`[onReceiveHelpStatusProcessed] Successfully completed help ${helpId} for Star user`);
-        } else {
-          // For other levels, we can still use confirmed
-          const standardProcessedPatch = {
-            incomeProcessed: true,
-            incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          };
-          tx.update(receiveRef, standardProcessedPatch);
-          tx.update(sendRef, standardProcessedPatch);
+        // NEW: UNIVERSAL COMPLETION RULE
+        // ALWAYS mark help as 'completed' upon confirmation to prevent it from appearing as "active"
+        // This fixes the "Ghost Help" issue where confirmed payments still show up.
+        console.log(`[onReceiveHelpStatusProcessed] Marking help ${helpId} as COMPLETED for all users`);
+
+        const universalCompletedPatch = {
+          status: 'completed', // FORCE COMPLETED status
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          completedBy: 'system_auto_completion',
+          incomeProcessed: true,
+          incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+          slotReleased: true, // Ensure slot is released
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        tx.update(receiveRef, universalCompletedPatch);
+        tx.update(sendRef, universalCompletedPatch);
+
+        // Decrement receiver's active count if not already done
+        const rData = rSnap.data();
+        if (rData.slotReleased !== true) {
+          const currentActive = userData.activeReceiveCount || 0;
+          if (currentActive > 0) {
+            tx.update(userRef, { activeReceiveCount: admin.firestore.FieldValue.increment(-1) });
+          }
         }
       } else {
         // Fallback if sender doesn't exist
@@ -1742,143 +2223,145 @@ exports.onEpinRequestUpdateV2 = onDocumentUpdated('epinRequests/{requestId}', as
 // This function will be removed after debugging
 // ============================================================================
 
-exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+if (process.env.ENABLE_DEBUG_FUNCTIONS) {
+  exports.debugSendHelpEligibility = httpsOnRequest(async (req, res) => {
+    // Enable CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  try {
-    const senderUid = req.query.senderUid;
-
-    if (!senderUid) {
-      res.status(400).json({
-        error: 'Missing senderUid query parameter',
-        example: '/debugSendHelpEligibility?senderUid=uid123'
-      });
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
       return;
     }
 
-    console.log('[DEBUG] debugSendHelpEligibility start', { senderUid });
+    try {
+      const senderUid = req.query.senderUid;
 
-    // Get sender data
-    const senderSnap = await db.collection('users').doc(senderUid).get();
-    if (!senderSnap.exists) {
-      res.status(404).json({
-        error: 'Sender user not found',
-        senderUid
-      });
-      return;
-    }
+      if (!senderUid) {
+        res.status(400).json({
+          error: 'Missing senderUid query parameter',
+          example: '/debugSendHelpEligibility?senderUid=uid123'
+        });
+        return;
+      }
 
-    const sender = senderSnap.data();
+      console.log('[DEBUG] debugSendHelpEligibility start', { senderUid });
 
-    console.log('[DEBUG] SENDER_DATA', {
-      uid: senderUid,
-      userId: sender.userId,
-      levelStatus: sender.levelStatus,
-      level: sender.level,
-      isActivated: sender.isActivated,
-      isBlocked: sender.isBlocked,
-      isOnHold: sender.isOnHold,
-      paymentBlocked: sender.paymentBlocked
-    });
+      // Get sender data
+      const senderSnap = await db.collection('users').doc(senderUid).get();
+      if (!senderSnap.exists) {
+        res.status(404).json({
+          error: 'Sender user not found',
+          senderUid
+        });
+        return;
+      }
 
-    // Normalize sender level
-    const senderLevel = sender.levelStatus || sender.level || 'Star';
+      const sender = senderSnap.data();
 
-    console.log('[DEBUG] NORMALIZED_SENDER_LEVEL', senderLevel);
-
-    // Run the exact same query as startHelpAssignment
-    console.log('[DEBUG] RUNNING_QUERY', {
-      isActivated: true,
-      helpVisibility: true,
-      isReceivingHeld: false,
-      isBlocked: false,
-      isOnHold: false,
-      level: senderLevel
-    });
-
-    const receiverQuery = db
-      .collection('users')
-      .where('isActivated', '==', true)
-      .where('helpVisibility', '==', true)
-      .where('isReceivingHeld', '==', false)
-      .where('isBlocked', '==', false)
-      .where('isOnHold', '==', false)
-      .where('level', '==', senderLevel);
-
-    const snap = await receiverQuery.get();
-
-    console.log('[DEBUG] QUERY_RESULT', {
-      totalMatched: snap.size,
-      isEmpty: snap.empty,
-      senderLevel
-    });
-
-    // Log each matching receiver
-    const receivers = [];
-    snap.forEach(doc => {
-      const u = doc.data();
-      const receiverInfo = {
-        uid: doc.id,
-        userId: u.userId,
-        levelStatus: u.levelStatus,
-        level: u.level,
-        isActivated: u.isActivated,
-        helpVisibility: u.helpVisibility,
-        isBlocked: u.isBlocked,
-        isOnHold: u.isOnHold,
-        isReceivingHeld: u.isReceivingHeld,
-        helpReceived: u.helpReceived || 0,
-        activeReceiveCount: u.activeReceiveCount || 0,
-        sponsorPaymentPending: u.sponsorPaymentPending,
-        upgradeRequired: u.upgradeRequired
-      };
-
-      console.log('[DEBUG] MATCHING_RECEIVER', receiverInfo);
-      receivers.push(receiverInfo);
-    });
-
-    // Return summary
-    res.json({
-      success: true,
-      sender: {
+      console.log('[DEBUG] SENDER_DATA', {
         uid: senderUid,
         userId: sender.userId,
         levelStatus: sender.levelStatus,
+        level: sender.level,
         isActivated: sender.isActivated,
-        isBlocked: sender.isBlocked
-      },
-      query: {
-        senderLevel,
-        conditions: {
-          isActivated: true,
-          helpVisibility: true,
-          isReceivingHeld: false,
-          isBlocked: false,
-          isOnHold: false,
-          level: senderLevel
-        }
-      },
-      result: {
-        totalMatched: snap.size,
-        receivers: receivers
-      }
-    });
+        isBlocked: sender.isBlocked,
+        isOnHold: sender.isOnHold,
+        paymentBlocked: sender.paymentBlocked
+      });
 
-  } catch (error) {
-    console.error('[DEBUG] ERROR', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
-  }
-});
+      // Normalize sender level
+      const senderLevel = sender.levelStatus || sender.level || 'Star';
+
+      console.log('[DEBUG] NORMALIZED_SENDER_LEVEL', senderLevel);
+
+      // Run the exact same query as startHelpAssignment
+      console.log('[DEBUG] RUNNING_QUERY', {
+        isActivated: true,
+        helpVisibility: true,
+        isReceivingHeld: false,
+        isBlocked: false,
+        isOnHold: false,
+        level: senderLevel
+      });
+
+      const receiverQuery = db
+        .collection('users')
+        .where('isActivated', '==', true)
+        .where('helpVisibility', '==', true)
+        .where('isReceivingHeld', '==', false)
+        .where('isBlocked', '==', false)
+        .where('isOnHold', '==', false)
+        .where('level', '==', senderLevel);
+
+      const snap = await receiverQuery.get();
+
+      console.log('[DEBUG] QUERY_RESULT', {
+        totalMatched: snap.size,
+        isEmpty: snap.empty,
+        senderLevel
+      });
+
+      // Log each matching receiver
+      const receivers = [];
+      snap.forEach(doc => {
+        const u = doc.data();
+        const receiverInfo = {
+          uid: doc.id,
+          userId: u.userId,
+          levelStatus: u.levelStatus,
+          level: u.level,
+          isActivated: u.isActivated,
+          helpVisibility: u.helpVisibility,
+          isBlocked: u.isBlocked,
+          isOnHold: u.isOnHold,
+          isReceivingHeld: u.isReceivingHeld,
+          helpReceived: u.helpReceived || 0,
+          activeReceiveCount: u.activeReceiveCount || 0,
+          sponsorPaymentPending: u.sponsorPaymentPending,
+          upgradeRequired: u.upgradeRequired
+        };
+
+        console.log('[DEBUG] MATCHING_RECEIVER', receiverInfo);
+        receivers.push(receiverInfo);
+      });
+
+      // Return summary
+      res.json({
+        success: true,
+        sender: {
+          uid: senderUid,
+          userId: sender.userId,
+          levelStatus: sender.levelStatus,
+          isActivated: sender.isActivated,
+          isBlocked: sender.isBlocked
+        },
+        query: {
+          senderLevel,
+          conditions: {
+            isActivated: true,
+            helpVisibility: true,
+            isReceivingHeld: false,
+            isBlocked: false,
+            isOnHold: false,
+            level: senderLevel
+          }
+        },
+        result: {
+          totalMatched: snap.size,
+          receivers: receivers
+        }
+      });
+
+    } catch (error) {
+      console.error('[DEBUG] ERROR', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  });
+}
 // ============================
 // HTTP FUNCTION: VALIDATE E-PIN
 // ============================
@@ -2069,79 +2552,174 @@ exports.resolveUplinePayment = httpsOnCall(async (request) => {
 
 // Migration Function: Fix missing helpVisibility fields
 // Only admins can trigger this via HTTPS call
-exports.runHelpVisibilityMigration = httpsOnCall(async (request) => {
-  assertAuth(request);
-  const callerUid = request.auth.uid;
+if (process.env.ENABLE_DEBUG_FUNCTIONS) {
+  exports.runHelpVisibilityMigration = httpsOnCall(async (request) => {
+    assertAuth(request);
+    const callerUid = request.auth.uid;
 
-  // Verify admin status
-  const callerSnap = await db.collection('users').doc(callerUid).get();
-  if (!callerSnap.exists || callerSnap.data()?.role !== 'admin') {
-    throw new HttpsError('permission-denied', 'Only admins can run migrations');
-  }
+    // Verify admin status
+    const callerSnap = await db.collection('users').doc(callerUid).get();
+    if (!callerSnap.exists || callerSnap.data()?.role !== 'admin') {
+      throw new HttpsError('permission-denied', 'Only admins can run migrations');
+    }
 
-  console.log('[MIGRATION] Starting helpVisibility migration...');
+    console.log('[MIGRATION] Starting helpVisibility migration...');
 
-  // Find users where helpVisibility is completely missing
-  // Since Firestore doesn't support "where field is missing", we fetch potential candidates
-  // and check locally. Limit to 100 per run to avoid timeouts.
-  const usersSnap = await db.collection('users').limit(1000).get();
-  const batch = db.batch();
-  let updateCount = 0;
+    // Find users where helpVisibility is completely missing
+    // Since Firestore doesn't support "where field is missing", we fetch potential candidates
+    // and check locally. Limit to 100 per run to avoid timeouts.
+    const usersSnap = await db.collection('users').limit(1000).get();
+    const batch = db.batch();
+    let updateCount = 0;
 
-  usersSnap.forEach(docSnap => {
-    const data = docSnap.data();
-    // If helpVisibility is neither true nor false, it is missing
-    if (data.helpVisibility !== true && data.helpVisibility !== false) {
-      batch.update(docSnap.ref, {
-        helpVisibility: true,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      updateCount++;
+    usersSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      // If helpVisibility is neither true nor false, it is missing
+      if (data.helpVisibility !== true && data.helpVisibility !== false) {
+        batch.update(docSnap.ref, {
+          helpVisibility: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+      }
+    });
+
+    if (updateCount > 0) {
+      await batch.commit();
+    }
+
+    console.log(`[MIGRATION] Completed. Updated ${updateCount} users.`);
+    return { ok: true, updateCount };
+  });
+}
+// Cloud Function: Migrate user levels to string format (Data Alignment)
+if (process.env.ENABLE_DEBUG_FUNCTIONS) {
+  exports.migrateUserLevelsToString = httpsOnCall(async (request) => {
+    assertAdmin(request);
+
+    let processed = 0;
+    let healed = 0;
+
+    try {
+      const usersSnap = await db.collection('users').where('isActivated', '==', true).get();
+
+      // Process in sequence to avoid hitting transaction limits if any, 
+      // or we could use Promise.all with chunks
+      for (const doc of usersSnap.docs) {
+        processed++;
+        try {
+          // internalResumeBlockedReceives now handles:
+          // 1. Level string healing (numeric to Star, etc.)
+          // 2. Transctional activeReceiveCount recalculation
+          // 3. Clearing all stale timeout residue (holdReason, etc.)
+          await internalResumeBlockedReceives(doc.id);
+          healed++;
+        } catch (e) {
+          console.error(`[MIGRATION] Failed to heal user ${doc.id}:`, e);
+        }
+      }
+
+      return {
+        success: true,
+        processed,
+        healed,
+        message: `Healing complete. Audited ${processed} activated users, successfully healed ${healed}.`
+      };
+
+    } catch (error) {
+      console.error('[migrateUserLevelsToString] Error:', error);
+      throw new HttpsError('internal', error.message);
     }
   });
+}
 
-  if (updateCount > 0) {
+// Utility: Force cleanup ghost entries (Admin only)
+exports.cleanupStaleHelps = httpsOnCall(async (request) => {
+  assertAdmin(request);
+
+  const results = { sendHelpCount: 0, receiveHelpCount: 0, uidsCleaned: [] };
+
+  // Find all active Star-level sendHelp documents
+  const sendQuery = db.collection('sendHelp')
+    .where('senderLevel', '==', 'Star')
+    .where('status', 'in', ['assigned', 'payment_requested', 'payment_done', 'Pending', 'Processing']);
+
+  const sendSnap = await sendQuery.get();
+
+  for (const doc of sendSnap.docs) {
+    const data = doc.data();
+    const senderUid = data.senderUid;
+
+    // Check sender status
+    const senderSnap = await db.collection('users').doc(senderUid).get();
+    if (senderSnap.exists) {
+      const s = senderSnap.data();
+      if (s.isActivated === true || s.starSendHelpDone === true) {
+        console.log(`[cleanupStaleHelps] Cleaning ghost sender ${senderUid} in help ${doc.id}`);
+
+        const patch = {
+          status: 'completed',
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          completedBy: 'system_cleanup_utility',
+          slotReleased: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        await doc.ref.update(patch);
+        results.sendHelpCount++;
+
+        // Match receiveHelp doc
+        const receiveRef = db.collection('receiveHelp').doc(doc.id);
+        const rSnap = await receiveRef.get();
+        if (rSnap.exists) {
+          await receiveRef.update(patch);
+          results.receiveHelpCount++;
+        }
+
+        if (!results.uidsCleaned.includes(senderUid)) {
+          results.uidsCleaned.push(senderUid);
+        }
+      }
+    }
+  }
+
+  return { success: true, ...results };
+});
+
+// Utility: Normalize User documents by removing kycDetails (Admin only)
+exports.cleanupKycData = httpsOnCall(async (request) => {
+  assertAdmin(request);
+
+  const results = { updatedCount: 0, failureCount: 0 };
+  const usersRef = db.collection('users');
+  const snapshot = await usersRef.get();
+
+  console.log(`[cleanupKycData] Starting cleanup for ${snapshot.size} users`);
+
+  const batch = db.batch();
+  let operationCount = 0;
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.kycDetails) {
+      batch.update(doc.ref, {
+        kycDetails: admin.firestore.FieldValue.delete()
+      });
+      operationCount++;
+      results.updatedCount++;
+
+      // Firestore batch limit is 500
+      if (operationCount >= 450) {
+        await batch.commit();
+        operationCount = 0;
+      }
+    }
+  }
+
+  if (operationCount > 0) {
     await batch.commit();
   }
 
-  console.log(`[MIGRATION] Completed. Updated ${updateCount} users.`);
-  return { ok: true, updateCount };
-});
-// Cloud Function: Migrate user levels to string format (Data Alignment)
-exports.migrateUserLevelsToString = httpsOnCall(async (request) => {
-  assertAdmin(request);
-
-  let processed = 0;
-  let healed = 0;
-
-  try {
-    const usersSnap = await db.collection('users').where('isActivated', '==', true).get();
-
-    // Process in sequence to avoid hitting transaction limits if any, 
-    // or we could use Promise.all with chunks
-    for (const doc of usersSnap.docs) {
-      processed++;
-      try {
-        // internalResumeBlockedReceives now handles:
-        // 1. Level string healing (numeric to Star, etc.)
-        // 2. Transctional activeReceiveCount recalculation
-        // 3. Clearing all stale timeout residue (holdReason, etc.)
-        await internalResumeBlockedReceives(doc.id);
-        healed++;
-      } catch (e) {
-        console.error(`[MIGRATION] Failed to heal user ${doc.id}:`, e);
-      }
-    }
-
-    return {
-      success: true,
-      processed,
-      healed,
-      message: `Healing complete. Audited ${processed} activated users, successfully healed ${healed}.`
-    };
-
-  } catch (error) {
-    console.error('[migrateUserLevelsToString] Error:', error);
-    throw new HttpsError('internal', error.message);
-  }
+  console.log(`[cleanupKycData] Finished cleanup. Updated: ${results.updatedCount}`);
+  return { success: true, ...results };
 });

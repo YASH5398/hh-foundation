@@ -7,9 +7,9 @@ import {
   signInWithEmailPassword,
   signOutUser,
   createUserAccount,
-  getAuthErrorMessage } from
-"../utils/authUtils";
-import { getReceiveEligibility } from "../services/helpService";
+  getAuthErrorMessage
+} from
+  "../utils/authUtils";
 
 const AuthContext = createContext();
 
@@ -27,6 +27,8 @@ export const AuthProvider = ({ children }) => {
   const [blockReason, setBlockReason] = useState(null);
   const [blockedAt, setBlockedAt] = useState(null);
   const [receiveEligibility, setReceiveEligibility] = useState(null);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [lastFetchedUid, setLastFetchedUid] = useState(null);
 
   // 🔹 Init Auth Persistence
   useEffect(() => {
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (error) {
-        console.error(String("Auth persistence error:") + " " + String(error));
+        console.error("Auth persistence error:", error);
       }
     };
     initAuth();
@@ -42,24 +44,20 @@ export const AuthProvider = ({ children }) => {
 
   // 🔹 Listen Auth State (CRITICAL: Single source of truth)
   useEffect(() => {
-    console.log("🔍 AUTH CONTEXT: Setting up auth listener...");
-
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      console.log(String("🔍 AUTH STATE CHANGED:") + " " + String(authUser ? "LOGGED IN" : "LOGGED OUT") + " " + String(authUser?.uid));
-
       if (authUser) {
-        // User logged in
         setUser(authUser);
-        setInitialAuthLoading(false); // Auth check complete
+        setInitialAuthLoading(false);
       } else {
-        // User logged out
         setUser(null);
         setUserProfile(null);
         setIsBlocked(false);
         setBlockReason(null);
         setBlockedAt(null);
         setReceiveEligibility(null);
-        setInitialAuthLoading(false); // Auth check complete
+        setIsProfileLoaded(false);
+        setLastFetchedUid(null);
+        setInitialAuthLoading(false);
       }
     });
 
@@ -68,59 +66,96 @@ export const AuthProvider = ({ children }) => {
 
   // 🔹 Fetch Profile When User Changes
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.uid === lastFetchedUid) return;
 
     const fetchProfile = async () => {
       setProfileLoading(true);
-      console.log(String("🔍 AUTH CONTEXT: Fetching profile for:") + " " + String(user.uid));
 
       try {
         const profile = await getUserProfile(user.uid);
-        console.log(String("🔍 AUTH CONTEXT: Profile fetched successfully:") + " " + String(profile?.role));
-        setUserProfile(profile || null); // null if doc missing
-
-        // Fetch eligibility/block status
-        try {
-          const eligibility = await getReceiveEligibility();
-          setReceiveEligibility(eligibility);
-
-          if (eligibility?.blockType === 'isBlocked') {
-            setIsBlocked(true);
-            setBlockReason(eligibility.reasonCode);
-            setBlockedAt(profile?.blockedAt || null);
-          } else {
-            // Check raw profile flags as fallback
-            const isBlockedRaw = !!(profile?.isBlocked || profile?.isOnHold);
-            setIsBlocked(isBlockedRaw);
-            if (isBlockedRaw) {
-              setBlockReason(profile?.blockReason || profile?.blockedReason || 'Account Locked');
-              setBlockedAt(profile?.blockedAt || null);
-            }
-          }
-        } catch (e) {
-          console.warn("Eligibility check failed:", e);
-          // Fallback to minimal profile block check
-          setIsBlocked(!!(profile?.isBlocked || profile?.isOnHold));
+        if (!profile) {
+          setUserProfile(null);
+          setIsProfileLoaded(true);
+          setLastFetchedUid(user.uid);
+          return;
         }
 
+        // ENSURE these exact fields are read from Firestore root per requirements
+        const profileData = {
+          ...profile,
+          isBlocked: profile.isBlocked === true,
+          isOnHold: profile.isOnHold === true,
+          blockReason: profile.blockReason || null,
+          isEligibleReceiver: profile.isEligibleReceiver === true,
+          receiverEligibleAt: profile.receiverEligibleAt || null,
+        };
+
+        // ONE-TIME debug log after profile fetch
+        console.log("PROFILE BLOCK FLAGS:", profileData.isBlocked, profileData.isOnHold, profileData.blockReason);
+
+        setUserProfile(profileData);
+        setIsProfileLoaded(true);
+        setLastFetchedUid(user.uid);
+
+        // Update individual states to match Firestore truth exactly
+        const isRestricted = profileData.isBlocked === true || profileData.isOnHold === true;
+        setIsBlocked(isRestricted);
+        setBlockReason(profileData.blockReason || null);
+        setBlockedAt(profileData.blockedAt || null);
+
       } catch (error) {
-        console.error(String("Profile fetch failed:") + " " + String(error));
-        setUserProfile(undefined); // undefined means "error/unknown" not "missing"
+        console.error("fetchProfile failed:", error);
+        setUserProfile(undefined);
       } finally {
         setProfileLoading(false);
       }
     };
 
     fetchProfile();
-  }, [user]);
+  }, [user?.uid, lastFetchedUid]);
+
+  // 🔹 Refresh Profile Manually (FORCE SYNC)
+  const refreshUserProfile = async () => {
+    if (!user) return;
+    setProfileLoading(true);
+    console.log("🔄 AUTH CONTEXT: Manually refreshing profile for " + user.uid);
+
+    try {
+      const profile = await getUserProfile(user.uid);
+      if (!profile) return null;
+
+      const profileData = {
+        ...profile,
+        isBlocked: profile.isBlocked === true,
+        isOnHold: profile.isOnHold === true,
+        blockReason: profile.blockReason || null,
+        isEligibleReceiver: profile.isEligibleReceiver === true,
+        receiverEligibleAt: profile.receiverEligibleAt || null,
+      };
+
+      console.log("PROFILE BLOCK FLAGS (REFRESH):", profileData.isBlocked, profileData.isOnHold, profileData.blockReason);
+
+      setUserProfile(profileData);
+
+      const isRestricted = profileData.isBlocked === true || profileData.isOnHold === true;
+      setIsBlocked(isRestricted);
+      setBlockReason(profileData.blockReason || null);
+      setBlockedAt(profileData.blockedAt || null);
+
+      return profileData;
+    } catch (error) {
+      console.error("Refresh profile failed:", error);
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   // 🔹 Helpers
   const login = async (email, password) => {
     setAuthLoading(true);
     try {
-      // Persistence is already set on mount
       const result = await signInWithEmailPassword(email, password);
-      // Auth listener handles state update
       return result;
     } catch (error) {
       toast.error(getAuthErrorMessage(error.code));
@@ -134,7 +169,6 @@ export const AuthProvider = ({ children }) => {
     setAuthLoading(true);
     try {
       await signOutUser();
-      // Auth listener handles cleanup
       return { success: true };
     } catch (error) {
       toast.error("Logout failed");
@@ -153,7 +187,6 @@ export const AuthProvider = ({ children }) => {
       };
 
       const result = await createUserAccount(userData);
-      // Auth listener handles state update
       return result;
     } catch (error) {
       toast.error(getAuthErrorMessage(error.code));
@@ -167,10 +200,10 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    setUser, // expose minimal setter if needed by edge cases
+    setUser,
     userProfile,
-    loading: initialAuthLoading, // Only initial load, NOT profile loading
-    profileLoading, // Expose separately for components that need it
+    loading: initialAuthLoading,
+    profileLoading,
     authLoading,
     isAdmin,
     isBlocked,
@@ -179,12 +212,13 @@ export const AuthProvider = ({ children }) => {
     receiveEligibility,
     login,
     logout,
-    signup
+    signup,
+    refreshUserProfile
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
-    </AuthContext.Provider>);
-
+    </AuthContext.Provider>
+  );
 };

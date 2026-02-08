@@ -195,24 +195,21 @@ const EnhancedUserManager = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-500">Activation Status</label>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              selectedUser.isActivated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedUser.isActivated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`
               }>
                 {selectedUser.isActivated ? 'Activated' : 'Not Activated'}
               </span>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Block Status</label>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              selectedUser.isBlocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedUser.isBlocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`
               }>
                 {selectedUser.isBlocked ? 'Blocked' : 'Active'}
               </span>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">On Hold</label>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              selectedUser.isOnHold ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedUser.isOnHold ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`
               }>
                 {selectedUser.isOnHold ? 'On Hold' : 'Normal'}
               </span>
@@ -240,25 +237,10 @@ const EnhancedUserManager = () => {
               <label className="text-sm font-medium text-gray-500">Bank Account</label>
               <p className="text-gray-900">
                 {selectedUser.paymentMethod?.bank?.accountNumber ?
-                `${selectedUser.paymentMethod.bank.accountNumber} (${selectedUser.paymentMethod.bank.ifsc})` :
-                'N/A'
+                  `${selectedUser.paymentMethod.bank.accountNumber} (${selectedUser.paymentMethod.bank.ifsc})` :
+                  'N/A'
                 }
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* KYC Details */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">KYC Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">PAN Number</label>
-              <p className="text-gray-900">{selectedUser.kycDetails?.pan || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Aadhaar Number</label>
-              <p className="text-gray-900">{selectedUser.kycDetails?.aadhaar || 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -309,7 +291,7 @@ const EnhancedUserManager = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {records.map((record) =>
-            <tr key={record.id} className="hover:bg-gray-50">
+              <tr key={record.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <FiUser className="text-gray-400 mr-2" />
@@ -352,7 +334,7 @@ const EnhancedUserManager = () => {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg">
-        
+
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -360,7 +342,7 @@ const EnhancedUserManager = () => {
               <button
                 onClick={() => setSelectedUser(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                
+
                 <FiArrowLeft className="w-5 h-5" />
               </button>
               <div>
@@ -378,32 +360,29 @@ const EnhancedUserManager = () => {
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'profile' ?
-              'border-blue-500 text-blue-600' :
-              'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'profile' ?
+                'border-blue-500 text-blue-600' :
+                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }>
-              
+
               Profile Details
             </button>
             <button
               onClick={() => setActiveTab('sendHelp')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'sendHelp' ?
-              'border-blue-500 text-blue-600' :
-              'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'sendHelp' ?
+                'border-blue-500 text-blue-600' :
+                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }>
-              
+
               Send Help Records
             </button>
             <button
               onClick={() => setActiveTab('receiveHelp')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'receiveHelp' ?
-              'border-blue-500 text-blue-600' :
-              'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'receiveHelp' ?
+                'border-blue-500 text-blue-600' :
+                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }>
-              
+
               Receive Help Records
             </button>
           </nav>
@@ -413,33 +392,33 @@ const EnhancedUserManager = () => {
         <div className="p-6">
           <AnimatePresence mode="wait">
             {activeTab === 'profile' &&
-            <motion.div
-              key="profile"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}>
-              
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}>
+
                 {renderUserProfile()}
               </motion.div>
             }
             {activeTab === 'sendHelp' &&
-            <motion.div
-              key="sendHelp"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}>
-              
+              <motion.div
+                key="sendHelp"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}>
+
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Send Help Records</h3>
                 {renderHelpRecords(sendHelpRecords, 'Send Help')}
               </motion.div>
             }
             {activeTab === 'receiveHelp' &&
-            <motion.div
-              key="receiveHelp"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}>
-              
+              <motion.div
+                key="receiveHelp"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}>
+
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Receive Help Records</h3>
                 {renderHelpRecords(receiveHelpRecords, 'Receive Help')}
               </motion.div>
@@ -455,7 +434,7 @@ const EnhancedUserManager = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg">
-      
+
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800">User Management</h2>
@@ -472,68 +451,67 @@ const EnhancedUserManager = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base" />
-          
+
         </div>
       </div>
 
       {/* Users List */}
       <div className="p-4 lg:p-6">
         {loading ?
-        <div className="flex justify-center items-center py-8">
+          <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
           </div> :
-        filteredUsers.length === 0 ?
-        <div className="text-center py-8">
-            <FiUser className="mx-auto text-gray-400 text-4xl mb-2" />
-            <p className="text-gray-500">No users found</p>
-          </div> :
+          filteredUsers.length === 0 ?
+            <div className="text-center py-8">
+              <FiUser className="mx-auto text-gray-400 text-4xl mb-2" />
+              <p className="text-gray-500">No users found</p>
+            </div> :
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-            {filteredUsers.map((user) =>
-          <motion.div
-            key={user.id}
-            whileHover={{ scale: 1.02 }}
-            className="bg-gray-50 rounded-lg p-3 lg:p-4 cursor-pointer hover:bg-gray-100 transition-colors"
-            onClick={() => handleUserSelect(user)}>
-            
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2 lg:space-x-3 flex-1 min-w-0">
-                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <FiUser className="text-blue-600 text-sm lg:text-base" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+              {filteredUsers.map((user) =>
+                <motion.div
+                  key={user.id}
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-gray-50 rounded-lg p-3 lg:p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleUserSelect(user)}>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2 lg:space-x-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <FiUser className="text-blue-600 text-sm lg:text-base" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-gray-900 text-sm lg:text-base truncate">
+                          {user.fullName || 'Unknown User'}
+                        </h3>
+                        <p className="text-xs lg:text-sm text-gray-500 truncate">{user.userId || user.id}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-medium text-gray-900 text-sm lg:text-base truncate">
-                        {user.fullName || 'Unknown User'}
-                      </h3>
-                      <p className="text-xs lg:text-sm text-gray-500 truncate">{user.userId || user.id}</p>
+                    <FiEye className="text-gray-400 flex-shrink-0" />
+                  </div>
+
+                  <div className="space-y-1 lg:space-y-2">
+                    <div className="flex justify-between text-xs lg:text-sm">
+                      <span className="text-gray-500">Level:</span>
+                      <span className="text-gray-900 truncate ml-2">{user.levelStatus || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs lg:text-sm">
+                      <span className="text-gray-500">Referrals:</span>
+                      <span className="text-gray-900">{user.referralCount || 0}</span>
+                    </div>
+                    <div className="flex justify-between text-xs lg:text-sm items-center">
+                      <span className="text-gray-500">Status:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.isBlocked ? 'bg-red-100 text-red-800' :
+                        user.isActivated ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'}`
+                      }>
+                        {user.isBlocked ? 'Blocked' : user.isActivated ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
                   </div>
-                  <FiEye className="text-gray-400 flex-shrink-0" />
-                </div>
-                
-                <div className="space-y-1 lg:space-y-2">
-                  <div className="flex justify-between text-xs lg:text-sm">
-                    <span className="text-gray-500">Level:</span>
-                    <span className="text-gray-900 truncate ml-2">{user.levelStatus || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between text-xs lg:text-sm">
-                    <span className="text-gray-500">Referrals:</span>
-                    <span className="text-gray-900">{user.referralCount || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-xs lg:text-sm items-center">
-                    <span className="text-gray-500">Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                user.isBlocked ? 'bg-red-100 text-red-800' :
-                user.isActivated ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'}`
-                }>
-                      {user.isBlocked ? 'Blocked' : user.isActivated ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-          )}
-          </div>
+                </motion.div>
+              )}
+            </div>
         }
       </div>
     </motion.div>);

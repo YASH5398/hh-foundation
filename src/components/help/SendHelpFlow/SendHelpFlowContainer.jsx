@@ -92,8 +92,8 @@ const SendHelpFlowContainer = ({
 
       // Update both sendHelp and receiveHelp documents with payment proof
       await Promise.all([
-      updateDoc(doc(db, 'sendHelp', helpId), paymentUpdateData),
-      updateDoc(doc(db, 'receiveHelp', helpId), paymentUpdateData)]
+        updateDoc(doc(db, 'sendHelp', helpId), paymentUpdateData),
+        updateDoc(doc(db, 'receiveHelp', helpId), paymentUpdateData)]
       );
 
       toast.success('Payment proof submitted! Waiting for receiver confirmation...');
@@ -153,61 +153,61 @@ const SendHelpFlowContainer = ({
     <>
       <AnimatePresence mode="wait">
         {currentStep === FLOW_STEPS.RECEIVER_DETAILS &&
-        <ReceiverDetailsPage
-          key="receiver-details"
-          receiver={receiver}
-          amount={300}
-          onProceed={handleReceiverDetailsProceed}
-          onBack={handleBackClick}
-          isProceding={isSubmitting} />
+          <ReceiverDetailsPage
+            key="receiver-details"
+            receiver={receiver}
+            amount={receiver.amount || 300}
+            onProceed={handleReceiverDetailsProceed}
+            onBack={handleBackClick}
+            isProceding={isSubmitting} />
 
         }
 
         {currentStep === FLOW_STEPS.PAYMENT_DETAILS &&
-        <PaymentDetailsPage
-          key="payment-details"
-          receiver={receiver}
-          amount={300}
-          onConfirm={handlePaymentDetailsConfirm}
-          onBack={handleBackClick}
-          isConfirming={isSubmitting} />
+          <PaymentDetailsPage
+            key="payment-details"
+            receiver={receiver}
+            amount={receiver.amount || 300}
+            onConfirm={handlePaymentDetailsConfirm}
+            onBack={handleBackClick}
+            isConfirming={isSubmitting} />
 
         }
 
         {currentStep === FLOW_STEPS.SUBMIT_PROOF &&
-        <SubmitProofPage
-          key="submit-proof"
-          receiver={receiver}
-          amount={300}
-          onSubmit={handleSubmitProofSubmit}
-          onBack={handleBackClick}
-          isSubmitting={isSubmitting} />
+          <SubmitProofPage
+            key="submit-proof"
+            receiver={receiver}
+            amount={receiver.amount || 300}
+            onSubmit={handleSubmitProofSubmit}
+            onBack={handleBackClick}
+            isSubmitting={isSubmitting} />
 
         }
 
         {currentStep === FLOW_STEPS.WAITING_CONFIRMATION &&
-        <WaitingForConfirmationPage
-          key="waiting-confirmation"
-          transactionId={createdHelpData?.id}
-          receiver={receiver}
-          helpData={createdHelpData}
-          onConfirmed={handleFlowConfirmed}
-          setShowChat={setShowChat} />
+          <WaitingForConfirmationPage
+            key="waiting-confirmation"
+            transactionId={createdHelpData?.id}
+            receiver={receiver}
+            helpData={createdHelpData}
+            onConfirmed={handleFlowConfirmed}
+            setShowChat={setShowChat} />
 
         }
       </AnimatePresence>
 
       {/* Chat Modal */}
       {createdHelpData?.id &&
-      <TransactionChat
-        transactionType="sendHelp"
-        transactionId={createdHelpData.id}
-        otherUser={{
-          name: receiver.fullName || receiver.name,
-          profileImage: receiver.profileImage
-        }}
-        isOpen={showChat}
-        onClose={() => setShowChat(false)} />
+        <TransactionChat
+          transactionType="sendHelp"
+          transactionId={createdHelpData.id}
+          otherUser={{
+            name: receiver.fullName || receiver.name,
+            profileImage: receiver.profileImage
+          }}
+          isOpen={showChat}
+          onClose={() => setShowChat(false)} />
 
       }
     </>);

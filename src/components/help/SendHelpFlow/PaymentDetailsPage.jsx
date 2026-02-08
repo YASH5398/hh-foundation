@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiSmartphone, FiChevronRight, FiArrowLeft, FiCopy, FiCheck } from 'react-icons/fi';
+import { SiPhonepe, SiGooglepay } from 'react-icons/si';
 import { toast } from 'react-hot-toast';
 import { db } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,6 +16,7 @@ const PaymentDetailsPage = ({ receiver, amount = 300, onConfirm, onBack, isConfi
   const [receiverData, setReceiverData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+
 
   React.useEffect(() => {
     const fetchReceiverData = async () => {
@@ -45,7 +47,7 @@ const PaymentDetailsPage = ({ receiver, amount = 300, onConfirm, onBack, isConfi
     };
 
     fetchReceiverData();
-  }, [receiver?.id]);
+  }, [receiver, receiver?.id]);
 
   const copyToClipboard = (text, field) => {
     if (!text) return;
@@ -55,16 +57,24 @@ const PaymentDetailsPage = ({ receiver, amount = 300, onConfirm, onBack, isConfi
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const isPhonePe = receiverData?.paymentMethod?.type === 'PhonePe';
-  const phonepeNumber = receiverData?.paymentMethod?.phonepeNumber;
-  const hasPaymentMethods = isPhonePe && phonepeNumber;
+  // Extract Payment Data
+  const paymentMethod = receiverData?.paymentMethod || {};
+  const paymentType = paymentMethod.type;
+
+  // Helper to check if a method is valid
+  const hasPaymentMethods = !!paymentType && (
+    (paymentType === 'PhonePe' && paymentMethod.phonepeNumber) ||
+    (paymentType === 'UPI' && paymentMethod.upiId) ||
+    (paymentType === 'Google Pay' && paymentMethod.googlepayNumber) ||
+    ((paymentType === 'Bank Transfer' || paymentType === 'Bank') && (receiverData?.bank?.accountNumber || paymentMethod.bankDetails?.accountNumber))
+  );
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6"
+      className="w-screen h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 overflow-auto"
     >
       <div className="w-full max-w-2xl mx-auto">
         {/* Step Indicator */}
@@ -82,7 +92,9 @@ const PaymentDetailsPage = ({ receiver, amount = 300, onConfirm, onBack, isConfi
             {/* Header */}
             <div className="bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">Payment Method</h2>
-              <p className="text-white/80 text-sm">Send ₹{amount} to activate your account</p>
+              <p className="text-white/80 text-sm italic font-medium">
+                Send ₹{amount} for {amount === 300 ? 'Account Activation' : amount > 1500 ? 'Level Upgrade' : 'Upline/Sponsor Payment'}
+              </p>
             </div>
 
             {/* Content */}
@@ -114,54 +126,129 @@ const PaymentDetailsPage = ({ receiver, amount = 300, onConfirm, onBack, isConfi
                 </div>
               )}
 
-              {/* PhonePe Payment Method */}
-              {isPhonePe && phonepeNumber && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                      <FiSmartphone className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">PhonePe</h3>
-                      <p className="text-xs text-slate-600">UPI Payment</p>
-                    </div>
-                  </div>
+              {/* Specific Payment Method Display */}
+              {!loading && !error && hasPaymentMethods && (
+                <div className="space-y-6">
 
-                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 border-2 border-purple-200">
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-purple-900 uppercase tracking-wide mb-1">
-                          PhonePe Number
-                        </p>
-                        <p className="text-lg md:text-xl font-mono font-bold text-slate-900 break-all">
-                          {phonepeNumber}
-                        </p>
+                  {/* PhonePe Display */}
+                  {paymentType === 'PhonePe' && (
+                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 border-2 border-purple-200">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-purple-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                            <SiPhonepe className="w-3 h-3" /> PhonePe Number
+                          </p>
+                          <p className="text-2xl md:text-3xl font-mono font-bold text-slate-900 break-all">
+                            {paymentMethod.phonepeNumber}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentMethod.phonepeNumber, 'phonepe')}
+                          className="flex-shrink-0 p-3 bg-white hover:bg-purple-50 rounded-xl transition-all shadow-sm border border-purple-100"
+                        >
+                          {copiedField === 'phonepe' ? (
+                            <FiCheck className="w-6 h-6 text-green-600" />
+                          ) : (
+                            <FiCopy className="w-6 h-6 text-purple-600" />
+                          )}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => copyToClipboard(phonepeNumber, 'phonepe')}
-                        className="flex-shrink-0 p-3 bg-white hover:bg-purple-100 rounded-xl transition-all shadow-sm border border-purple-200"
-                      >
-                        {copiedField === 'phonepe' ? (
-                          <FiCheck className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <FiCopy className="w-5 h-5 text-purple-600" />
-                        )}
-                      </button>
+                      <p className="text-xs text-purple-700 italic font-medium">Please open PhonePe and pay ₹{amount} to this number</p>
                     </div>
-                    <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-purple-200/50">
-                      <p className="text-xs text-purple-900 font-semibold mb-1">📱 How to pay:</p>
-                      <ol className="text-xs text-purple-800 space-y-1 ml-4 list-decimal">
-                        <li>Open PhonePe app</li>
-                        <li>Send ₹{amount} to the number above</li>
-                        <li>Save the transaction screenshot</li>
-                      </ol>
+                  )}
+
+                  {/* UPI Display */}
+                  {paymentType === 'UPI' && (
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                            <FiSmartphone className="w-3 h-3" /> UPI ID
+                          </p>
+                          <p className="text-2xl md:text-3xl font-mono font-bold text-slate-900 break-all">
+                            {paymentMethod.upiId}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentMethod.upiId, 'upi')}
+                          className="flex-shrink-0 p-3 bg-white hover:bg-blue-50 rounded-xl transition-all shadow-sm border border-blue-100"
+                        >
+                          {copiedField === 'upi' ? (
+                            <FiCheck className="w-6 h-6 text-green-600" />
+                          ) : (
+                            <FiCopy className="w-6 h-6 text-blue-600" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-blue-700 italic font-medium">Copy ID and pay using any UPI app (PhonePe, GPay, etc.)</p>
                     </div>
-                  </div>
-                </motion.div>
+                  )}
+
+                  {/* Google Pay Display */}
+                  {paymentType === 'Google Pay' && (
+                    <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-5 border-2 border-green-200">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                            <SiGooglepay className="w-6 h-3" /> Google Pay Number
+                          </p>
+                          <p className="text-2xl md:text-3xl font-mono font-bold text-slate-900 break-all">
+                            {paymentMethod.googlepayNumber}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentMethod.googlepayNumber, 'gpay')}
+                          className="flex-shrink-0 p-3 bg-white hover:bg-green-50 rounded-xl transition-all shadow-sm border border-green-100"
+                        >
+                          {copiedField === 'gpay' ? (
+                            <FiCheck className="w-6 h-6 text-green-600" />
+                          ) : (
+                            <FiCopy className="w-6 h-6 text-green-600" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-green-700 italic font-medium">Open Google Pay and pay ₹{amount} to this number</p>
+                    </div>
+                  )}
+
+                  {/* Bank Transfer Display */}
+                  {(paymentType === 'Bank Transfer' || paymentType === 'Bank') && (
+                    <div className="bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl p-6 border-2 border-slate-200">
+                      <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-4 flex items-center gap-1 border-b border-slate-200 pb-2">
+                        Bank Account Details
+                      </p>
+
+                      <div className="space-y-4">
+                        {[
+                          { label: 'Account Holder', value: receiverData?.bank?.name || paymentMethod.bankDetails?.name },
+                          { label: 'Account Number', value: receiverData?.bank?.accountNumber || paymentMethod.bankDetails?.accountNumber, copy: true },
+                          { label: 'Bank Name', value: receiverData?.bank?.bankName || paymentMethod.bankDetails?.bankName },
+                          { label: 'IFSC Code', value: receiverData?.bank?.ifscCode || paymentMethod.bankDetails?.ifscCode, copy: true }
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-start gap-4">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">{item.label}</p>
+                              <p className="text-base font-bold text-slate-800">{item.value || 'N/A'}</p>
+                            </div>
+                            {item.copy && item.value && (
+                              <button
+                                onClick={() => copyToClipboard(item.value, item.label)}
+                                className="p-1.5 hover:bg-white rounded-md transition-colors"
+                              >
+                                {copiedField === item.label ? (
+                                  <FiCheck className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <FiCopy className="w-4 h-4 text-slate-400" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
               )}
             </div>
 

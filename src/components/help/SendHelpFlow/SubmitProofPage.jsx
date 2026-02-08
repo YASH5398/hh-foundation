@@ -68,7 +68,7 @@ const SubmitProofPage = ({ receiver, amount = 300, onSubmit, onBack, isSubmittin
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6"
+      className="w-screen h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 overflow-auto"
     >
       <div className="w-full max-w-2xl mx-auto">
         {/* Step Indicator */}
@@ -231,7 +231,7 @@ const SubmitProofPage = ({ receiver, amount = 300, onSubmit, onBack, isSubmittin
                 <ul className="space-y-2 text-xs text-blue-800">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold mt-0.5">✓</span>
-                    <span>Amount sent (₹{amount})</span>
+                    <span>Exact Amount (₹{amount})</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold mt-0.5">✓</span>
@@ -268,8 +268,8 @@ const SubmitProofPage = ({ receiver, amount = 300, onSubmit, onBack, isSubmittin
                   onClick={handleSubmit}
                   disabled={!isFormValid}
                   className={`flex-1 px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${isFormValid
-                      ? 'bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 text-white cursor-pointer'
-                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 text-white cursor-pointer'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                     }`}
                 >
                   {isSubmitting ? (

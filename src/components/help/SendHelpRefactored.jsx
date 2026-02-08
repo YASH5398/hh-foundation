@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard, FiRefreshCw, FiAlertTriangle } from 'react-icons/fi';
+import { FiUser, FiPhone, FiMessageCircle, FiLoader, FiCheckCircle, FiClock, FiUpload, FiCamera, FiCreditCard, FiRefreshCw, FiAlertTriangle, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import LoginRequired from '../auth/LoginRequired';
@@ -10,7 +10,7 @@ import PaymentModal from './PaymentModal';
 import PaymentDoneConfirmation from './PaymentDoneConfirmation';
 import PaymentProofForm from './PaymentProofForm';
 import SendHelpFlowContainer from './SendHelpFlow/SendHelpFlowContainer';
-import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof, markHelpAsExpired } from '../../services/helpService';
+import { createSendHelpAssignment, getUserHelpStatus, listenToHelpStatus, submitPaymentProof, getReceiveEligibility } from '../../services/helpService';
 import { HELP_STATUS, normalizeStatus } from '../../config/helpStatus';
 import { normalizeLevel } from '../../utils/eligibilityUtils';
 import CountdownTimer from '../common/CountdownTimer';
@@ -90,11 +90,32 @@ const getUIState = (helpStatus, hasReceiver, isLoading, hasError, errorType, noR
 };
 
 // UI State Components
+// Receiver Avatar Component with initials fallback
+const ReceiverAvatar = ({ src, name, size = "w-14 h-14", textClass = "text-xl" }) => {
+  const [imgError, setImgError] = useState(false);
+  const nameInitial = (name || 'U').charAt(0).toUpperCase();
+
+  return (
+    <div className={`${size} rounded-full overflow-hidden shadow-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#EC4899] border-2 border-white ring-2 ring-slate-100`}>
+      {!imgError && src ? (
+        <img
+          src={src}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <span className={`${textClass} font-black text-white uppercase tracking-tight`}>{nameInitial}</span>
+      )}
+    </div>
+  );
+};
+
 const InitializingState = () =>
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+    className="bg-gradient-to-br from-white to-slate-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-slate-200/50">
 
     <div className="flex justify-center mb-6">
       <div className="relative w-16 h-16">
@@ -112,11 +133,60 @@ const InitializingState = () =>
   </motion.div>;
 
 
-const WaitingForReceiverState = () =>
+// 🔹 Global Receiver Eligibility Countdown (Optional UI - Step 6)
+const GlobalEligibilityCountdown = ({ receiverEligibleAt }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!receiverEligibleAt) return;
+
+    let eligibleAtMs = 0;
+    if (typeof receiverEligibleAt.toMillis === 'function') eligibleAtMs = receiverEligibleAt.toMillis();
+    else if (typeof receiverEligibleAt === 'number') eligibleAtMs = receiverEligibleAt;
+    else if (receiverEligibleAt.seconds) eligibleAtMs = receiverEligibleAt.seconds * 1000;
+    else if (receiverEligibleAt._seconds) eligibleAtMs = receiverEligibleAt._seconds * 1000;
+
+    if (!eligibleAtMs) return;
+
+    const deadlineMs = eligibleAtMs + (24 * 60 * 60 * 1000);
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = deadlineMs - now;
+
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [receiverEligibleAt]);
+
+  if (!receiverEligibleAt || !timeLeft) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-2 text-amber-600 bg-amber-50 px-4 py-2 rounded-xl border border-amber-100 mt-4 animate-pulse">
+      <FiClock className="w-4 h-4" />
+      <span className="font-mono font-bold text-sm">Eligibility Expires: {timeLeft}</span>
+    </div>
+  );
+};
+
+
+const WaitingForReceiverState = ({ userProfile }) =>
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+    className="bg-gradient-to-br from-white to-slate-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-slate-200/50">
 
     <div className="relative mb-8">
       <motion.div
@@ -133,31 +203,35 @@ const WaitingForReceiverState = () =>
       </motion.div>
     </div>
     <h3 className="text-xl font-bold text-slate-900 mb-2">Finding Receiver</h3>
-    <p className="text-slate-600 mb-6">Matching you with the perfect receiver</p>
-    <div className="flex items-center justify-center gap-2">
+    <p className="text-slate-600 mb-4">Matching you with the perfect receiver</p>
+
+    <div className="flex items-center justify-center gap-2 mb-6">
       {[0, 1, 2].map((i) =>
         <motion.div
           key={i}
           animate={{ scale: [1, 1.3, 1] }}
           transition={{ duration: 1.4, delay: i * 0.2, repeat: Infinity }}
           className="w-2 h-2 bg-blue-500 rounded-full" />
-
       )}
     </div>
+
+    {userProfile?.isEligibleReceiver && (
+      <GlobalEligibilityCountdown receiverEligibleAt={userProfile.receiverEligibleAt} />
+    )}
   </motion.div>;
 
 
-const NoReceiverAvailableState = () =>
+const NoReceiverAvailableState = ({ userProfile }) =>
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-slate-200/50">
+    className="bg-gradient-to-br from-white to-slate-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-slate-200/50">
 
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ delay: 0.1, type: 'spring' }}
-      className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+      className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
 
       <FiClock className="w-8 h-8 text-amber-600" />
     </motion.div>
@@ -165,14 +239,21 @@ const NoReceiverAvailableState = () =>
     <p className="text-slate-600 leading-relaxed mb-6">
       We'll automatically match you when a receiver becomes available.
     </p>
-    <div className="mb-6 text-sm text-slate-600 space-y-2 bg-slate-50 rounded-xl p-4">
+
+    {userProfile?.isEligibleReceiver && (
+      <div className="mb-6">
+        <GlobalEligibilityCountdown receiverEligibleAt={userProfile.receiverEligibleAt} />
+      </div>
+    )}
+
+    <div className="mb-6 text-sm text-slate-600 space-y-2 bg-slate-50 rounded-2xl p-5">
       <p>• New receivers join regularly</p>
       <p>• Automatic matching when available</p>
       <p>• No action needed from you</p>
     </div>
     <motion.button
       disabled={true}
-      className="w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 text-slate-500 cursor-not-allowed">
+      className="w-full py-4 px-6 rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 text-slate-500 cursor-not-allowed">
 
       <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
         <FiLoader className="w-4 h-4" />
@@ -186,13 +267,13 @@ const AlreadyActivatedState = () =>
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    className="bg-gradient-to-br from-white to-green-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-green-200/50">
+    className="bg-gradient-to-br from-white to-green-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-green-200/50">
 
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
 
       <FiCheckCircle className="w-10 h-10 text-green-600" />
     </motion.div>
@@ -200,7 +281,7 @@ const AlreadyActivatedState = () =>
     <h2 className="text-2xl font-bold text-slate-900 mb-2">Congratulations 🎉</h2>
     <p className="text-slate-600 mb-6">Your account has been activated!</p>
 
-    <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm text-left">
+    <div className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm text-left">
       <p className="text-sm text-slate-600 leading-relaxed">
         You have successfully completed your activation payment. You will now receive help from 3 users before you can upgrade to Silver level.
       </p>
@@ -217,13 +298,13 @@ const ErrorState = ({ error, onRetry, isRetrying }) =>
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-white to-red-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-red-200/50">
+    className="bg-gradient-to-br from-white to-red-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-red-200/50">
 
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ delay: 0.1, type: 'spring' }}
-      className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
+      className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
 
       <FiAlertTriangle className="w-8 h-8 text-red-600" />
     </motion.div>
@@ -236,7 +317,7 @@ const ErrorState = ({ error, onRetry, isRetrying }) =>
       whileTap={{ scale: isRetrying ? 1 : 0.98 }}
       onClick={onRetry}
       disabled={isRetrying}
-      className={`w-full py-4 px-6 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying ?
+      className={`w-full py-4 px-6 rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 ${isRetrying ?
         'bg-slate-100 text-slate-500 cursor-not-allowed' :
         'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg'}`
       }>
@@ -258,41 +339,36 @@ const ErrorState = ({ error, onRetry, isRetrying }) =>
   </motion.div>;
 
 
-const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick, showChat, setShowChat, transactionId }) => {
+
+
+const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick, showChat, setShowChat, transactionId, onExpire }) => {
   const status = normalizeStatus(helpStatus);
   const showPayButton = status === HELP_STATUS.ASSIGNED || status === HELP_STATUS.PAYMENT_REQUESTED;
   const isPaymentRequested = helpData?.paymentRequested === true;
 
-  console.log(String('🎯 ReceiverAssignedState render:') + " " + String({
-    helpStatus,
-    status,
-    helpData,
-    paymentRequested: helpData?.paymentRequested,
-    isPaymentRequested,
-    showPayButton,
-    lastPaymentRequestAt: helpData?.lastPaymentRequestAt
-  }));
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-slate-200/50">
+      initial={{ opacity: 0, scale: 0.98, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="bg-white rounded-[2.5rem] p-6 max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 relative overflow-hidden">
+
+      {/* Decorative gradient blob */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 opacity-40 blur-2xl" />
 
       {/* Payment Request Alert */}
       {isPaymentRequested &&
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 p-4 rounded-xl">
+          className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 p-4 rounded-3xl relative z-10">
 
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-white rounded-2xl shadow-sm flex items-center justify-center">
               <FiAlertTriangle className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h4 className="font-bold text-orange-800">Payment Requested</h4>
-              <p className="text-sm text-orange-700">Complete payment now</p>
+              <h4 className="font-black text-orange-900 text-sm uppercase tracking-tight">Payment Requested</h4>
+              <p className="text-xs text-orange-700 font-medium">Action required to proceed</p>
             </div>
           </div>
         </motion.div>
@@ -300,24 +376,30 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
 
       {/* 24-Hour Countdown Timer */}
       {helpData?.createdAt &&
-        <div className="mb-6">
+        <div className="mb-6 relative z-10">
           <CountdownTimer
             targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
-            label="Payment Deadline" />
-
+            label="Payment Deadline"
+            onExpire={onExpire} />
         </div>
       }
 
-      {/* Amount Card - Prominent Display */}
+      {/* Amount Card - High Contrast */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-center mb-6 shadow-lg">
+        className="bg-[#0F172A] rounded-[2rem] p-6 text-center mb-6 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.2),transparent_70%)]" />
 
-        <p className="text-blue-100 text-sm font-medium mb-2">Amount to Send</p>
-        <p className="text-5xl font-black text-white mb-1">₹300</p>
-        <p className="text-blue-100 text-xs">One-time activation payment</p>
+        <p className="relative text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">
+          Initial Activation
+        </p>
+        <div className="relative flex items-center justify-center gap-1">
+          <span className="text-xl font-bold text-white/40 self-start mt-2">₹</span>
+          <span className="text-6xl font-black text-white tracking-tighter">300</span>
+        </div>
+        <p className="relative text-slate-500 text-[10px] font-bold mt-2">Secure one-time payment</p>
       </motion.div>
 
       {/* Receiver Details Card */}
@@ -325,77 +407,34 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white rounded-xl p-5 mb-6 border border-slate-200 shadow-sm">
+        className="bg-slate-50 rounded-3xl p-5 mb-6 border border-slate-100 group hover:bg-white hover:shadow-md transition-all duration-300">
 
-        <div className="flex items-center gap-4 mb-4">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.25, type: 'spring' }}
-            className="w-14 h-14 rounded-xl overflow-hidden shadow-md flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
-
-            <img
-              src={receiver?.profileImage || '/images/default-avatar.png'}
-              alt={receiver?.name || 'Receiver'}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }} />
-
-          </motion.div>
+        <div className="flex items-center gap-4">
+          <ReceiverAvatar src={receiver?.profileImage} name={receiver?.name} size="w-16 h-16" textClass="text-2xl" />
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">{receiver?.name || 'Loading...'}</h3>
-            <p className="text-sm text-slate-600">Receiver Details</p>
-          </div>
-        </div>
-
-        {/* Receiver Info Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">User ID</p>
-            <p className="text-sm font-mono font-bold text-slate-900">{receiver?.userId || '-'}</p>
-          </div>
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Level</p>
-            <p className="text-sm font-bold text-slate-900">Star</p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Payment Methods Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white rounded-xl p-5 mb-6 border border-slate-200 shadow-sm">
-
-        <h4 className="text-sm font-bold text-slate-900 mb-3">Payment Methods</h4>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">₹</span>
+            <h3 className="text-lg font-black text-slate-900 mb-1 leading-tight tracking-tight">
+              {receiver?.name || 'Connecting...'}
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-black uppercase rounded-md">
+                STAR LEVEL
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">ID: {receiver?.userId || '-'}</span>
             </div>
-            <span className="text-sm font-medium text-slate-700">UPI</span>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-teal-500 rounded flex items-center justify-center">
-              <FiCreditCard className="w-3 h-3 text-white" />
-            </div>
-            <span className="text-sm font-medium text-slate-700">Bank</span>
           </div>
         </div>
       </motion.div>
 
       {/* Action Buttons */}
-      <div className="space-y-3">
+      <div className="space-y-3 relative z-10">
         {showPayButton &&
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, translateY: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={onPaymentClick}
-            className={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-lg ${isPaymentRequested ?
-              'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white animate-pulse shadow-orange-200' :
-              'bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white shadow-slate-300'}`
+            className={`w-full py-4 px-6 rounded-2xl font-black text-lg transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${isPaymentRequested ?
+              'bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 text-white animate-pulse shadow-orange-200' :
+              'bg-gradient-to-r from-[#4F46E5] via-[#7C3AED] to-[#EC4899] text-white shadow-indigo-100 hover:shadow-indigo-200'}`
             }>
 
             <FiCreditCard className="w-5 h-5" />
@@ -407,9 +446,9 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowChat(true)}
-          className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200">
+          className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200">
 
-          <FiMessageCircle className="w-4 h-4" />
+          <FiMessageCircle className="w-4 h-4 text-slate-400" />
           Chat with Receiver
         </motion.button>
       </div>
@@ -425,20 +464,18 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
           }}
           isOpen={showChat}
           onClose={() => setShowChat(false)} />
-
       }
     </motion.div>);
-
 };
 
 const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, transactionId }) =>
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-8 max-w-md w-full text-center border border-blue-200/50">
+    className="bg-gradient-to-br from-white to-blue-50 rounded-3xl shadow-lg p-8 max-w-md w-full text-center border border-blue-200/50">
 
     {/* Status Icon */}
-    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
       <FiCheckCircle className="w-10 h-10 text-blue-600" />
     </div>
 
@@ -458,13 +495,13 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white rounded-xl p-4 mb-6 text-left border border-slate-200 shadow-sm">
+        className="bg-white rounded-2xl p-5 mb-6 text-left border border-slate-200 shadow-sm">
 
         <h4 className="font-bold text-slate-900 mb-3">Payment Details</h4>
         {helpData.paymentDetails.utrNumber &&
           <div className="mb-3">
             <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-1">UTR/Transaction ID</p>
-            <p className="font-mono text-sm font-bold text-slate-800 break-all bg-slate-50 rounded-lg p-2">{helpData.paymentDetails.utrNumber}</p>
+            <p className="font-mono text-sm font-bold text-slate-800 break-all bg-slate-50 rounded-xl p-2">{helpData.paymentDetails.utrNumber}</p>
           </div>
         }
         {helpData.paymentDetails.screenshotUrl &&
@@ -473,7 +510,7 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
             <img
               src={helpData.paymentDetails.screenshotUrl}
               alt="Payment proof"
-              className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
+              className="w-full h-32 object-cover rounded-2xl border border-slate-200 shadow-sm" />
 
           </div>
         }
@@ -486,20 +523,11 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
+        className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
 
         <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-3">Receiver</p>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
-            <img
-              src={receiver.profileImage || '/images/default-avatar.png'}
-              alt={receiver.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }} />
-
-          </div>
+          <ReceiverAvatar src={receiver.profileImage} name={receiver.name} size="w-12 h-12" textClass="text-lg" />
           <div className="text-left">
             <p className="font-bold text-slate-900">{receiver.name}</p>
             <p className="text-sm text-slate-600">ID: {receiver.userId}</p>
@@ -513,7 +541,7 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => setShowChat(true)}
-      className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 mb-4 border border-slate-200">
+      className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-2xl font-bold transition-all duration-200 flex items-center justify-center gap-2 mb-4 border border-slate-200">
 
       <FiMessageCircle className="w-4 h-4" />
       Chat with Receiver
@@ -524,7 +552,7 @@ const PaymentSubmittedState = ({ receiver, helpData, showChat, setShowChat, tran
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.3 }}
-      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5">
 
       <p className="text-sm text-blue-900 leading-relaxed">
         <strong>Next Steps:</strong> The receiver will verify your payment. Your account activates once confirmed.
@@ -551,14 +579,14 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    className="bg-gradient-to-br from-white to-green-50 rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-green-200/50">
+    className="bg-gradient-to-br from-white to-green-50 rounded-3xl p-8 max-w-md w-full text-center shadow-lg border border-green-200/50">
 
     {/* Success Icon */}
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+      className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
 
       <FiCheckCircle className="w-10 h-10 text-green-600" />
     </motion.div>
@@ -580,20 +608,11 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
+        className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
 
         <p className="text-xs uppercase font-bold text-slate-600 tracking-wide mb-3">Payment sent to</p>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-200 to-slate-300">
-            <img
-              src={receiver.profileImage || '/images/default-avatar.png'}
-              alt={receiver.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }} />
-
-          </div>
+          <ReceiverAvatar src={receiver.profileImage} name={receiver.name} size="w-12 h-12" textClass="text-lg" />
           <div className="text-left">
             <p className="font-bold text-slate-900">{receiver.name}</p>
             <p className="text-sm text-slate-600">ID: {receiver.userId}</p>
@@ -607,7 +626,7 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.2 }}
-      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
+      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-5 mb-6">
 
       <p className="text-sm text-green-900 leading-relaxed">
         <strong>Congratulations!</strong> Your account is now fully activated. Access all features and start receiving help.
@@ -631,7 +650,8 @@ const CompletedState = ({ receiver, showNextHelp = false, onNextHelp }) =>
 
 // Main SendHelpRefactored Component
 const SendHelpRefactored = () => {
-  const { user: currentUser, loading: authLoading } = useAuth();
+  const { user: currentUser, loading: authLoading, refreshUserProfile } = useAuth();
+  const userProfile = currentUser;
 
   // State management
   const [uiState, setUIState] = useState(UI_STATES.INITIALIZING);
@@ -657,6 +677,7 @@ const SendHelpRefactored = () => {
   // Refs
   const initStartedRef = useRef(false);
   const unsubHelpRef = useRef(null);
+  const hasTriggeredAutoBlock = useRef(false);
 
   // Helper function to update UI state based on current conditions
   const updateUIState = (status = helpStatus, hasRec = !!receiver, isLoading = false, hasErr = !!error, errType = errorType, noReceiverAvailable = false) => {
@@ -792,6 +813,18 @@ const SendHelpRefactored = () => {
       initStartedRef.current = false;
     }
   };
+
+  // Backend enforcement: trigger auto-block check on expiry
+  const handleAutoBlockTrigger = useCallback(async () => {
+    // Blocking is now handled globally at the app level.
+    // Refreshing profile to ensure the global block catches any status changes.
+    console.log('[SendHelp] ⏳ Countdown expired! Refreshing profile...');
+    try {
+      await refreshUserProfile();
+    } catch (err) {
+      console.error('[SendHelp] Failed to refresh profile on expiry:', err);
+    }
+  }, [refreshUserProfile]);
 
   // Retry function
   const handleRetry = async () => {
@@ -1000,10 +1033,30 @@ const SendHelpRefactored = () => {
   }
 
   // Render based on UI state - PRIORITY DRIVEN
-  const renderUIState = () => {
+  const renderUIState = ({
+    userProfile,
+    uiState,
+    helpStatus,
+    helpData,
+    receiver,
+    transactionId,
+    error,
+    isRetrying,
+    showChat,
+    setShowChat,
+    handleRetry,
+    handlePayNowClick,
+    handleAutoBlockTrigger,
+    setHelpStatus,
+    setReceiver,
+    setTransactionId,
+    setHelpData,
+    initStartedRef,
+    initialize
+  }) => {
     // 1. HIGHEST PRIORITY: Activation status and UI Hard Guard
-    const userLevel = normalizeLevel({ level: currentUser?.level || currentUser?.levelStatus });
-    const isActuallyActivated = currentUser?.isActivated === true || (userLevel === 'Star' && currentUser?.starSendHelpDone === true);
+    const userLevel = normalizeLevel({ level: userProfile?.level || userProfile?.levelStatus });
+    const isActuallyActivated = userProfile?.isActivated === true || (userLevel === 'Star' && userProfile?.starSendHelpDone === true);
 
     if (uiState === UI_STATES.ALREADY_ACTIVATED ||
       isActuallyActivated ||
@@ -1023,7 +1076,7 @@ const SendHelpRefactored = () => {
 
     // 3. NO RECEIVERS AVAILABLE
     if (uiState === UI_STATES.NO_RECEIVER_AVAILABLE) {
-      return <NoReceiverAvailableState />;
+      return <NoReceiverAvailableState userProfile={userProfile} />;
     }
 
     // 4. FLOW STATES
@@ -1032,7 +1085,7 @@ const SendHelpRefactored = () => {
         return <InitializingState />;
 
       case UI_STATES.WAITING_FOR_RECEIVER:
-        return <WaitingForReceiverState />;
+        return <WaitingForReceiverState userProfile={userProfile} />;
 
       case UI_STATES.SEND_HELP_FLOW:
         return null; // Flow is rendered separately above
@@ -1053,7 +1106,8 @@ const SendHelpRefactored = () => {
             onPaymentClick={handlePayNowClick}
             showChat={showChat}
             setShowChat={setShowChat}
-            transactionId={transactionId} />
+            transactionId={transactionId}
+            onExpire={handleAutoBlockTrigger} />
         );
       }
 
@@ -1076,7 +1130,7 @@ const SendHelpRefactored = () => {
       case UI_STATES.COMPLETED:
         return <CompletedState
           receiver={receiver}
-          showNextHelp={currentUser?.isActivated}
+          showNextHelp={userProfile?.isActivated}
           onNextHelp={() => {
             // Reset for next help
             setHelpStatus(null);
@@ -1093,7 +1147,7 @@ const SendHelpRefactored = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md mx-auto">
         {/* Header */}
         <motion.div
@@ -1108,7 +1162,27 @@ const SendHelpRefactored = () => {
         {/* Main UI State */}
         <AnimatePresence mode="wait">
           <div key={uiState}>
-            {renderUIState()}
+            {renderUIState({
+              userProfile,
+              uiState,
+              helpStatus,
+              helpData,
+              receiver,
+              transactionId,
+              error,
+              isRetrying,
+              showChat,
+              setShowChat,
+              handleRetry,
+              handlePayNowClick,
+              handleAutoBlockTrigger,
+              setHelpStatus,
+              setReceiver,
+              setTransactionId,
+              setHelpData,
+              initStartedRef,
+              initialize
+            })}
           </div>
         </AnimatePresence>
       </div>

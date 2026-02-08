@@ -94,7 +94,7 @@ export async function getReceiveEligibility() {
     // MANDATORY: ONLY ALLOWED Firebase callable pattern
     const getReceiveEligibility = httpsCallable(functions, "getReceiveEligibility");
     const res = await getReceiveEligibility({});
-    return res.data.data;
+    return res.data;
   } catch (error) {
     throw new Error(mapFirebaseError(error));
   }
@@ -526,7 +526,7 @@ export function listenToReceiveHelps(userUid, callback) {
     where('receiverUid', '==', userUid)
   );
 
-  return onSnapshot(receiveHelpQuery, (snapshot) => {
+  return onSnapshot(receiveHelpQuery, async (snapshot) => {
     const allReceiveHelps = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -535,7 +535,31 @@ export function listenToReceiveHelps(userUid, callback) {
 
     // Filter to show helps that should appear in filters
     const activeStatuses = [HELP_STATUS.ASSIGNED, HELP_STATUS.PAYMENT_REQUESTED, HELP_STATUS.PAYMENT_DONE, HELP_STATUS.CONFIRMED, HELP_STATUS.DISPUTED, HELP_STATUS.TIMEOUT];
-    const receiveHelps = allReceiveHelps.filter((help) => activeStatuses.includes(help.status));
+    let receiveHelps = allReceiveHelps.filter((help) => activeStatuses.includes(help.status));
+
+    // HARD SAFETY FILTER: Fetch sender activation status
+    // If a Star user is already activated, they should NOT appear as a sender anymore
+    try {
+      const filteredHelps = [];
+      for (const help of receiveHelps) {
+        if (help.senderLevel === 'Star') {
+          const senderRef = doc(db, 'users', help.senderUid);
+          const senderSnap = await getDoc(senderRef);
+          if (senderSnap.exists()) {
+            const senderData = senderSnap.data();
+            // If already activated or send help done, skip this ghost entry
+            if (senderData.isActivated === true || senderData.starSendHelpDone === true) {
+              console.warn(`[helpService] Ghost detected: Sender ${help.senderUid} is already activated. Filtering out help ${help.id}`);
+              continue;
+            }
+          }
+        }
+        filteredHelps.push(help);
+      }
+      receiveHelps = filteredHelps;
+    } catch (err) {
+      console.error('Error in hard safety filter:', err);
+    }
 
     // Sort by creation time (newest first)
     receiveHelps.sort((a, b) => {

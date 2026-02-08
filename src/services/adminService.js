@@ -12,8 +12,9 @@ import {
   runTransaction,
   addDoc,
   setDoc,
-  onSnapshot } from
-'firebase/firestore';
+  onSnapshot
+} from
+  'firebase/firestore';
 import { createSendHelpAssignment } from './helpService';
 import { checkSenderEligibility, findEligibleReceiver } from './helpService';
 
@@ -75,14 +76,8 @@ export const forceReceiverAssignment = async (userId) => {
       updatedAt: serverTimestamp()
     };
 
-    // Update kycDetails.levelStatus if kycDetails exists
-    if (userData.kycDetails) {
-      updateData['kycDetails.levelStatus'] = 'active';
-    } else {
-      updateData.kycDetails = {
-        levelStatus: 'active'
-      };
-    }
+    // Use top-level levelStatus field
+    updateData.levelStatus = 'active';
 
     await updateDoc(userDocRef, updateData);
 
@@ -122,7 +117,7 @@ export const checkUserEligibility = async (userId) => {
       isOnHold: userData.isOnHold !== true,
       isReceivingHeld: userData.isReceivingHeld !== true,
       helpVisibility: userData.helpVisibility !== false,
-      kycLevelStatus: userData.kycDetails?.levelStatus === 'active'
+      activeLevelStatus: userData.levelStatus === 'active' || userData.levelStatus === 'ACTIVE' || userData.levelStatus === 'Star'
     };
 
     const basicPassed = Object.values(basicEligibility).every(Boolean);
@@ -193,8 +188,8 @@ export const checkUserEligibility = async (userId) => {
       },
       recommendations,
       summary: canReceive ? 'User is eligible to receive help' :
-      canReceiveWithOverride ? 'User needs MLM override to receive help' :
-      'User has blocking issues that prevent receiving help'
+        canReceiveWithOverride ? 'User needs MLM override to receive help' :
+          'User has blocking issues that prevent receiving help'
     };
   } catch (error) {
     console.error(String('Error in checkUserEligibility:') + " " + String(error));
@@ -284,7 +279,7 @@ export const subscribeToEpinRequests = (callback) => {
     return unsubscribe;
   } catch (error) {
     console.error(String('Error setting up E-PIN requests subscription:') + " " + String(error));
-    return () => {};
+    return () => { };
   }
 };
 
@@ -333,8 +328,8 @@ export const getDashboardStats = async () => {
     const epinRequestsCollectionRef = collection(db, 'epinRequests');
 
     const [usersSnapshot, epinRequestsSnapshot] = await Promise.all([
-    getDocs(usersCollectionRef),
-    getDocs(epinRequestsCollectionRef)]
+      getDocs(usersCollectionRef),
+      getDocs(epinRequestsCollectionRef)]
     );
 
     const totalUsers = usersSnapshot.size;

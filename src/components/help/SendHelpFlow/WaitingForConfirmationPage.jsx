@@ -70,7 +70,7 @@ const WaitingForConfirmationPage = ({ transactionId, receiver, helpData, onConfi
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6"
+        className="w-screen h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 overflow-auto"
       >
         <div className="w-full max-w-2xl mx-auto">
           {/* Step Indicator */}
@@ -205,7 +205,7 @@ const WaitingForConfirmationPage = ({ transactionId, receiver, helpData, onConfi
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6"
+      className="w-screen h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 overflow-auto"
     >
       <div className="w-full max-w-2xl mx-auto">
         {/* Step Indicator */}
@@ -265,8 +265,8 @@ const WaitingForConfirmationPage = ({ transactionId, receiver, helpData, onConfi
                         animate={item.done ? {} : { scale: [1, 1.1, 1] }}
                         transition={{ repeat: item.done ? 0 : Infinity, duration: 2 }}
                         className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${item.done
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-200 text-slate-900'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-200 text-slate-900'
                           }`}
                       >
                         {item.done ? <FiCheckCircle className="w-5 h-5" /> : idx + 1}

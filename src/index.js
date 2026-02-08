@@ -6,51 +6,60 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { AgentAuthProvider } from './context/AgentAuthContext';
 import { router } from './App'; // Import the router from App.js
-import BlockedUserPopup from './components/common/BlockedUserPopup';
+import BlockScreen from './components/common/BlockScreen';
+import FullPageLoader from './components/common/FullPageLoader';
 import './index.css';
 
-// Register Firebase Messaging Service Worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js').
-  then((registration) => {
-    console.log(String('Firebase Messaging Service Worker registered successfully:') + " " + String(registration));
-  }).
-  catch((error) => {
-    console.error(String('Firebase Messaging Service Worker registration failed:') + " " + String(error));
-  });
-}
+/**
+ * FINAL HARD BLOCK GATEKEEPER SERVICE
+ * This component ensures that the Router NEVER mounts if the user is restricted.
+ */
+const AppGuard = () => {
+  const { user, userProfile, loading, profileLoading } = useAuth();
 
-const AppWrapper = () => {
-  const { user, userProfile, isBlocked, blockReason, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>);
-
+  // 1. HARD LOADING PROTECTION
+  // We MUST wait for both Auth state AND User Document (Profile) if a user is detected.
+  // This prevents the "flash" of the dashboard or premature router access.
+  if (loading || (user && (userProfile === undefined || profileLoading))) {
+    return <FullPageLoader />;
   }
 
-  // If user is logged in and blocked, hard-block the entire app
+  // 2. TRUE HARD BLOCK CHECK
+  // We derive the block status directly from the user's Firestore data.
+  // isBlocked and isOnHold are the terminal flags.
+  const isBlocked = userProfile?.isBlocked === true || userProfile?.isOnHold === true;
+
   if (user && isBlocked) {
-    // Only block if it's NOT an admin user (admins should be able to unblock themselves/others)
-    if (userProfile?.role !== 'admin') {
-      return <BlockedUserPopup user={{ isBlocked, blockReason }} blockedHelpRef={userProfile?.blockedHelpRef} />;
-    }
+    console.warn("BLOCKED: Rendering BlockScreen only");
+    return <BlockScreen isHardBlock={true} />;
   }
 
+  // 3. ACCESS GRANTED: Mounted only after all checks pass.
+  console.log("✅ ACCESS GRANTED: Mounting Application Router");
   return <RouterProvider router={router} />;
 };
 
+// Messaging Worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/firebase-messaging-sw.js').
+    then((registration) => {
+      console.log(String('Firebase Messaging Service Worker registered successfully:') + " " + String(registration));
+    }).
+    catch((error) => {
+      console.error(String('Firebase Messaging Service Worker registration failed:') + " " + String(error));
+    });
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+// Bootstrap the application
 root.render(
   <React.StrictMode>
     <AuthProvider>
       <AgentAuthProvider>
         <NotificationProvider>
           <Toaster position="top-center" reverseOrder={false} />
-          <AppWrapper />
+          <AppGuard />
         </NotificationProvider>
       </AgentAuthProvider>
     </AuthProvider>

@@ -14,8 +14,9 @@ import {
   validatePassword,
   cleanupAuthUser,
   getRegistrationErrorMessage,
-  requiresCleanup } from
-'../../utils/registrationUtils';
+  requiresCleanup
+} from
+  '../../utils/registrationUtils';
 import { useAuth } from '../../context/AuthContext';
 import { DEFAULT_PROFILE_IMAGE } from '../../utils/profileUtils';
 import {
@@ -33,8 +34,9 @@ import {
   ArrowRight,
   Shield,
   Sparkles,
-  TrendingUp } from
-'lucide-react';
+  TrendingUp
+} from
+  'lucide-react';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -79,39 +81,10 @@ const Signup = () => {
     let isMounted = true;
 
     if (refId && auth.currentUser) {
+      // ONLY verify automatically if coming from referral link
+      // Manual entry verification is handled by verifySponsor function on blur
       setSponsorInfo((prev) => ({ ...prev, isVerifying: true, isLocked: true }));
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('userId', '==', refId));
-
-      getDocs(q).
-      then((querySnapshot) => {
-        if (!isMounted) return;
-        if (querySnapshot.empty) {
-          setSponsorInfo({
-            name: '',
-            error: 'Sponsor not found. Please check the ID.',
-            isVerifying: false,
-            isLocked: false
-          });
-        } else {
-          const sponsorData = querySnapshot.docs[0].data();
-          setSponsorInfo({
-            name: sponsorData.fullName,
-            error: '',
-            isVerifying: false,
-            isLocked: true
-          });
-        }
-      }).
-      catch((err) => {
-        if (!isMounted) return;
-        setSponsorInfo({
-          name: '',
-          error: 'Error verifying sponsor.',
-          isVerifying: false,
-          isLocked: false
-        });
-      });
+      verifySponsor(refId, true);
     } else {
       setSponsorInfo({ name: '', error: '', isVerifying: false, isLocked: false });
     }
@@ -121,9 +94,57 @@ const Signup = () => {
     };
   }, [searchParams]);
 
+  const verifySponsor = async (sponsorId, isLockedState = false) => {
+    if (!sponsorId) return;
+
+    setSponsorInfo(prev => ({ ...prev, isVerifying: true, error: '' }));
+
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('userId', '==', sponsorId));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setSponsorInfo({
+          name: '',
+          error: 'Sponsor not found. Please check the ID.',
+          isVerifying: false,
+          isLocked: false // Never lock on invalid ID
+        });
+      } else {
+        const sponsorData = querySnapshot.docs[0].data();
+        setSponsorInfo({
+          name: sponsorData.fullName,
+          error: '',
+          isVerifying: false,
+          isLocked: isLockedState // Keep locked only if from referral link
+        });
+      }
+    } catch (err) {
+      setSponsorInfo({
+        name: '',
+        error: 'Error verifying sponsor.',
+        isVerifying: false,
+        isLocked: false
+      });
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Reset sponsor info if user is typing manually
+    if (name === 'sponsorId' && !sponsorInfo.isLocked) {
+      setSponsorInfo(prev => ({ ...prev, name: '', error: '', isVerifying: false }));
+    }
+  };
+
+  const handleSponsorBlur = (e) => {
+    const val = e.target.value;
+    if (val && !sponsorInfo.isLocked) {
+      verifySponsor(val, false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -350,8 +371,8 @@ const Signup = () => {
         whatsapp: whatsappNumber,
         sponsorId,
         role: "user",
-        level: 1,
-        levelStatus: "Star",
+        level: "Star",
+        levelStatus: "ACTIVE",
         isActivated: false,
         isBlocked: false,
         isOnHold: false,
@@ -368,10 +389,6 @@ const Signup = () => {
         deviceToken: "",
         paymentMethod: paymentMethodData,
         bank: bankData,
-        kycDetails: {
-          aadhaar: "",
-          pan: ""
-        },
         registrationTime: serverTimestamp(),
         createdAt: serverTimestamp()
       };
@@ -454,7 +471,7 @@ const Signup = () => {
             repeat: Infinity,
             ease: "linear"
           }} />
-        
+
         <motion.div
           className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-r from-pink-400/20 to-red-600/20 rounded-full blur-3xl"
           animate={{
@@ -466,7 +483,7 @@ const Signup = () => {
             repeat: Infinity,
             ease: "linear"
           }} />
-        
+
         <motion.div
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-yellow-400/10 to-orange-600/10 rounded-full blur-3xl"
           animate={{
@@ -478,28 +495,28 @@ const Signup = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }} />
-        
+
       </div>
 
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) =>
-        <motion.div
-          key={i}
-          className="absolute w-2 h-2 bg-white/20 rounded-full"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`
-          }}
-          animate={{
-            y: [-20, -100],
-            opacity: [0, 1, 0]
-          }}
-          transition={{
-            duration: Math.random() * 3 + 2,
-            repeat: Infinity,
-            delay: Math.random() * 2
-          }} />
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-white/20 rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`
+            }}
+            animate={{
+              y: [-20, -100],
+              opacity: [0, 1, 0]
+            }}
+            transition={{
+              duration: Math.random() * 3 + 2,
+              repeat: Infinity,
+              delay: Math.random() * 2
+            }} />
 
         )}
       </div>
@@ -510,13 +527,13 @@ const Signup = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="w-full max-w-sm sm:max-w-md">
-          
+
           {/* Main Card */}
           <motion.div
             className="bg-white/10 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden"
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.3 }}>
-            
+
             {/* Card Glow Effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl" />
 
@@ -528,24 +545,24 @@ const Signup = () => {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}>
-                
+
                 <div className="relative inline-block">
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full blur-lg opacity-50"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }} />
-                  
+
                   <img
                     src="https://iili.io/FIQ0fZ7.md.png"
                     alt="Company Logo"
                     className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full shadow-2xl mx-auto border-2 border-white/30"
-                    onError={(e) => {e.target.onerror = null;e.target.src = 'https://placehold.co/80x80/cccccc/ffffff?text=Logo';}} />
-                  
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/80x80/cccccc/ffffff?text=Logo'; }} />
+
                   <motion.div
                     className="absolute -bottom-1 -right-1 bg-gradient-to-r from-green-400 to-emerald-500 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-lg"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}>
-                    
+
                     <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                   </motion.div>
                 </div>
@@ -555,7 +572,7 @@ const Signup = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}>
-                  
+
                   Join HH Foundation
                 </motion.h1>
 
@@ -564,7 +581,7 @@ const Signup = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.6 }}>
-                  
+
                   <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                   Create your account and start your journey
                   <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -577,20 +594,20 @@ const Signup = () => {
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.8, duration: 0.6 }}>
-                
+
                 <div className="flex items-center justify-between mb-2">
                   {[1, 2, 3].map((step) =>
-                  <div key={step} className="flex items-center">
+                    <div key={step} className="flex items-center">
                       <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-300 ${currentStep >= step ?
-                    'bg-white text-purple-600 shadow-lg' :
-                    'bg-white/20 text-white/60'}`
-                    }>
+                        'bg-white text-purple-600 shadow-lg' :
+                        'bg-white/20 text-white/60'}`
+                      }>
                         {currentStep > step ? <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> : step}
                       </div>
                       {step < 3 &&
-                    <div className={`w-12 sm:w-16 h-1 mx-1 sm:mx-2 rounded-full transition-all duration-300 ${currentStep > step ? 'bg-white' : 'bg-white/20'}`
-                    } />
-                    }
+                        <div className={`w-12 sm:w-16 h-1 mx-1 sm:mx-2 rounded-full transition-all duration-300 ${currentStep > step ? 'bg-white' : 'bg-white/20'}`
+                        } />
+                      }
                     </div>
                   )}
                 </div>
@@ -604,12 +621,12 @@ const Signup = () => {
 
                 {/* Step 1: Basic Information */}
                 {currentStep === 1 &&
-                <motion.div
-                  className="space-y-4 sm:space-y-5"
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6 }}>
-                  
+                  <motion.div
+                    className="space-y-4 sm:space-y-5"
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}>
+
                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4 flex items-center">
                       <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       Personal Information
@@ -623,49 +640,50 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="text"
-                        id="sponsorId"
-                        name="sponsorId"
-                        value={form.sponsorId}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
-                        placeholder="Enter sponsor ID"
-                        required
-                        readOnly={sponsorInfo.isLocked} />
-                      
+                          type="text"
+                          id="sponsorId"
+                          name="sponsorId"
+                          value={form.sponsorId}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
+                          placeholder="Enter sponsor ID"
+                          required
+                          readOnly={sponsorInfo.isLocked}
+                          onBlur={handleSponsorBlur} />
+
                         <Shield className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 group-hover:text-purple-400 transition-colors" />
                         {sponsorInfo.isLocked &&
-                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                          <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                             <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                           </div>
-                      }
+                        }
                       </div>
                       {sponsorInfo.isVerifying &&
-                    <div className="flex items-center mt-2 text-xs sm:text-sm text-white/80">
+                        <div className="flex items-center mt-2 text-xs sm:text-sm text-white/80">
                           <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-2" />
                           Verifying sponsor...
                         </div>
-                    }
+                      }
                       {sponsorInfo.name &&
-                    <motion.div
-                      className="mt-2 text-xs sm:text-sm text-green-300 flex items-center"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}>
-                      
+                        <motion.div
+                          className="mt-2 text-xs sm:text-sm text-green-300 flex items-center"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}>
+
                           <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           Sponsor: {sponsorInfo.name}
                         </motion.div>
-                    }
+                      }
                       {sponsorInfo.error &&
-                    <motion.div
-                      className="mt-2 text-xs sm:text-sm text-red-300 flex items-center"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}>
-                      
+                        <motion.div
+                          className="mt-2 text-xs sm:text-sm text-red-300 flex items-center"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}>
+
                           <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           {sponsorInfo.error}
                         </motion.div>
-                    }
+                      }
                     </div>
 
                     {/* Full Name */}
@@ -676,15 +694,15 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        value={form.fullName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
-                        placeholder="Enter your full name"
-                        required />
-                      
+                          type="text"
+                          id="fullName"
+                          name="fullName"
+                          value={form.fullName}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
+                          placeholder="Enter your full name"
+                          required />
+
                         <User className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 group-hover:text-blue-400 transition-colors" />
                       </div>
                     </div>
@@ -697,15 +715,15 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={form.email}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-green-400/50 focus:border-green-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
-                        placeholder="Enter your email address"
-                        required />
-                      
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={form.email}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-green-400/50 focus:border-green-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
+                          placeholder="Enter your email address"
+                          required />
+
                         <Mail className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 group-hover:text-green-400 transition-colors" />
                       </div>
                     </div>
@@ -718,15 +736,15 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={form.phone}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-400/50 focus:border-orange-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
-                        placeholder="Enter your phone number"
-                        required />
-                      
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={form.phone}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-400/50 focus:border-orange-400/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
+                          placeholder="Enter your phone number"
+                          required />
+
                         <Phone className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 group-hover:text-orange-400 transition-colors" />
                       </div>
                     </div>
@@ -739,26 +757,26 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="tel"
-                        id="whatsappNumber"
-                        name="whatsappNumber"
-                        value={form.whatsappNumber}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
-                        placeholder="Enter your WhatsApp number"
-                        required />
-                      
+                          type="tel"
+                          id="whatsappNumber"
+                          name="whatsappNumber"
+                          value={form.whatsappNumber}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 sm:py-4 pl-10 sm:pl-12 rounded-xl sm:rounded-2xl border border-white/20 bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:outline-none transition-all duration-300 backdrop-blur-sm hover:bg-white/10 text-sm sm:text-base"
+                          placeholder="Enter your WhatsApp number"
+                          required />
+
                         <Phone className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-white/40 group-hover:text-green-500 transition-colors" />
                       </div>
                     </div>
 
                     <motion.button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center group shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}>
-                    
+                      type="button"
+                      onClick={() => setCurrentStep(2)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center group shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}>
+
                       Continue
                       <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                     </motion.button>
@@ -767,12 +785,12 @@ const Signup = () => {
 
                 {/* Step 2: Security */}
                 {currentStep === 2 &&
-                <motion.div
-                  className="space-y-4 sm:space-y-5"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6 }}>
-                  
+                  <motion.div
+                    className="space-y-4 sm:space-y-5"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}>
+
                     <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
                       <Lock className="w-5 h-5 mr-2" />
                       Security & E-PIN
@@ -786,21 +804,21 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type={showPassword ? "text" : "password"}
-                        id="password"
-                        name="password"
-                        value={form.password}
-                        onChange={handleChange}
-                        className="w-full px-5 py-4 pl-12 pr-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                        placeholder="Create a strong password"
-                        required />
-                      
+                          type={showPassword ? "text" : "password"}
+                          id="password"
+                          name="password"
+                          value={form.password}
+                          onChange={handleChange}
+                          className="w-full px-5 py-4 pl-12 pr-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                          placeholder="Create a strong password"
+                          required />
+
                         <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                         <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors duration-200">
-                        
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors duration-200">
+
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
@@ -814,21 +832,21 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={form.confirmPassword}
-                        onChange={handleChange}
-                        className="w-full px-5 py-4 pl-12 pr-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                        placeholder="Confirm your password"
-                        required />
-                      
+                          type={showConfirmPassword ? "text" : "password"}
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          value={form.confirmPassword}
+                          onChange={handleChange}
+                          className="w-full px-5 py-4 pl-12 pr-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                          placeholder="Confirm your password"
+                          required />
+
                         <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                         <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors duration-200">
-                        
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors duration-200">
+
                           {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
@@ -842,32 +860,32 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <input
-                        type="text"
-                        id="epin"
-                        name="epin"
-                        value={form.epin}
-                        onChange={handleChange}
-                        className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                        placeholder="Enter your E-PIN"
-                        required />
-                      
+                          type="text"
+                          id="epin"
+                          name="epin"
+                          value={form.epin}
+                          onChange={handleChange}
+                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                          placeholder="Enter your E-PIN"
+                          required />
+
                         <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                       </div>
                     </div>
 
                     <div className="flex space-x-4">
                       <button
-                      type="button"
-                      onClick={() => setCurrentStep(1)}
-                      className="flex-1 bg-white/20 text-white py-4 px-6 rounded-xl font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300">
-                      
+                        type="button"
+                        onClick={() => setCurrentStep(1)}
+                        className="flex-1 bg-white/20 text-white py-4 px-6 rounded-xl font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300">
+
                         Back
                       </button>
                       <button
-                      type="button"
-                      onClick={() => setCurrentStep(3)}
-                      className="flex-1 bg-white text-purple-600 py-4 px-6 rounded-xl font-semibold hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center group shadow-lg">
-                      
+                        type="button"
+                        onClick={() => setCurrentStep(3)}
+                        className="flex-1 bg-white text-purple-600 py-4 px-6 rounded-xl font-semibold hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center group shadow-lg">
+
                         Continue
                         <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                       </button>
@@ -877,12 +895,12 @@ const Signup = () => {
 
                 {/* Step 3: Payment Method */}
                 {currentStep === 3 &&
-                <motion.div
-                  className="space-y-4 sm:space-y-5"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6 }}>
-                  
+                  <motion.div
+                    className="space-y-4 sm:space-y-5"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}>
+
                     <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
                       <CreditCard className="w-5 h-5 mr-2" />
                       Payment Information
@@ -896,13 +914,13 @@ const Signup = () => {
                       </label>
                       <div className="relative">
                         <select
-                        id="paymentMethod"
-                        name="paymentMethod"
-                        value={form.paymentMethod}
-                        onChange={handleChange}
-                        className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm appearance-none"
-                        required>
-                        
+                          id="paymentMethod"
+                          name="paymentMethod"
+                          value={form.paymentMethod}
+                          onChange={handleChange}
+                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm appearance-none"
+                          required>
+
                           <option value="" className="bg-gray-800">Choose payment method</option>
                           <option value="Bank Transfer" className="bg-gray-800">Bank Transfer</option>
                           <option value="UPI" className="bg-gray-800">UPI</option>
@@ -915,7 +933,7 @@ const Signup = () => {
 
                     {/* Bank Transfer Fields */}
                     {form.paymentMethod === 'Bank Transfer' &&
-                  <div className="space-y-4 bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="space-y-4 bg-white/5 rounded-xl p-4 border border-white/10">
                         <div className="relative group">
                           <label htmlFor="accountHolder" className="block text-white text-sm font-semibold mb-2 flex items-center">
                             <User className="w-4 h-4 mr-1" />
@@ -923,15 +941,15 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="text"
-                          id="accountHolder"
-                          name="accountHolder"
-                          value={form.accountHolder}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter account holder name"
-                          required />
-                        
+                              type="text"
+                              id="accountHolder"
+                              name="accountHolder"
+                              value={form.accountHolder}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter account holder name"
+                              required />
+
                             <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
@@ -942,15 +960,15 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="text"
-                          id="accountNumber"
-                          name="accountNumber"
-                          value={form.accountNumber}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter account number"
-                          required />
-                        
+                              type="text"
+                              id="accountNumber"
+                              name="accountNumber"
+                              value={form.accountNumber}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter account number"
+                              required />
+
                             <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
@@ -961,15 +979,15 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="text"
-                          id="bankName"
-                          name="bankName"
-                          value={form.bankName}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter bank name"
-                          required />
-                        
+                              type="text"
+                              id="bankName"
+                              name="bankName"
+                              value={form.bankName}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter bank name"
+                              required />
+
                             <Building className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
@@ -980,24 +998,24 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="text"
-                          id="ifscCode"
-                          name="ifscCode"
-                          value={form.ifscCode}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter IFSC code"
-                          required />
-                        
+                              type="text"
+                              id="ifscCode"
+                              name="ifscCode"
+                              value={form.ifscCode}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter IFSC code"
+                              required />
+
                             <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
                       </div>
-                  }
+                    }
 
                     {/* UPI Fields */}
                     {form.paymentMethod === 'UPI' &&
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                         <div className="relative group">
                           <label htmlFor="upiId" className="block text-white text-sm font-semibold mb-2 flex items-center">
                             <CreditCard className="w-4 h-4 mr-1" />
@@ -1005,24 +1023,24 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="text"
-                          id="upiId"
-                          name="upiId"
-                          value={form.upiId}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter UPI ID (e.g., user@paytm)"
-                          required />
-                        
+                              type="text"
+                              id="upiId"
+                              name="upiId"
+                              value={form.upiId}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter UPI ID (e.g., user@paytm)"
+                              required />
+
                             <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
                       </div>
-                  }
+                    }
 
                     {/* PhonePe Fields */}
                     {form.paymentMethod === 'PhonePe' &&
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                         <div className="relative group">
                           <label htmlFor="phonepeNumber" className="block text-white text-sm font-semibold mb-2 flex items-center">
                             <Phone className="w-4 h-4 mr-1" />
@@ -1030,24 +1048,24 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="tel"
-                          id="phonepeNumber"
-                          name="phonepeNumber"
-                          value={form.phonepeNumber}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter PhonePe registered number"
-                          required />
-                        
+                              type="tel"
+                              id="phonepeNumber"
+                              name="phonepeNumber"
+                              value={form.phonepeNumber}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter PhonePe registered number"
+                              required />
+
                             <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
                       </div>
-                  }
+                    }
 
                     {/* Google Pay Fields */}
                     {form.paymentMethod === 'Google Pay' &&
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                         <div className="relative group">
                           <label htmlFor="googlepayNumber" className="block text-white text-sm font-semibold mb-2 flex items-center">
                             <Phone className="w-4 h-4 mr-1" />
@@ -1055,45 +1073,45 @@ const Signup = () => {
                           </label>
                           <div className="relative">
                             <input
-                          type="tel"
-                          id="googlepayNumber"
-                          name="googlepayNumber"
-                          value={form.googlepayNumber}
-                          onChange={handleChange}
-                          className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
-                          placeholder="Enter Google Pay registered number"
-                          required />
-                        
+                              type="tel"
+                              id="googlepayNumber"
+                              name="googlepayNumber"
+                              value={form.googlepayNumber}
+                              onChange={handleChange}
+                              className="w-full px-5 py-4 pl-12 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:outline-none transition-all duration-300 backdrop-blur-sm"
+                              placeholder="Enter Google Pay registered number"
+                              required />
+
                             <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                           </div>
                         </div>
                       </div>
-                  }
+                    }
 
                     <div className="flex space-x-4">
                       <button
-                      type="button"
-                      onClick={() => setCurrentStep(2)}
-                      className="flex-1 bg-white/20 text-white py-4 px-6 rounded-xl font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300">
-                      
+                        type="button"
+                        onClick={() => setCurrentStep(2)}
+                        className="flex-1 bg-white/20 text-white py-4 px-6 rounded-xl font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300">
+
                         Back
                       </button>
                       <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-green-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
-                      
+                        type="submit"
+                        disabled={loading}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-green-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
+
                         {loading ?
-                      <>
+                          <>
                             <Loader2 className="w-5 h-5 animate-spin mr-2" />
                             Creating Account...
                           </> :
 
-                      <>
+                          <>
                             Create Account
                             <CheckCircle className="w-5 h-5 ml-2" />
                           </>
-                      }
+                        }
                       </button>
                     </div>
                   </motion.div>
@@ -1108,7 +1126,7 @@ const Signup = () => {
                     type="button"
                     onClick={() => navigate('/login')}
                     className="text-blue-400 hover:text-blue-300 font-semibold transition-colors duration-200 underline">
-                    
+
                     Login
                   </button>
                 </p>
