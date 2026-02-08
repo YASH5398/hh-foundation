@@ -680,3 +680,4 @@ export async function rejectPayment(helpId, rejectReason = 'Payment proof reject
 }
 
 // markHelpAsExpired REMOVED - handled by processHelpTimeouts Cloud Function
+export async function extendHelpTime(helpId, hours) { return (await httpsCallable(functions, 'extendHelpDeadline')({ helpId, hours })).data; }

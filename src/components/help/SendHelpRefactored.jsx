@@ -378,9 +378,29 @@ const ReceiverAssignedState = ({ receiver, helpStatus, helpData, onPaymentClick,
       {helpData?.createdAt &&
         <div className="mb-6 relative z-10">
           <CountdownTimer
-            targetDate={new Date(helpData.createdAt.toDate().getTime() + 24 * 60 * 60 * 1000)}
-            label="Payment Deadline"
+            targetDate={new Date(
+              // Fallback Order: 
+              // 1. nextTimeoutAtMs (Primary source of truth)
+              // 2. extendedUntil (If extension happened but nextTimeoutAtMs missing)
+              // 3. deadlineAt (Legacy field)
+              // 4. createdAt + 24h (Default)
+              helpData.nextTimeoutAtMs ||
+              helpData.extendedUntil?.toDate?.()?.getTime() ||
+              helpData.deadlineAt?.toDate?.()?.getTime() ||
+              ((helpData.createdAt?.toDate?.() || new Date(helpData.createdAt)).getTime() + 24 * 60 * 60 * 1000)
+            )}
+            label={helpData.totalExtensionHours > 0 ? "Extended Deadline" : "Payment Deadline"}
             onExpire={onExpire} />
+          {helpData.totalExtensionHours > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="mt-2 flex items-center gap-1.5 text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 uppercase tracking-wider"
+            >
+              <FiClock className="w-3 h-3" />
+              <span>Receiver extended time by {helpData.totalExtensionHours}h</span>
+            </motion.div>
+          )}
         </div>
       }
 

@@ -21,7 +21,7 @@ setGlobalOptions({
   region: 'us-central1',
   memory: '128MiB',
   cpu: 1,
-  maxInstances: 2
+  maxInstances: 1
 });
 
 const db = admin.firestore();
@@ -69,8 +69,10 @@ const HELP_STATUSES = Object.freeze({
 });
 
 // Timeouts (ms) - server authority only
-const ASSIGNED_TO_REQUEST_TIMEOUT_MS = 60 * 60 * 1000; // 1h for receiver to request payment
+const ASSIGNED_TO_REQUEST_TIMEOUT_MS = 24 * 60 * 60 * 1000; // Updated to 24h as per requirement
 const PAYMENT_REQUEST_TO_DONE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h for sender to pay
+const MAX_EXTENSION_HOURS = 24;
+const MAX_TOTAL_TIME_HOURS = 48;
 
 const allowedTransitions = Object.freeze({
   [HELP_STATUSES.ASSIGNED]: new Set([HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.TIMEOUT, HELP_STATUSES.CANCELLED]),
@@ -169,6 +171,7 @@ const releaseReceiverSlotIfNeeded = async (tx, { receiveRef, sendRef, receiverUi
   const userSnap = await tx.get(userRef);
   if (userSnap.exists) {
     const current = userSnap.data()?.activeReceiveCount || 0;
+    // Hard safety guard: clamp to >= 0
     const next = Math.max(0, current - 1);
     tx.update(userRef, { activeReceiveCount: next });
   }
@@ -836,6 +839,9 @@ exports.startHelpAssignment = httpsOnCall(async (request) => {
         confirmedAt: null,
 
         nextTimeoutAtMs,
+        deadlineAt: admin.firestore.Timestamp.fromMillis(nextTimeoutAtMs),
+        totalExtensionHours: 0,
+        extensionHistory: [],
         timeoutReason: null,
 
         payment: {
@@ -968,13 +974,17 @@ exports.requestPayment = httpsOnCall(async (request) => {
     if (!isReceiverEligibleStrict(receiverUser)) throw new HttpsError('failed-precondition', `Receiver not eligible: ${getReceiverIneligibilityReason(receiverUser)}`);
 
     const paymentRequestedAtMs = Date.now();
-    const nextTimeoutAtMs = paymentRequestedAtMs + PAYMENT_REQUEST_TO_DONE_TIMEOUT_MS;
+    // CRITICAL FIX: Never shorten the deadline. Extension takes precedence.
+    const calculatedTimeout = paymentRequestedAtMs + PAYMENT_REQUEST_TO_DONE_TIMEOUT_MS;
+    // Ensure we respect existing extensions or initial long deadlines
+    const nextTimeoutAtMs = Math.max(r.nextTimeoutAtMs || 0, calculatedTimeout);
 
     const patch = {
       status: HELP_STATUSES.PAYMENT_REQUESTED,
       paymentRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
       paymentRequestedAtMs,
       nextTimeoutAtMs,
+      deadlineAt: admin.firestore.Timestamp.fromMillis(nextTimeoutAtMs),
       paymentRequested: true, // Set payment request flag
       lastPaymentRequestAt: admin.firestore.FieldValue.serverTimestamp(), // Track last request time for cooldown
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1094,6 +1104,7 @@ exports.setNotificationRead = httpsOnCall(async (request) => {
   };
 });
 
+/*
 exports.bulkMarkNotificationsRead = httpsOnCall(async (request) => {
   assertAuth(request);
   const uid = request.auth.uid;
@@ -1168,6 +1179,7 @@ exports.deleteUserNotification = httpsOnCall(async (request) => {
     data: { ok: true }
   };
 });
+*/
 
 // Callable: sender submits payment proof + UTR uniqueness
 exports.submitPayment = httpsOnCall(async (request) => {
@@ -1269,9 +1281,70 @@ exports.receiverResolvePayment = httpsOnCall(async (request) => {
     if (action === 'confirm') {
       if (r.status !== HELP_STATUSES.PAYMENT_DONE) return;
       if (!canTransition(r.status, HELP_STATUSES.CONFIRMED)) return;
+
+      // CRITICAL FIX: Process income atomically during confirmation
+      const receiverRef = db.collection('users').doc(r.receiverUid);
+      const senderRef = db.collection('users').doc(r.senderUid);
+      const [receiverSnap, senderSnap] = await Promise.all([tx.get(receiverRef), tx.get(senderRef)]);
+
+      if (!receiverSnap.exists) throw new HttpsError('not-found', 'Receiver user not found');
+      const receiverData = receiverSnap.data();
+
+      const prevHelpReceived = receiverData.helpReceived || 0;
+      const nextHelpReceived = prevHelpReceived + 1;
+
+      // Update receiver income counters
+      const receiverUpdate = {
+        helpReceived: nextHelpReceived,
+        lastHelpAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalReceived: (receiverData.totalReceived || 0) + (r.amount || 0)
+      };
+
+      // Apply blocking logic using MLM core
+      const userLevel = normalizeLevel({ level: receiverData.level || receiverData.levelStatus });
+      const userWithNewCount = { ...receiverData, level: userLevel, helpReceived: nextHelpReceived };
+
+      if (isIncomeBlocked(userWithNewCount)) {
+        receiverUpdate.isReceivingHeld = true;
+        receiverUpdate.isOnHold = true;
+      }
+
+      // Check level completion
+      if (nextHelpReceived >= getTotalHelpsByLevel(userLevel)) {
+        receiverUpdate.levelStatus = 'completed';
+      }
+
+      tx.update(receiverRef, receiverUpdate);
+
+      // Update sender activation status
+      if (senderSnap.exists) {
+        const senderData = senderSnap.data();
+        const senderUpdate = {};
+        const senderLvl = normalizeLevel({ level: senderData.level || senderData.levelStatus });
+
+        if (senderData.isActivated !== true) {
+          senderUpdate.isActivated = true;
+          senderUpdate.activatedAt = admin.firestore.FieldValue.serverTimestamp();
+          senderUpdate.level = senderData.level || 'Star';
+          senderUpdate.levelStatus = 'active';
+        }
+
+        if (senderLvl === 'Star' && senderData.starSendHelpDone !== true) {
+          senderUpdate.starSendHelpDone = true;
+          senderUpdate.isActivated = true;
+        }
+
+        if (Object.keys(senderUpdate).length > 0) {
+          tx.update(senderRef, senderUpdate);
+        }
+      }
+
+      // Update help docs with incomeProcessed flag to prevent duplicate processing
       const patch = {
         status: HELP_STATUSES.CONFIRMED,
         confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+        incomeProcessed: true,
+        incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       };
       tx.update(sendRef, patch);
@@ -1370,6 +1443,76 @@ exports.cancelHelp = httpsOnCall(async (request) => {
   };
 });
 
+// Callable: receiver extends help deadline
+exports.extendHelpDeadline = httpsOnCall(async (request) => {
+  assertAuth(request);
+  const uid = request.auth.uid;
+  const { helpId, hours } = request.data || {};
+
+  if (!helpId) throw new HttpsError('invalid-argument', 'helpId required');
+  if (![1, 4, 8, 24].includes(hours)) throw new HttpsError('invalid-argument', 'Invalid extension hours. Must be 1, 4, 8, or 24.');
+
+  return await db.runTransaction(async (tx) => {
+    const receiveRef = db.collection('receiveHelp').doc(helpId);
+    const sendRef = db.collection('sendHelp').doc(helpId);
+    const [rSnap, sSnap] = await Promise.all([tx.get(receiveRef), tx.get(sendRef)]);
+
+    if (!rSnap.exists || !sSnap.exists) throw new HttpsError('not-found', 'Help not found');
+
+    const r = rSnap.data();
+    if (r.receiverUid !== uid) throw new HttpsError('permission-denied', 'Only the receiver can extend the timer');
+    if (TERMINAL_STATUSES.has(r.status)) throw new HttpsError('failed-precondition', 'Cannot extend a completed or cancelled help');
+
+    const currentTotalExtension = r.totalExtensionHours || 0;
+    if (currentTotalExtension + hours > MAX_EXTENSION_HOURS) {
+      throw new HttpsError('failed-precondition', `Total extension cannot exceed ${MAX_EXTENSION_HOURS} hours. Currently extended by ${currentTotalExtension} hours.`);
+    }
+
+    const currentDeadlineMs = r.nextTimeoutAtMs || (r.deadlineAt?.toMillis ? r.deadlineAt.toMillis() : Date.now());
+
+    // NEW: Strict expiry check. Never allow revive if expired.
+    if (Date.now() > currentDeadlineMs) {
+      throw new HttpsError('failed-precondition', 'Countdown has expired. Extension is no longer available.');
+    }
+
+    const newDeadlineMs = currentDeadlineMs + (hours * 60 * 60 * 1000);
+
+    // Safety check for absolute max time (48h from creation)
+    const createdAtMs = r.assignedAtMs || (r.createdAt?.toMillis ? r.createdAt.toMillis() : Date.now());
+    if (newDeadlineMs > createdAtMs + (MAX_TOTAL_TIME_HOURS * 60 * 60 * 1000)) {
+      throw new HttpsError('failed-precondition', `Total help time cannot exceed ${MAX_TOTAL_TIME_HOURS} hours from assignment.`);
+    }
+
+    const extensionEntry = {
+      hours,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      previousDeadline: r.deadlineAt || admin.firestore.Timestamp.fromMillis(currentDeadlineMs),
+      newDeadline: admin.firestore.Timestamp.fromMillis(newDeadlineMs)
+    };
+
+    const patch = {
+      nextTimeoutAtMs: newDeadlineMs,
+      deadlineAt: admin.firestore.Timestamp.fromMillis(newDeadlineMs),
+      extendedUntil: admin.firestore.Timestamp.fromMillis(newDeadlineMs),
+      totalExtensionHours: currentTotalExtension + hours,
+      extensionHistory: admin.firestore.FieldValue.arrayUnion(extensionEntry),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    tx.update(receiveRef, patch);
+    tx.update(sendRef, patch);
+
+    return {
+      success: true,
+      message: `Help deadline extended by ${hours} hours.`,
+      data: {
+        newDeadline: newDeadlineMs,
+        totalExtensionHours: currentTotalExtension + hours
+      }
+    };
+  });
+});
+
 // Admin callable: force confirm (logs adminActions)
 exports.adminForceConfirm = httpsOnCall(async (request) => {
   assertAdmin(request);
@@ -1434,77 +1577,6 @@ exports.adminForceConfirm = httpsOnCall(async (request) => {
     message: 'Payment request submitted successfully',
     data: { ok: true }
   };
-});
-
-// Scheduled timeout processor (server driven)
-exports.processHelpTimeouts = onSchedule('every 1 minutes', async () => {
-  const now = Date.now();
-  const dueQuery = db
-    .collection('receiveHelp')
-    .where('status', 'in', [HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE])
-    .where('nextTimeoutAtMs', '<=', now)
-    .orderBy('nextTimeoutAtMs', 'asc')
-    .limit(50);
-
-  const dueSnap = await dueQuery.get();
-  if (dueSnap.empty) return;
-
-  const promises = dueSnap.docs.map(async (docSnap) => {
-    const helpId = docSnap.id;
-    await db.runTransaction(async (tx) => {
-      const receiveRef = db.collection('receiveHelp').doc(helpId);
-      const sendRef = db.collection('sendHelp').doc(helpId);
-      const [rSnap, sSnap] = await Promise.all([tx.get(receiveRef), tx.get(sendRef)]);
-      if (!rSnap.exists || !sSnap.exists) return;
-      const r = rSnap.data();
-      const s = sSnap.data();
-      if (r.status !== s.status) return;
-      if (![HELP_STATUSES.ASSIGNED, HELP_STATUSES.PAYMENT_REQUESTED, HELP_STATUSES.PAYMENT_DONE].includes(r.status)) return;
-      if ((r.nextTimeoutAtMs || 0) > now) return;
-
-      let timeoutReason = 'timeout';
-      const receiverUserRef = db.collection('users').doc(r.receiverUid);
-      const senderUserRef = db.collection('users').doc(r.senderUid);
-
-      if (r.status === HELP_STATUSES.ASSIGNED) {
-        timeoutReason = 'receiver_no_request';
-        tx.update(receiverUserRef, {
-          isReceivingHeld: true,
-          isOnHold: true,
-          holdReason: 'receiver_no_request'
-        });
-      }
-
-      if (r.status === HELP_STATUSES.PAYMENT_REQUESTED) {
-        timeoutReason = 'sender_no_payment';
-        tx.update(senderUserRef, {
-          isOnHold: true,
-          holdReason: 'sender_no_payment'
-        });
-      }
-
-      if (r.status === HELP_STATUSES.PAYMENT_DONE) {
-        timeoutReason = 'receiver_no_confirmation';
-        tx.update(receiverUserRef, {
-          isReceivingHeld: true,
-          isOnHold: true,
-          holdReason: 'receiver_no_confirmation'
-        });
-      }
-
-      const patch = {
-        status: HELP_STATUSES.TIMEOUT,
-        timeoutReason,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      };
-      tx.update(receiveRef, patch);
-      tx.update(sendRef, patch);
-
-      await releaseReceiverSlotIfNeeded(tx, { receiveRef, sendRef, receiverUid: r.receiverUid });
-    });
-  });
-
-  await Promise.allSettled(promises);
 });
 
 // MANDATORY BACKEND ENFORCER: Auto-block receivers on deadline expiry
@@ -1670,6 +1742,7 @@ exports.enforceReceiverEligibilityTimeout = onSchedule('every 15 minutes', async
 });
 
 // TEMPORARY ONE-TIME BACKFILL: Block old users whose 24h window expired
+/*
 exports.backfillAndBlockOldReceivers = httpsOnCall(async (request) => {
   // Only allow admins or manual trigger from console (if auth is enforced, use a secret or admin check)
   // For this temporary setup, we follow the user's logic exactly.
@@ -1741,7 +1814,7 @@ exports.backfillAndBlockOldReceivers = httpsOnCall(async (request) => {
     throw new HttpsError('internal', error.message);
   }
 });
-
+*/
 exports.resumeBlockedReceives = httpsOnCall(async (request) => {
   assertAuth(request);
   const callerUid = request.auth.uid;
@@ -1963,17 +2036,27 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
   const after = change.after.data();
   const helpId = context.params.docId;
 
-  // Process only when status becomes confirmed/force_confirmed
+  // CRITICAL FIX: Exit immediately if already processed (primary path is receiverResolvePayment)
+  if (after?.incomeProcessed === true) {
+    console.log(`[onReceiveHelpStatusProcessed] Already processed ${helpId}, skipping`);
+    return null;
+  }
+
+  // Exit if status unchanged
   const beforeStatus = before?.status;
   const afterStatus = after?.status;
-  if (beforeStatus === afterStatus) return null;
-  if (![HELP_STATUSES.CONFIRMED, HELP_STATUSES.FORCE_CONFIRMED].includes(afterStatus)) return null;
+  if (beforeStatus === afterStatus) {
+    console.log(`[onReceiveHelpStatusProcessed] Status unchanged ${helpId}, skipping`);
+    return null;
+  }
 
-  // Idempotency guard
-  if (after?.incomeProcessed === true) return null;
+  // Process only when status becomes confirmed/force_confirmed
+  if (![HELP_STATUSES.CONFIRMED, HELP_STATUSES.FORCE_CONFIRMED].includes(afterStatus)) return null;
 
   const receiverUid = after?.receiverUid;
   if (!receiverUid) return null;
+
+  console.log(`[onReceiveHelpStatusProcessed] SAFETY FALLBACK triggered for ${helpId} - processing income`);
 
   try {
     await db.runTransaction(async (tx) => {
@@ -2046,43 +2129,18 @@ exports.onReceiveHelpStatusProcessed = onDocumentUpdated('receiveHelp/{docId}', 
           tx.update(senderRef, senderUpdate);
         }
 
-        // NEW: UNIVERSAL COMPLETION RULE
-        // ALWAYS mark help as 'completed' upon confirmation to prevent it from appearing as "active"
-        // This fixes the "Ghost Help" issue where confirmed payments still show up.
-        console.log(`[onReceiveHelpStatusProcessed] Marking help ${helpId} as COMPLETED for all users`);
-
-        const universalCompletedPatch = {
-          status: 'completed', // FORCE COMPLETED status
-          completedAt: admin.firestore.FieldValue.serverTimestamp(),
-          completedBy: 'system_auto_completion',
-          incomeProcessed: true,
-          incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-          slotReleased: true, // Ensure slot is released
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        tx.update(receiveRef, universalCompletedPatch);
-        tx.update(sendRef, universalCompletedPatch);
-
-        // Decrement receiver's active count if not already done
-        const rData = rSnap.data();
-        if (rData.slotReleased !== true) {
-          const currentActive = userData.activeReceiveCount || 0;
-          if (currentActive > 0) {
-            tx.update(userRef, { activeReceiveCount: admin.firestore.FieldValue.increment(-1) });
-          }
-        }
-      } else {
-        // Fallback if sender doesn't exist
-        const processedPatch = {
-          incomeProcessed: true,
-          incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-        tx.update(receiveRef, processedPatch);
-        tx.update(sendRef, processedPatch);
       }
-      console.log(`[onReceiveHelpStatusProcessed] Successfully processed income for help ${helpId}`);
+
+      // CRITICAL FIX: Do NOT override status, do NOT decrement activeReceiveCount
+      // Those are handled in receiverResolvePayment
+      const processedPatch = {
+        incomeProcessed: true,
+        incomeProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      tx.update(receiveRef, processedPatch);
+      tx.update(sendRef, processedPatch);
+      console.log(`[onReceiveHelpStatusProcessed] SAFETY FALLBACK completed for ${helpId}`);
     });
   } catch (e) {
     console.error('[onReceiveHelpStatusProcessed] Error:', e);
@@ -2128,6 +2186,7 @@ exports.confirmHelpReceived = httpsOnCall(async (request) => {
   };
 });
 
+/*
 exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}', async (change, context) => {
   const before = change.before.data();
   const after = change.after.data();
@@ -2151,6 +2210,7 @@ exports.onLevelPaymentConfirmedV2 = onDocumentUpdated('levelPayments/{paymentId}
 
   return null;
 });
+*/
 
 // Cloud Function: E-PIN request status notifications
 exports.onEpinRequestUpdateV2 = onDocumentUpdated('epinRequests/{requestId}', async (change, context) => {
@@ -2687,6 +2747,7 @@ exports.cleanupStaleHelps = httpsOnCall(async (request) => {
 });
 
 // Utility: Normalize User documents by removing kycDetails (Admin only)
+/*
 exports.cleanupKycData = httpsOnCall(async (request) => {
   assertAdmin(request);
 
@@ -2722,4 +2783,436 @@ exports.cleanupKycData = httpsOnCall(async (request) => {
 
   console.log(`[cleanupKycData] Finished cleanup. Updated: ${results.updatedCount}`);
   return { success: true, ...results };
+});
+*/
+
+// ===================================
+// TIMEOUT HANDLING & AUTO-REASSIGNMENT
+// ===================================
+
+// 1. Scheduled Job: Check for Payment Timeouts (Every 15 mins)
+exports.checkPaymentTimeouts = onSchedule("every 15 minutes", async (event) => {
+  const now = admin.firestore.Timestamp.now();
+
+  // Find helps that have passed their deadline and are NOT confirmed/cancelled
+  const snapshot = await db.collection('sendHelp')
+    .where('status', 'in', ['assigned', 'payment_requested'])
+    .where('deadlineAt', '<', now)
+    .where('slotReleased', '==', false)
+    .limit(100)
+    .get();
+
+  if (snapshot.empty) return;
+
+  const results = { processed: 0, blocked: 0, errors: 0 };
+
+  await Promise.all(snapshot.docs.map(async (doc) => {
+    try {
+      await db.runTransaction(async (tx) => {
+        const helpRef = doc.ref;
+        const sendSnap = await tx.get(helpRef);
+        if (!sendSnap.exists) return;
+        const helpData = sendSnap.data();
+
+        // Idempotency: skip if already processed
+        if (helpData.slotReleased === true || helpData.status === 'timeout') return;
+
+        const senderUid = helpData.senderUid;
+        const receiverUid = helpData.receiverUid;
+        const receiveHelpRef = db.collection('receiveHelp').doc(doc.id);
+        const senderRef = db.collection('users').doc(senderUid);
+        const receiverRef = db.collection('users').doc(receiverUid);
+
+        // 1. Block Sender (Prevent Redundant Writes)
+        const senderSnap = await tx.get(senderRef);
+        const senderData = senderSnap.data();
+
+        if (senderData && senderData.isBlocked !== true) {
+          tx.set(senderRef, {
+            isBlocked: true,
+            isOnHold: true,
+            blockReason: "PAYMENT_TIMEOUT",
+            blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+            paymentBlocked: true
+          }, { merge: true });
+          results.blocked++;
+        }
+
+        // 2. Release Receiver Slot (Safe Decrement)
+        const receiverSnap = await tx.get(receiverRef);
+        if (receiverSnap.exists) {
+          const currentCount = receiverSnap.data().activeReceiveCount || 0;
+          // Ensure we never go below 0
+          if (currentCount > 0) {
+            tx.update(receiverRef, {
+              activeReceiveCount: admin.firestore.FieldValue.increment(-1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }
+        // 3. Finalize Help Docs (Status: timeout)
+        const closeUpdate = {
+          status: 'timeout',
+          timeoutReason: 'PAYMENT_TIMEOUT',
+          timedOutAt: admin.firestore.FieldValue.serverTimestamp(),
+          slotReleased: true,
+          incomeProcessed: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        tx.update(helpRef, closeUpdate);
+        tx.update(receiveHelpRef, closeUpdate);
+      });
+      results.processed++;
+    } catch (err) {
+      console.error(`[checkPaymentTimeouts] Error processing ${doc.id}:`, err);
+      results.errors++;
+    }
+  }));
+
+  console.log(`[checkPaymentTimeouts] Run complete:`, results);
+});
+
+// 1.1 Process Upgrade Payment from Block Point
+exports.processUpgradePayment = httpsOnCall(async (request) => {
+  assertAuth(request);
+  const { userId, targetLevel, amount, proofUrl, transactionId } = request.data || {};
+  if (!userId || !targetLevel || !amount || !transactionId) throw new HttpsError('invalid-argument', 'Missing fields');
+
+  const normalizedId = transactionId.trim().toUpperCase();
+  if (normalizedId.length < 6) throw new HttpsError('invalid-argument', 'Invalid Transaction ID');
+
+  const userRef = db.collection('users').doc(userId);
+  const utrRef = db.collection('utrIndex').doc(normalizedId);
+
+  await db.runTransaction(async (tx) => {
+    const [userSnap, utrSnap] = await Promise.all([tx.get(userRef), tx.get(utrRef)]);
+
+    if (!userSnap.exists) throw new HttpsError('not-found', 'User not found');
+    if (utrSnap.exists) throw new HttpsError('already-exists', 'Transaction ID already used');
+
+    const userData = userSnap.data();
+
+    // Verify Block Point using MLM Core helper
+    const userForCheck = { ...userData, level: userData.level || userData.levelStatus };
+    const required = getRequiredPaymentForUnblock(userForCheck);
+    if (!required || required.type !== 'upgrade') {
+      throw new HttpsError('failed-precondition', 'Upgrade payment not required at this block point');
+    }
+
+    // Verify Amount matches target level config
+    const expectedAmount = getUpgradeAmount(userData.level || userData.levelStatus);
+    if (Number(amount) !== expectedAmount) {
+      throw new HttpsError('invalid-argument', `Amount mismatch. Expected: ${expectedAmount}`);
+    }
+
+    // Update User: Upgrade level, unblock, and flag for auto-assignment
+    tx.update(userRef, {
+      level: targetLevel,
+      levelStatus: 'active',
+      isBlocked: false,
+      isOnHold: false,
+      isReceivingHeld: false,
+      upgradeRequested: true, // Triggers auto-assignment in onSenderUnblocked
+      lastUpgradeAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastUpgradeProof: proofUrl || null,
+      lastUnblockedAtCount: userData.helpReceived || 0, // Mark unblocked at this income count
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      upgradePaymentRecord: { amount, targetLevel, proofUrl, transactionId: normalizedId, processedAt: Date.now() }
+    });
+
+    // Mark Transaction ID used
+    tx.set(utrRef, {
+      userId,
+      transactionId: normalizedId,
+      type: 'upgrade',
+      targetLevel,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+
+  return { success: true };
+});
+
+// 1.2 Process Sponsor Payment from Block Point
+exports.processSponsorPayment = httpsOnCall(async (request) => {
+  assertAuth(request);
+  const { userId, sponsorId, amount, proofUrl, transactionId } = request.data || {};
+  if (!userId || !sponsorId || !amount || !transactionId) throw new HttpsError('invalid-argument', 'Missing fields');
+
+  const normalizedId = transactionId.trim().toUpperCase();
+  if (normalizedId.length < 6) throw new HttpsError('invalid-argument', 'Invalid Transaction ID');
+
+  const userRef = db.collection('users').doc(userId);
+  const utrRef = db.collection('utrIndex').doc(normalizedId);
+
+  await db.runTransaction(async (tx) => {
+    const [userSnap, utrSnap] = await Promise.all([tx.get(userRef), tx.get(utrRef)]);
+
+    if (!userSnap.exists) throw new HttpsError('not-found', 'User not found');
+    if (utrSnap.exists) throw new HttpsError('already-exists', 'Transaction ID already used');
+
+    const userData = userSnap.data();
+
+    // Verify Block Point
+    const userForCheck = { ...userData, level: userData.level || userData.levelStatus };
+    const required = getRequiredPaymentForUnblock(userForCheck);
+    if (!required || required.type !== 'sponsor') {
+      throw new HttpsError('failed-precondition', 'Sponsor payment not required at this block point');
+    }
+
+    // Verify Sponsor (must match uplineUid or sponsorUid)
+    if (userData.sponsorUid !== sponsorId && userData.uplineUid !== sponsorId) {
+      throw new HttpsError('invalid-argument', 'sponsorId does not match user upline');
+    }
+
+    // Verify Amount
+    const expectedAmount = getSponsorPaymentAmount(userData.level || userData.levelStatus);
+    if (Number(amount) !== expectedAmount) {
+      throw new HttpsError('invalid-argument', `Amount mismatch. Expected: ${expectedAmount}`);
+    }
+
+    // Actions: Unblock and flag for auto-assignment
+    tx.update(userRef, {
+      isBlocked: false,
+      isOnHold: false,
+      isReceivingHeld: false,
+      sponsorPaymentRequested: true, // Triggers auto-assignment in onSenderUnblocked
+      lastSponsorPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastSponsorPaymentProof: proofUrl || null,
+      lastUnblockedAtCount: userData.helpReceived || 0,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      sponsorPaymentRecord: { amount, sponsorId, proofUrl, transactionId: normalizedId, processedAt: Date.now() }
+    });
+
+    // Mark Transaction ID used
+    tx.set(utrRef, {
+      userId,
+      transactionId: normalizedId,
+      type: 'sponsor',
+      sponsorId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+
+  return { success: true };
+});
+
+// 2. Trigger: Sender Unblocked -> Auto Re-assignment
+exports.onSenderUnblocked = onDocumentUpdated("users/{uid}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  const senderUid = event.params.uid;
+
+  // Detect transition: Blocked -> Unblocked OR OnHold -> Released
+  const blockReleased = before.isBlocked === true && after.isBlocked === false;
+  const holdReleased = before.isOnHold === true && after.isOnHold === false;
+
+  if (blockReleased || holdReleased) {
+    console.log(`[onSenderUnblocked] User ${senderUid} unblocked. Checking eligibility.`);
+
+    // A. SENDER SAFETY GUARDS
+    if (after.isOnHold === true || after.isReceivingHeld === true) {
+      console.log(`[onSenderUnblocked] Sender ${senderUid} is still ON HOLD. Skipping.`);
+      return;
+    }
+
+    const isStar = normalizeLevelName(after.level || after.levelStatus) === 'Star';
+    // Resume flow if: Star needs activation OR Upgrade paid OR Sponsor paid
+    const needsAssignment = (isStar && !after.isActivated) ||
+      (after.upgradeRequested === true) ||
+      (after.sponsorPaymentRequested === true);
+
+    if (!needsAssignment) return;
+
+    try {
+      await db.runTransaction(async (tx) => {
+        // B. Check for existing active help (Idempotency)
+        const activeSnap = await tx.get(db.collection('sendHelp')
+          .where('senderUid', '==', senderUid)
+          .where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
+        );
+        if (!activeSnap.empty) {
+          console.log(`[onSenderUnblocked] User ${senderUid} already has active help.`);
+          return;
+        }
+
+        const senderLevel = normalizeLevelName(after.level || after.levelStatus);
+
+        // C. Find Receiver (Strict Eligibility)
+        const receiverQuery = db.collection('users')
+          .where('isActivated', '==', true)
+          .where('isBlocked', '==', false)
+          .where('isReceivingHeld', '==', false)
+          .where('helpVisibility', '==', true)
+          .where('level', '==', senderLevel)
+          .orderBy('referralCount', 'desc')
+          .limit(50);
+
+        const receiverSnap = await tx.get(receiverQuery);
+
+        let chosenReceiver = null;
+        let chosenReceiverUid = null;
+        let chosenReceiverRef = null;
+
+        for (const doc of receiverSnap.docs) {
+          const rData = doc.data();
+          const rLvl = normalizeLevelName(rData.level || rData.levelStatus);
+          const limit = getTotalHelpsByLevel(rLvl);
+          const active = rData.activeReceiveCount || 0;
+          const received = rData.helpReceived || 0;
+
+          // STRICT CHECKS:
+          // 1. Not blocked/held/system
+          // 2. Total capacity check (received + active < limit)
+          // 3. Not self
+          if (rData.isBlocked !== true &&
+            rData.isOnHold !== true &&
+            rData.isReceivingHeld !== true &&
+            rData.isSystemAccount !== true &&
+            (received + active) < limit &&
+            doc.id !== senderUid) {
+
+            chosenReceiver = rData;
+            chosenReceiverUid = doc.id;
+            chosenReceiverRef = doc.ref;
+            break;
+          }
+        }
+
+        if (!chosenReceiver) {
+          console.log(`[onSenderUnblocked] No eligible receiver found for ${senderUid}`);
+          return; // No match found, exit safely
+        }
+
+        // D. Create Assignment
+        const createdAtMs = Date.now();
+        const helpId = `${chosenReceiverUid}_${senderUid}_${createdAtMs}`;
+        const sendRef = db.collection('sendHelp').doc(helpId);
+        const receiveRef = db.collection('receiveHelp').doc(helpId);
+
+        const helpDoc = {
+          id: helpId,
+          status: 'assigned',
+          slotReleased: false,
+          senderUid,
+          senderName: after.fullName || '',
+          senderLevel: senderLevel,
+          receiverUid: chosenReceiverUid,
+          receiverName: chosenReceiver.fullName || '',
+          receiverLevel: normalizeLevelName(chosenReceiver.level || chosenReceiver.levelStatus),
+          amount: getAmountByLevel(senderLevel),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          assignedAt: admin.firestore.FieldValue.serverTimestamp(),
+          assignedAtMs: createdAtMs,
+          deadlineAt: admin.firestore.Timestamp.fromMillis(createdAtMs + (24 * 60 * 60 * 1000)),
+          nextTimeoutAtMs: createdAtMs + (24 * 60 * 60 * 1000),
+          audit: { createdBy: 'system_unblock_trigger' }
+        };
+
+        tx.set(sendRef, helpDoc);
+        tx.set(receiveRef, helpDoc);
+
+        tx.update(chosenReceiverRef, {
+          activeReceiveCount: admin.firestore.FieldValue.increment(1),
+          lastReceiveAssignedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Clear unblock flags to prevent redundant trigger executions
+        const senderRef = db.collection('users').doc(senderUid);
+        tx.update(senderRef, {
+          upgradeRequested: false,
+          sponsorPaymentRequested: false
+        });
+
+        console.log(`[onSenderUnblocked] Auto-assigned ${senderUid} to ${chosenReceiverUid}`);
+      });
+    } catch (err) {
+      console.error(`[onSenderUnblocked] Failed to assign for ${senderUid}:`, err);
+    }
+  }
+});
+
+// ==================================
+// SLOT RECONCILIATION & CRASH RECOVERY
+// ==================================
+
+// Periodic job: Reconcile activeReceiveCount against actual active helps
+exports.reconcileReceiverSlots = onSchedule('every 30 minutes', async (event) => {
+  console.log('[reconcileReceiverSlots] Starting slot reconciliation...');
+
+  const results = { scanned: 0, fixed: 0, orphans: 0, errors: 0 };
+
+  try {
+    // 1. Scan all active helps and group by receiverUid
+    const activeHelpsSnap = await db.collection('receiveHelp')
+      .where('status', 'in', ['assigned', 'payment_requested', 'payment_done'])
+      .get();
+
+    // Build actual count map: receiverUid -> count
+    const actualCounts = new Map();
+    activeHelpsSnap.docs.forEach(doc => {
+      const data = doc.data();
+      const rid = data.receiverUid;
+      if (rid) {
+        actualCounts.set(rid, (actualCounts.get(rid) || 0) + 1);
+      }
+    });
+
+    console.log(`[reconcileReceiverSlots] Found ${actualCounts.size} receivers with active helps`);
+
+    // 2. Fetch all users with activeReceiveCount > 0
+    const usersSnap = await db.collection('users')
+      .where('activeReceiveCount', '>', 0)
+      .get();
+
+    results.scanned = usersSnap.size;
+
+    // 3. Reconcile each user
+    const reconcileTasks = usersSnap.docs.map(async (userDoc) => {
+      const uid = userDoc.id;
+      const userData = userDoc.data();
+      const storedCount = userData.activeReceiveCount || 0;
+      const actualCount = actualCounts.get(uid) || 0;
+
+      if (storedCount !== actualCount) {
+        console.warn(`[reconcileReceiverSlots] MISMATCH: User ${uid} stored=${storedCount}, actual=${actualCount}`);
+        try {
+          await db.collection('users').doc(uid).update({
+            activeReceiveCount: Math.max(0, actualCount), // Hard clamp to >= 0
+            lastSlotReconcileAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          results.fixed++;
+        } catch (err) {
+          console.error(`[reconcileReceiverSlots] Failed to fix ${uid}:`, err);
+          results.errors++;
+        }
+      }
+    });
+
+    await Promise.allSettled(reconcileTasks);
+
+    // 4. Orphan cleanup: users with count > 0 but not in actualCounts
+    const orphanTasks = usersSnap.docs
+      .filter(doc => !actualCounts.has(doc.id) && (doc.data().activeReceiveCount || 0) > 0)
+      .map(async (userDoc) => {
+        const uid = userDoc.id;
+        console.warn(`[reconcileReceiverSlots] ORPHAN: User ${uid} has count ${userDoc.data().activeReceiveCount} but no active helps`);
+        try {
+          await db.collection('users').doc(uid).update({
+            activeReceiveCount: 0,
+            lastSlotReconcileAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          results.orphans++;
+        } catch (err) {
+          console.error(`[reconcileReceiverSlots] Failed to clean orphan ${uid}:`, err);
+          results.errors++;
+        }
+      });
+
+    await Promise.allSettled(orphanTasks);
+
+    console.log('[reconcileReceiverSlots] Complete:', results);
+  } catch (err) {
+    console.error('[reconcileReceiverSlots] CRITICAL FAILURE:', err);
+  }
 });

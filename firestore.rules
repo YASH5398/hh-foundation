@@ -159,11 +159,13 @@ service cloud.firestore {
 
     /* ================= SEND HELP ================= */
     match /sendHelp/{id} {
-      allow read, write: if isAuth()
+      allow read: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid
             || isAdmin()
             || isAgent());
+      
+      allow write: if false; // BLOCK ALL client writes (create, update, delete)
       
       // Chat subcollection for transaction messages
       match /chat/{messageId} {
@@ -190,11 +192,13 @@ service cloud.firestore {
 
     /* ================= RECEIVE HELP ================= */
     match /receiveHelp/{id} {
-      allow read, write: if isAuth()
+      allow read: if isAuth()
         && (resource.data.senderUid == request.auth.uid
             || resource.data.receiverUid == request.auth.uid
             || isAdmin()
             || isAgent());
+
+      allow write: if false; // BLOCK ALL client writes (create, update, delete)
       
       // Chat subcollection for transaction messages
       match /chat/{messageId} {

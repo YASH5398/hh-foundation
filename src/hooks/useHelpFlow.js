@@ -16,8 +16,10 @@ import {
   getUserHelpStatus,
   listenToHelpStatus,
   listenToReceiveHelps,
-  disputePayment } from
-'../services/helpService';
+  disputePayment,
+  extendHelpTime
+} from
+  '../services/helpService';
 import { HELP_STATUS, canSubmitPayment, canConfirmPayment } from '../config/helpStatus';
 import { getAmountByLevel } from '../utils/amountUtils';
 import { toast } from 'react-hot-toast';
@@ -31,7 +33,14 @@ export const useHelpFlow = () => {
   const [currentStep, setCurrentStep] = useState(3); // server assigns immediately; UI stays in waiting/payment based on status
 
   const isTerminalHelp = useCallback((status) => {
-    return [HELP_STATUS.CONFIRMED, HELP_STATUS.FORCE_CONFIRMED, HELP_STATUS.CANCELLED, HELP_STATUS.TIMEOUT].includes(status);
+    // CRITICAL FIX: Include 'completed' as terminal status for defensive cleanup
+    return [
+      HELP_STATUS.CONFIRMED,
+      HELP_STATUS.FORCE_CONFIRMED,
+      HELP_STATUS.CANCELLED,
+      HELP_STATUS.TIMEOUT,
+      'completed'
+    ].includes(status);
   }, []);
 
   // Real-time listeners (need cleanup)
@@ -179,8 +188,8 @@ export const useHelpFlow = () => {
       let userMessage = 'Failed to submit payment proof. Please try again.';
       const safeErrMsg = typeof err?.message === 'string' ? err.message : '';
       if (safeErrMsg.includes('permission-denied') ||
-      safeErrMsg.includes('You can only update your own') ||
-      err.code === 'permission-denied') {
+        safeErrMsg.includes('You can only update your own') ||
+        err.code === 'permission-denied') {
         userMessage = 'Unable to submit payment at this time. Please contact support if this issue persists.';
         console.error('Permission error during payment submission - check Firestore rules');
       }
@@ -283,8 +292,8 @@ export const useReceiveHelpFlow = () => {
       let userMessage = 'Failed to confirm payment. Please try again.';
       const safeErrMsg = typeof err?.message === 'string' ? err.message : '';
       if (safeErrMsg.includes('permission-denied') ||
-      safeErrMsg.includes('You can only update your own') ||
-      err.code === 'permission-denied') {
+        safeErrMsg.includes('You can only update your own') ||
+        err.code === 'permission-denied') {
         userMessage = 'Unable to confirm payment at this time. Please contact support if this issue persists.';
         console.error('Permission error during payment confirmation - check Firestore rules');
       }
@@ -327,6 +336,26 @@ export const useReceiveHelpFlow = () => {
     }
   }, []);
 
+  const extendDeadline = useCallback(async (helpId, hours) => {
+    setConfirmingId(helpId);
+    setError(null);
+    try {
+      const result = await extendHelpTime(helpId, hours);
+      if (result.success) {
+        toast.success(`Time extended by ${hours} hours!`);
+        return result;
+      }
+    } catch (err) {
+      console.error(String('Error extending deadline:') + " " + String(err));
+      const message = err.message || 'Failed to extend time.';
+      setError(message);
+      toast.error(message);
+      throw err;
+    } finally {
+      setConfirmingId(null);
+    }
+  }, []);
+
   // Initialize receive helps listener
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -356,6 +385,7 @@ export const useReceiveHelpFlow = () => {
     confirmPayment,
     requestPaymentFromSender,
     rejectPaymentRequest,
+    extendDeadline,
     clearError: () => setError(null)
   };
 };

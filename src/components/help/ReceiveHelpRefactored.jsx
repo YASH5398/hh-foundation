@@ -22,8 +22,9 @@ import {
   Star,
   Zap,
   Shield,
-  Gift } from
-'lucide-react';
+  Gift
+} from
+  'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import defaultImage from '../../assets/default-avatar.png';
@@ -63,6 +64,8 @@ function ReceiveHelpRefactored() {
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendingHelpId, setExtendingHelpId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -72,7 +75,8 @@ function ReceiveHelpRefactored() {
     error,
     confirmPayment,
     requestPaymentFromSender,
-    rejectPaymentRequest
+    rejectPaymentRequest,
+    extendDeadline
   } = useReceiveHelpFlow(user?.uid ? undefined : null);
 
   const { helpCount, totalReceived } = useMemo(() => {
@@ -177,6 +181,19 @@ function ReceiveHelpRefactored() {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
 
+  const handleExtendTime = async (helpId, hours) => {
+    setIsSubmitting(true);
+    try {
+      await extendDeadline(helpId, hours);
+      setShowExtendModal(false);
+      setExtendingHelpId(null);
+    } catch (err) {
+      // toast shown in hook
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleRequestPayment = async (helpId) => {
     // 1. Immediate Success Feedback
     toast.success("Payment request sent successfully.");
@@ -234,11 +251,11 @@ function ReceiveHelpRefactored() {
   };
 
   const renderEmptyState = () =>
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="text-center py-12">
-    
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-12">
+
       <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
       <h3 className="text-xl font-semibold text-gray-700 mb-2">No Incoming Help</h3>
       <p className="text-gray-500">When someone sends you help, it will appear here</p>
@@ -246,9 +263,9 @@ function ReceiveHelpRefactored() {
 
 
   const renderLoadingState = () =>
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {[1, 2, 3, 4, 5, 6].map((i) =>
-    <div key={i} className="bg-white rounded-2xl shadow-lg p-6 animate-pulse">
+        <div key={i} className="bg-white rounded-2xl shadow-lg p-6 animate-pulse">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
             <div className="flex-1">
@@ -261,16 +278,16 @@ function ReceiveHelpRefactored() {
             <div className="h-4 bg-gray-200 rounded w-5/6"></div>
           </div>
         </div>
-    )}
+      )}
     </div>;
 
 
   const renderErrorState = () =>
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
-    
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
+
       <div className="flex items-center gap-3">
         <AlertCircle className="w-6 h-6 text-red-600" />
         <div>
@@ -287,7 +304,7 @@ function ReceiveHelpRefactored() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-center min-h-screen">
-        
+
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-700">Sign in required</h2>
@@ -306,7 +323,7 @@ function ReceiveHelpRefactored() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          
+
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -334,25 +351,25 @@ function ReceiveHelpRefactored() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="mb-6">
-          
+
           <div className="flex gap-2 overflow-x-auto pb-2">
             {[
-            { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700' },
-            { value: HELP_STATUS.ASSIGNED, label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
-            { value: HELP_STATUS.CONFIRMED, label: 'Confirmed', icon: CheckCircle, color: 'bg-green-100 text-green-700' }].
-            map((filter) =>
-            <button
-              key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${statusFilter === filter.value ?
-              `${filter.color} ring-2 ring-offset-2` :
-              'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-              }>
-              
-                <filter.icon className="inline-block w-4 h-4 mr-2" />
-                {filter.label}
-              </button>
-            )}
+              { value: 'all', label: 'All', icon: DollarSign, color: 'bg-gray-100 text-gray-700' },
+              { value: HELP_STATUS.ASSIGNED, label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
+              { value: HELP_STATUS.CONFIRMED, label: 'Confirmed', icon: CheckCircle, color: 'bg-green-100 text-green-700' }].
+              map((filter) =>
+                <button
+                  key={filter.value}
+                  onClick={() => setStatusFilter(filter.value)}
+                  className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${statusFilter === filter.value ?
+                    `${filter.color} ring-2 ring-offset-2` :
+                    'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                  }>
+
+                  <filter.icon className="inline-block w-4 h-4 mr-2" />
+                  {filter.label}
+                </button>
+              )}
           </div>
         </motion.div>
 
@@ -362,29 +379,29 @@ function ReceiveHelpRefactored() {
         {!loading && !error && filteredReceiveHelps.length === 0 && renderEmptyState()}
 
         {!loading && !error && filteredReceiveHelps.length > 0 &&
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
               {filteredReceiveHelps.map((help, index) => {
 
-              return (
-                <motion.div
-                  key={help.id}
-                  layout
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
-                  
+                return (
+                  <motion.div
+                    key={help.id}
+                    layout
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+
                     {/* Card Header */}
                     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <img
-                          src={getProfileImageUrl(help.senderProfileImage) || defaultImage}
-                          alt={help.senderName}
-                          className="w-12 h-12 rounded-full border-2 border-white object-cover" />
-                        
+                            src={getProfileImageUrl(help.senderProfileImage) || defaultImage}
+                            alt={help.senderName}
+                            className="w-12 h-12 rounded-full border-2 border-white object-cover" />
+
                           <div>
                             <h3 className="text-white font-semibold">
                               {help.senderName || help.fullName || 'Sender'}
@@ -413,57 +430,57 @@ function ReceiveHelpRefactored() {
                       <div className="border-t border-gray-200 pt-4 space-y-2">
                         <h4 className="font-semibold text-gray-700">Sender Details</h4>
                         {help.senderPhone &&
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium w-20">Phone:</span>
                             <span>{help.senderPhone}</span>
                           </div>
-                      }
+                        }
                         {help.senderWhatsapp && help.senderWhatsapp !== help.senderPhone &&
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium w-20">WhatsApp:</span>
                             <span>{help.senderWhatsapp}</span>
                           </div>
-                      }
+                        }
                         {help.senderEmail &&
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium w-20">Email:</span>
                             <span>{help.senderEmail}</span>
                           </div>
-                      }
+                        }
                         {!help.senderPhone && !help.senderWhatsapp && !help.senderEmail &&
-                      <p className="text-sm text-gray-500">Sender contact details not available.</p>
-                      }
+                          <p className="text-sm text-gray-500">Sender contact details not available.</p>
+                        }
                       </div>
 
                       {/* Payment Proof Section */}
                       {normalizeStatus(help.status) === HELP_STATUS.PAYMENT_DONE &&
-                    <div className="border-t border-gray-200 pt-4 space-y-3">
+                        <div className="border-t border-gray-200 pt-4 space-y-3">
                           <h4 className="font-semibold text-gray-700 flex items-center gap-2">
                             <Shield className="w-4 h-4 text-green-600" />
                             Payment Proof
                           </h4>
 
                           {help.payment?.utr &&
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
                               <span className="font-medium w-20">UTR No:</span>
                               <span className="font-mono bg-green-50 text-green-700 px-3 py-1.5 rounded-lg select-all border border-green-100 font-bold">
                                 {help.payment.utr}
                               </span>
                             </div>
-                      }
+                          }
 
                           {help.payment?.screenshotUrl &&
-                      <div className="mt-2">
+                            <div className="mt-2">
                               <p className="text-xs text-gray-500 mb-2">Transaction Screenshot:</p>
                               <div
-                          className="relative group cursor-zoom-in overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 w-full h-48"
-                          onClick={() => setFullscreenImage(help.payment.screenshotUrl)}>
-                          
+                                className="relative group cursor-zoom-in overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 w-full h-48"
+                                onClick={() => setFullscreenImage(help.payment.screenshotUrl)}>
+
                                 <img
-                            src={help.payment.screenshotUrl}
-                            alt="Payment Proof"
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                          
+                                  src={help.payment.screenshotUrl}
+                                  alt="Payment Proof"
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
                                   <div className="bg-white/90 p-3 rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform duration-300">
                                     <Eye className="w-6 h-6 text-indigo-600" />
@@ -471,9 +488,9 @@ function ReceiveHelpRefactored() {
                                 </div>
                               </div>
                             </div>
-                      }
+                          }
                         </div>
-                    }
+                      }
 
 
                       {/* Separator */}
@@ -484,117 +501,163 @@ function ReceiveHelpRefactored() {
                         <Calendar className="w-4 h-4" />
                         <span>
                           {help.createdAt?.toDate?.()?.toLocaleDateString?.() ||
-                        new Date(help.createdAt).toLocaleDateString?.() ||
-                        'Date unavailable'}
+                            new Date(help.createdAt).toLocaleDateString?.() ||
+                            'Date unavailable'}
                         </span>
                       </div>
 
                       {/* 24-Hour Countdown Timer */}
                       {normalizeStatus(help.status) !== HELP_STATUS.CONFIRMED && normalizeStatus(help.status) !== HELP_STATUS.FORCE_CONFIRMED && help.createdAt &&
-                    <div className="mt-2 text-left">
+                        <div className="mt-2 text-left">
                           <CountdownTimer
-                        targetDate={new Date((help.createdAt?.toDate?.() || new Date(help.createdAt)).getTime() + 24 * 60 * 60 * 1000)}
-                        label="Sender Deadline" />
-                      
+                            targetDate={new Date(
+                              help.nextTimeoutAtMs ||
+                              help.extendedUntil?.toDate?.()?.getTime() ||
+                              help.deadlineAt?.toDate?.()?.getTime() ||
+                              ((help.createdAt?.toDate?.() || new Date(help.createdAt)).getTime() + 24 * 60 * 60 * 1000)
+                            )}
+                            label={help.totalExtensionHours > 0 ? "Deadline (Extended)" : "Sender Deadline"} />
+                          {help.totalExtensionHours > 0 && (
+                            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full w-fit border border-indigo-100 italic">
+                              <Clock className="w-3 h-3" />
+                              <span>Total Extension: +{help.totalExtensionHours}h</span>
+                            </div>
+                          )}
                         </div>
-                    }
+                      }
 
                       {/* Actions */}
                       <div className="space-y-3 pt-4">
                         {(() => {
-                        const status = normalizeStatus(help.status);
+                          const status = normalizeStatus(help.status);
 
-                        // 1. TERMINAL STATES - No actions
-                        if (!isActiveStatus(status)) {
-                          const isConfirmed = isConfirmedStatus(status) || status === HELP_STATUS.FORCE_CONFIRMED;
-                          return (
-                            <div className={`w-full text-center py-3 rounded-xl font-bold flex items-center justify-center gap-2 ${isConfirmed ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`
-                            }>
+                          // 1. TERMINAL STATES - No actions
+                          if (!isActiveStatus(status)) {
+                            const isConfirmed = isConfirmedStatus(status) || status === HELP_STATUS.FORCE_CONFIRMED;
+                            return (
+                              <div className={`w-full text-center py-3 rounded-xl font-bold flex items-center justify-center gap-2 ${isConfirmed ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`
+                              }>
                                 {isConfirmed ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
                                 {HELP_STATUS_LABELS[status] || 'Completed'}
                               </div>);
 
-                        }
+                          }
 
-                        // 2. PAYMENT DONE - Show Confirm / Reject
-                        if (status === HELP_STATUS.PAYMENT_DONE) {
-                          return (
-                            <div className="grid grid-cols-2 gap-3">
+                          // 2. PAYMENT DONE - Show Confirm / Reject
+                          if (status === HELP_STATUS.PAYMENT_DONE) {
+                            return (
+                              <div className="grid grid-cols-2 gap-3">
                                 <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                  setSelectedHelpId(help.id);
-                                  setShowConfirmModal(true);
-                                }}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-200 flex flex-col items-center justify-center">
-                                
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setSelectedHelpId(help.id);
+                                    setShowConfirmModal(true);
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-200 flex flex-col items-center justify-center">
+
                                   <Check className="w-5 h-5 mb-1" />
                                   <span className="text-xs">Confirm</span>
                                 </motion.button>
                                 <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                  setRejectId(help.id);
-                                  setShowRejectModal(true);
-                                }}
-                                className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-all border border-red-100 flex flex-col items-center justify-center">
-                                
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setRejectId(help.id);
+                                    setShowRejectModal(true);
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-all border border-red-100 flex flex-col items-center justify-center">
+
                                   <X className="w-5 h-5 mb-1" />
                                   <span className="text-xs">Reject</span>
                                 </motion.button>
                               </div>);
 
-                        }
+                          }
 
-                        // 3. PAYMENT REQUESTED - Waiting state
-                        if (status === HELP_STATUS.PAYMENT_REQUESTED) {
-                          return (
-                            <div className="w-full bg-blue-50 text-blue-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-blue-100 animate-pulse">
+                          // 3. PAYMENT REQUESTED - Waiting state
+                          if (status === HELP_STATUS.PAYMENT_REQUESTED) {
+                            return (
+                              <div className="w-full bg-blue-50 text-blue-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-blue-100 animate-pulse">
                                 <Clock className="w-5 h-5" />
                                 Waiting for Proof
                               </div>);
 
-                        }
+                          }
 
-                        // 4. ASSIGNED - Request Payment
-                        const { active: isCooldown, remaining } = getCooldownStatus(help);
-                        return (
-                          <motion.button
-                            whileHover={!isCooldown ? { scale: 1.02 } : {}}
-                            whileTap={!isCooldown ? { scale: 0.98 } : {}}
-                            onClick={() => !isCooldown && handleRequestPayment(help.id)}
-                            disabled={isCooldown}
-                            className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${isCooldown ?
-                            'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' :
-                            'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200'}`
-                            }>
-                            
-                              {isCooldown ?
+                          // 4. ASSIGNED - Request Payment
+                          const { active: isCooldown, remaining } = getCooldownStatus(help);
+                          return (
                             <>
-                                  <Clock className="w-4 h-4" />
-                                  Ready in {formatCountdown(remaining)}
-                                </> :
+                              <motion.button
+                                whileHover={!isCooldown ? { scale: 1.02 } : {}}
+                                whileTap={!isCooldown ? { scale: 0.98 } : {}}
+                                onClick={() => !isCooldown && handleRequestPayment(help.id)}
+                                disabled={isCooldown}
+                                className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${isCooldown ?
+                                  'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' :
+                                  'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200'}`
+                                }>
 
-                            <>
-                                  <Zap className="w-4 h-4" />
-                                  Request Payment
-                                </>
-                            }
-                            </motion.button>);
+                                {isCooldown ?
+                                  <>
+                                    <Clock className="w-4 h-4" />
+                                    Ready in {formatCountdown(remaining)}
+                                  </> :
 
-                      })()}
+                                  <>
+                                    <Zap className="w-4 h-4" />
+                                    Request Payment
+                                  </>
+                                }
+                              </motion.button>
+
+                              {/* Extend Time Button */}
+                              {(() => {
+                                // Calculate expiration status synchronously
+                                const deadlineMs = help.nextTimeoutAtMs ||
+                                  help.extendedUntil?.toDate?.()?.getTime() ||
+                                  help.deadlineAt?.toDate?.()?.getTime() ||
+                                  ((help.createdAt?.toDate?.() || new Date(help.createdAt)).getTime() + 24 * 60 * 60 * 1000);
+                                const isExpired = Date.now() > deadlineMs;
+                                const isLimitReached = (help.totalExtensionHours || 0) >= 24;
+                                const isDisabled = isLimitReached || isExpired;
+
+                                return (
+                                  <motion.button
+                                    whileHover={!isDisabled ? { scale: 1.02 } : {}}
+                                    whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                                    onClick={() => {
+                                      setExtendingHelpId(help.id);
+                                      setShowExtendModal(true);
+                                    }}
+                                    disabled={isDisabled}
+                                    className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${isDisabled ?
+                                      'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' :
+                                      'bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 hover:border-indigo-300 shadow-sm'}`
+                                    }>
+                                    <Clock className="w-4 h-4" />
+                                    {isExpired
+                                      ? 'Extension Time Expired'
+                                      : isLimitReached
+                                        ? 'Extension Limit Reached'
+                                        : 'Extend Time'}
+                                  </motion.button>
+                                );
+                              })()}
+                            </>
+                          );
+                        })()}
 
                         <button
-                        type="button"
-                        className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          navigate(`/dashboard/chat/${help.id}`);
-                        }}>
-                        
+                          type="button"
+                          className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/dashboard/chat/${help.id}`);
+                          }}>
+
                           <MessageCircle className="inline-block w-4 h-4 mr-2" />
                           Chat
                         </button>
@@ -602,7 +665,7 @@ function ReceiveHelpRefactored() {
                     </div>
                   </motion.div>);
 
-            })}
+              })}
             </AnimatePresence>
           </div>
         }
@@ -613,20 +676,20 @@ function ReceiveHelpRefactored() {
       {/* Confirm Payment Modal */}
       <AnimatePresence>
         {showConfirmModal &&
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowConfirmModal(false)}>
-          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowConfirmModal(false)}>
+
             <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
-            
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}>
+
               <div className="bg-green-600 p-6 text-center">
                 <CheckCircle className="w-16 h-16 text-white/50 mx-auto mb-2" />
                 <h2 className="text-2xl font-black text-white">Payment Received?</h2>
@@ -637,29 +700,29 @@ function ReceiveHelpRefactored() {
                 </p>
                 <div className="flex gap-3">
                   <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all">
-                  
+                    onClick={() => setShowConfirmModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all">
+
                     Not Yet
                   </button>
                   <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={isSubmitting}
-                  onClick={async () => {
-                    if (selectedHelpId) {
-                      setIsSubmitting(true);
-                      try {
-                        await confirmPayment(selectedHelpId);
-                        setShowConfirmModal(false);
-                        setSelectedHelpId(null);
-                      } finally {
-                        setIsSubmitting(false);
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={isSubmitting}
+                    onClick={async () => {
+                      if (selectedHelpId) {
+                        setIsSubmitting(true);
+                        try {
+                          await confirmPayment(selectedHelpId);
+                          setShowConfirmModal(false);
+                          setSelectedHelpId(null);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
                       }
-                    }
-                  }}
-                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-green-200 disabled:opacity-50">
-                  
+                    }}
+                    className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-green-200 disabled:opacity-50">
+
                     {isSubmitting ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Yes, Received!'}
                   </motion.button>
                 </div>
@@ -672,22 +735,22 @@ function ReceiveHelpRefactored() {
       {/* Reject Payment Modal */}
       <AnimatePresence>
         {showRejectModal &&
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => {
-            if (!isSubmitting) setShowRejectModal(false);
-          }}>
-          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              if (!isSubmitting) setShowRejectModal(false);
+            }}>
+
             <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
-            
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}>
+
               <div className="bg-red-600 p-6 text-center">
                 <AlertCircle className="w-16 h-16 text-white/50 mx-auto mb-2" />
                 <h2 className="text-2xl font-black text-white">Reject Request</h2>
@@ -698,41 +761,107 @@ function ReceiveHelpRefactored() {
                 </p>
 
                 <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Example: UTR number is fake or amount not received..."
-                className="w-full h-32 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 focus:border-red-500 focus:ring-0 transition-colors resize-none text-gray-700" />
-              
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Example: UTR number is fake or amount not received..."
+                  className="w-full h-32 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 focus:border-red-500 focus:ring-0 transition-colors resize-none text-gray-700" />
+
 
                 <div className="flex gap-3">
                   <button
-                  onClick={() => setShowRejectModal(false)}
-                  disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all disabled:opacity-50">
-                  
+                    onClick={() => setShowRejectModal(false)}
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all disabled:opacity-50">
+
                     Back
                   </button>
                   <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={!rejectReason.trim() || isSubmitting}
-                  onClick={async () => {
-                    if (rejectId && rejectReason.trim()) {
-                      setIsSubmitting(true);
-                      try {
-                        await rejectPaymentRequest(rejectId, rejectReason);
-                        setShowRejectModal(false);
-                        setRejectId(null);
-                        setRejectReason('');
-                      } finally {
-                        setIsSubmitting(false);
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={!rejectReason.trim() || isSubmitting}
+                    onClick={async () => {
+                      if (rejectId && rejectReason.trim()) {
+                        setIsSubmitting(true);
+                        try {
+                          await rejectPaymentRequest(rejectId, rejectReason);
+                          setShowRejectModal(false);
+                          setRejectId(null);
+                          setRejectReason('');
+                        } finally {
+                          setIsSubmitting(false);
+                        }
                       }
-                    }
-                  }}
-                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200 disabled:opacity-50">
-                  
+                    }}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200 disabled:opacity-50">
+
                     {isSubmitting ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Reject Proof'}
                   </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        }
+      </AnimatePresence>
+
+      {/* Extend Time Modal */}
+      <AnimatePresence>
+        {showExtendModal &&
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              if (!isSubmitting) setShowExtendModal(false);
+            }}>
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}>
+
+              <div className="bg-indigo-600 p-6 text-center">
+                <Clock className="w-16 h-16 text-white/50 mx-auto mb-2" />
+                <h2 className="text-2xl font-black text-white">Extend Deadline</h2>
+              </div>
+              <div className="p-8">
+                <p className="text-gray-600 text-center mb-6 text-sm">
+                  Choose an increment to extend the sender's payment deadline.
+                  <span className="block mt-2 font-bold text-indigo-600">Max total extension: 24 hours</span>
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                  {[1, 4, 8, 24].map((h) => {
+                    const help = receiveHelps.find(help => help.id === extendingHelpId);
+                    const currentExt = help?.totalExtensionHours || 0;
+                    const isDisabled = currentExt + h > 24;
+
+                    return (
+                      <button
+                        key={h}
+                        disabled={isDisabled || isSubmitting}
+                        onClick={() => handleExtendTime(extendingHelpId, h)}
+                        className={`py-4 rounded-2xl font-black transition-all flex flex-col items-center justify-center gap-1 border-2 ${isDisabled
+                          ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'
+                          : 'bg-white text-indigo-600 border-indigo-50 hover:border-indigo-500 hover:bg-indigo-50 active:scale-95 shadow-sm'
+                          }`}
+                      >
+                        <span className="text-xl">{h}h</span>
+                        <span className="text-[10px] uppercase tracking-wider">Extension</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowExtendModal(false)}
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all disabled:opacity-50">
+                    Cancel
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -743,32 +872,32 @@ function ReceiveHelpRefactored() {
       {/* Fullscreen Image Modal */}
       <AnimatePresence>
         {fullscreenImage &&
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 cursor-zoom-out"
-          onClick={() => setFullscreenImage(null)}>
-          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 cursor-zoom-out"
+            onClick={() => setFullscreenImage(null)}>
+
             <button
-            onClick={() => setFullscreenImage(null)}
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors">
-            
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors">
+
               <X className="w-8 h-8" />
             </button>
             <motion.img
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0.9 }}
-            src={fullscreenImage}
-            alt="Payment Proof Fullscreen"
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()} />
-          
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={fullscreenImage}
+              alt="Payment Proof Fullscreen"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()} />
+
           </motion.div>
         }
       </AnimatePresence>
-    </div>);
+    </div >);
 
 }
 
